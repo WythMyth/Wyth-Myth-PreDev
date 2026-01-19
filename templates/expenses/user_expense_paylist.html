@@ -1,0 +1,272 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+{% block content %}
+
+<div class="bg-white rounded-xl shadow p-6">
+
+    <!-- ================= Header ================= -->
+    <div class="flex justify-center mb-4">
+        <h2 class="text-2xl font-bold">Payable Approved Expenses</h2>
+    </div>
+
+    <hr class="mb-6 border-gray-200">
+
+    <!-- ================= Filters + SUM ================= -->
+    <div class="flex flex-wrap gap-4 items-end mb-6">
+
+        <!-- Total Payable -->
+        {% comment %} <div class="bg-[#E6EAEF] text-[#183665] font-bold px-4 py-2 rounded">
+            Total: ${{ total_payable|floatformat:2 }}
+        </div> {% endcomment %}
+        <button class="bg-[#183665] font-bold text-white py-2 px-4 rounded">
+            Total: ${{ total_payable|floatformat:2 }}
+        </button>
+
+        <form method="get" class="flex flex-wrap gap-3">
+
+            <!-- Property -->
+            <select name="property" class="border px-3 py-2 rounded">
+                <option value="">All Properties</option>
+                {% for p in properties %}
+                    <option value="{{ p.id }}"
+                        {% if property_filter == p.id|stringformat:"s" %}selected{% endif %}>
+                        {{ p.title }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <!-- Paid By -->
+            <select name="paid_by" class="border px-3 py-2 rounded">
+                <option value="">paid by users</option>
+                {% for u in users %}
+                    <option value="{{ u.id }}"
+                        {% if paid_by_filter == u.id|stringformat:"s" %}selected{% endif %}>
+                        {{ u.short_name }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <!-- Payment Status -->
+            <select name="payment_status" class="border px-3 py-2 rounded">
+                <option value="">All Status</option>
+                <option value="paid" {% if payment_status_filter == "paid" %}selected{% endif %}>Paid</option>
+                <option value="unpaid" {% if payment_status_filter == "unpaid" %}selected{% endif %}>Unpaid</option>
+            </select>
+
+            <button class="bg-[#183665] text-white px-4 py-2 rounded">
+                Filter
+            </button>
+        </form>
+    </div>
+
+    <!-- ================= Table ================= -->
+    <div class="overflow-x-auto">
+        {% if expenses %}
+        <table class="w-full text-sm">
+            <thead class="bg-gray-100 font-semibold">
+                <tr>
+                    <th class="p-2 text-center">Date</th>
+                    <th class="p-2 text-center">Purpose</th>
+                    <th class="p-2 text-center">Property</th>
+                    <th class="p-2 text-center">Created By</th>
+                    <th class="p-2 text-center">Paid By</th>
+                    <th class="p-2 text-center">Amount</th>
+                    <th class="p-2 text-center">Payment</th>
+                    <th class="p-2 text-center">Details</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            {% for expense in expenses %}
+                <tr class="border-b">
+                    <td class="p-2 text-center">{{ expense.expense_date|date:"M d, Y" }}</td>
+                    <td class="p-2 text-center">{{ expense.purpose }}</td>
+                    <td class="p-2 text-center">{{ expense.property.title|default:"—" }}</td>
+                    <td class="p-2 text-center">{{ expense.created_by.short_name }}</td>
+                    <td class="p-2 text-center">{{ expense.paid_by_user.short_name|default:"—" }}</td>
+                    <td class="p-2 text-center">${{ expense.amount|floatformat:2 }}</td>
+
+                    <td class="p-2 text-center">
+                        {% if expense.payment_status == "paid" %}
+                            <span class="text-green-600 font-semibold">Paid</span>
+                        {% else %}
+                            <a href="{% url 'accounts:expense_payment_create' expense.id %}"
+                               class="bg-[#183665] text-white px-3 py-1 rounded text-sm">
+                                Pay Now
+                            </a>
+                        {% endif %}
+                    </td>
+
+                    <td class="p-2 text-center">
+                        <a href="{% url 'accounts:expense_detail' expense.id %}"
+                           class="bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                            Details
+                        </a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <div class="p-6 text-center text-gray-500">
+                No payable expenses found.
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- ================= Pagination ================= -->
+    {% if is_paginated %}
+    <div class="flex justify-between items-center mt-4 text-sm">
+        <p class="text-gray-500">
+            Showing {{ page_obj.start_index }} – {{ page_obj.end_index }} of {{ paginator.count }}
+        </p>
+        <div class="flex gap-2">
+            {% if page_obj.has_previous %}
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}"
+                   class="px-2 py-1 border rounded">← Prev</a>
+            {% endif %}
+            {% if page_obj.has_next %}
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}"
+                   class="px-2 py-1 border rounded">Next →</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock content %}
+
+
+
+
+
+{% comment %} {% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-center sm:items-center gap-3 mb-4">
+        <h2 class="text-2xl font-bold ">Approved Expenses</h2>
+    </div>
+
+    <hr class="mb-5 border-gray-200">
+
+    <!-- Table -->
+    <div class="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+        {% if expenses %}
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-100 font-semibold">
+                    <tr>
+                        <th class="p-2 text-center">Date</th>
+                        <th class="p-2 text-center">Purpose</th>
+                        <th class="p-2 text-center">Created By</th>
+                        <th class="p-2 text-center">Amount</th>
+                        <th class="p-2 text-center">Status</th>
+                        <th class="p-2 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expense in expenses %}
+                        <tr>
+                            <td class="p-2 border border-gray-100 text-center">
+                                {{ expense.expense_date|date:"M d, Y" }}
+                            </td>
+                            <td class="p-2 border border-gray-100 text-center">
+                                {{ expense.purpose }}
+                            </td>
+                            <td class="p-2 border border-gray-100 text-center">
+                                {{ expense.created_by.short_name }}
+                            </td>
+                            <td class="p-2 border border-gray-100 text-center">
+                                ${{ expense.amount|floatformat:2 }}
+                            </td>
+
+
+                            <td class="p-2 border border-gray-100 text-center">
+                                {% if expense.status == 'approved' %}
+                                    <img src="{% static 'images/approve.jpeg' %}" alt="Approved" class="w-7 h-7 inline-block">
+                                {% elif expense.status == 'rejected' %}
+                                    <img src="{% static 'images/reject.jpeg' %}" alt="Rejected" class="w-7 h-7 inline-block">
+                                {% else %}
+                                    <img src="{% static 'images/pending.jpeg' %}" alt="Pending" class="w-7 h-7 inline-block">
+                                {% endif %}
+                            </td>
+
+                            <td class="p-2 border border-gray-100 text-center">
+                                {% if expense.payment_status == "paid" %}
+                                    <button disabled
+                                            class="bg-gray-300 text-gray-600 px-3 py-1 rounded text-sm cursor-not-allowed">
+                                        Paid
+                                    </button>
+                                {% elif expense.payment_status == "unpaid" %}
+                                    <a href="{% url 'accounts:expense_payment_create' expense.id %}"
+                                    class="bg-[#183665] text-white px-3 py-1 rounded text-sm">
+                                        Pay Now
+                                    </a>
+                                {% endif %}
+                            </td>
+
+
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="p-6 text-center text-gray-500">No approved expenses found.</div>
+        {% endif %}
+    </div>
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mt-4 gap-2">
+        
+        <!-- Page Info -->
+        <p class="text-sm text-gray-500">
+            Showing {{ page_obj.start_index }} – {{ page_obj.end_index }} of {{ paginator.count }} results
+        </p>
+
+        <!-- Pagination Controls -->
+        <div class="flex gap-2">
+            <!-- Previous -->
+            {% if page_obj.has_previous %}
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}"
+                class="px-2 py-1 border rounded hover:bg-gray-100">
+                    ← Previous
+                </a>
+            {% else %}
+                <span class="px-2 py-1 border rounded text-gray-400 cursor-not-allowed">
+                    ← Previous
+                </span>
+            {% endif %}
+
+            <!-- Page Numbers -->
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                    <span class="px-2 py-1 border rounded bg-[#183665] text-white">
+                        {{ num }}
+                    </span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?{{ request.GET.urlencode }}&page={{ num }}"
+                    class="px-2 py-1 border rounded hover:bg-gray-100">
+                        {{ num }}
+                    </a>
+                {% endif %}
+            {% endfor %}
+
+            <!-- Next -->
+            {% if page_obj.has_next %}
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}"
+                class="px-2 py-1 border rounded hover:bg-gray-100">
+                    Next →
+                </a>
+            {% else %}
+                <span class="px-2 py-1 border rounded text-gray-400 cursor-not-allowed">
+                    Next →
+                </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock content %} {% endcomment %}

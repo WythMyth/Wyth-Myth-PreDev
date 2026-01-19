@@ -1,0 +1,15 @@
+
+<aside class="w-64 bg-white shadow-md h-screen p-6 space-y-4">
+    <a href="{% url 'accounts:dashboard' %}" class="block bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded">Dashboard</a>
+    <a href="{% url 'accounts:profile' %}" class="block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Profile</a>
+    <a href="{% url 'accounts:expense_list' %}" class="block bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded">Expenses</a>
+    {% comment %} <a href="{% url 'accounts:payment_banks' %}" class="block bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded">Payment</a> {% endcomment %}
+    <a href="{% url 'accounts:my_payments' %}" class="block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded">My Payments</a>
+    {% if user.is_superuser %}
+    <a href="{% url 'accounts:member_list' %}" class="block bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded">All Members</a>
+    <a href="{% url 'accounts:property_list' %}" class="block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Manage Properties</a>
+    <a href="{% url 'accounts:pending_payments' %}" class="block bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded">Pending Payments</a>
+    <a href="{% url 'media:contact-list' %}" class="block bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded">Contact US</a>
+    <a href="{% url 'media:video-list' %}" class="block bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded">Hero Video</a>
+    {% endif %}
+</aside>

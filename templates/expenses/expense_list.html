@@ -1,0 +1,490 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+        <h2 class="text-2xl font-bold">Expenses</h2>
+        <div class="flex flex-row gap-2">
+            <button class="bg-[#183665] font-bold text-white py-2 px-4 rounded">
+                Total: ${{ total_expense_amount|floatformat:2 }}
+            </button>
+            {% if request.user.is_superuser or request.user.is_finnancial or request.user.is_expense %}
+                <a href="{% url 'accounts:expense_create' %}" 
+                   class="bg-[#183665] font-bold text-white py-2 px-4 rounded">
+                    Create Expenses
+                </a>
+            {% endif %}
+            <form method="get" action="{% url 'accounts:expense_download' %}" class="inline">
+                {% if status_filter %}
+                    <input type="hidden" name="status" value="{{ status_filter }}">
+                {% endif %}
+                {% if created_by_filter %}
+                    <input type="hidden" name="created_by" value="{{ created_by_filter }}">
+                {% endif %}
+                {% if from_date %}
+                    <input type="hidden" name="from_date" value="{{ from_date }}">
+                {% endif %}
+                {% if to_date %}
+                    <input type="hidden" name="to_date" value="{{ to_date }}">
+                {% endif %}
+                <button type="submit" 
+                        class="bg-[#E6EAEF] text-[#183665] font-bold py-2 px-4 rounded transition-all">
+                    Download Excel
+                </button>
+            </form>
+        </div>
+    </div>
+    <form method="get" action="{% url 'accounts:expense_list' %}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+        <div>
+            <label class="block font-medium mb-1">Status</label>
+            <select name="status" class="border border-black px-3 py-2 rounded w-full">
+                <option value="" {% if not status_filter %}selected{% endif %}>All</option>
+                <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+            </select>
+        </div>
+        <div>
+            <label class="block font-medium mb-1">Created By</label>
+            <select name="created_by" class="border border-black px-3 py-2 rounded w-full">
+                <option value="" {% if not created_by_filter %}selected{% endif %}>All</option>
+                {% for user in users %}
+                    <option value="{{ user.id }}" {% if created_by_filter == user.id|stringformat:"s" %}selected{% endif %}>
+                        {{ user.short_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block font-medium mb-1">From Date</label>
+            <input type="date" name="from_date" value="{{ from_date }}" class="border border-black px-3 py-2 rounded w-full">
+        </div>
+        <div>
+            <label class="block font-medium mb-1">To Date</label>
+            <input type="date" name="to_date" value="{{ to_date }}" class="border border-black px-3 py-2 rounded w-full">
+        </div>
+        <div class="flex items-end">
+            <button type="submit" class="bg-[#183665] text-white py-2 px-4 rounded w-full">Filter</button>
+        </div>
+    </form>
+    <div class="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+        {% if expenses %}
+            <table class=" w-full text-left text-sm">
+                <thead class="bg-gray-100 font-semibold">
+                    <tr>
+                        <th class="p-2 text-center">Expenses Date</th>
+                        <th class="p-2 text-center">Purpose</th>
+                        <th class="p-2 text-center">Cost Type</th>
+                        <th class="p-2 text-center">Paid by User</th>
+                        <th class="p-2 text-center">Status</th>
+                        <th class="p-2 text-center">Created By</th>
+                        <th class="p-2 text-center">Approved By</th>
+                        <th class="p-2 text-center">Amount</th>
+                        <th class="p-2 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expense in expenses %}
+                        <tr>
+                            <td class="p-2 border border-gray-100 text-center">{{ expense.expense_date|date:"M d, Y" }}</td>
+                            <td class="p-2 border border-gray-100 text-center">{{ expense.purpose }}</td>
+                                                        <td class="p-2 border border-gray-100 text-center">
+                                {% if expense.property %} 
+                                {{expense.property.title|truncatewords:3}}
+                                {% else %}
+                                Office
+                                {% endif %}
+                            </td>
+                            <td class="p-2 border border-gray-100 text-center">{{ expense.paid_by_user.short_name }}</td>
+                            <td class="p-2 border border-gray-100 text-center">
+                                {% if expense.status == 'approved' %}
+                                    <img src="{% static 'images/approve.jpeg' %}" alt="Approved" class="w-6 h-6 inline-block">
+                                {% elif expense.status == 'rejected' %}
+                                    <img src="{% static 'images/reject.jpeg' %}" alt="Rejected" class="w-6 h-6 inline-block">
+                                {% else %}
+                                    <img src="{% static 'images/pending.jpeg' %}" alt="Pending" class="w-6 h-6 inline-block">
+                                {% endif %}
+                            </td>
+                            <td class="p-2 border border-gray-100 text-center">{{ expense.created_by.short_name }}</td>
+                            <td class="p-2 border border-gray-100 text-center">{{ expense.approved_by.short_name }}</td>
+                            <td class="p-2 border border-gray-100 text-center">${{ expense.amount|floatformat:2 }}</td>
+                            <td class="p-2 border border-gray-100 text-center">
+                                <div class="flex justify-center gap-2">
+
+                                    <!-- View -->
+                                    <a href="{% url 'accounts:expense_details' expense.id %}" title="View Details">
+                                        <img class="w-5" src="{% static 'images/view.png' %}" alt="View">
+                                    </a>
+
+                                    <!-- Change Status -->
+                                    {% if request.user.is_superuser or request.user.is_finnancial and expense.created_by != user %}
+                                        <button type="button"
+                                                class="edit-expense-btn"
+                                                data-id="{{ expense.id }}"
+                                                data-current-status="{{ expense.status }}" 
+                                                title="Update Status">
+                                            <img class="w-5" src="{% static 'images/sync.png' %}" alt="Change Status">
+                                        </button>
+                                    {% endif %}
+
+                                    <!-- Copy -->
+                                    {% if request.user.is_superuser or request.user.is_finnancial or request.user.is_expense %}
+                                        <button type="button"
+                                                class="copy-meeting-btn"
+                                                data-copy-url="{% url 'accounts:expenses-copy' expense.id %}" 
+                                                title="Copy Expense">
+                                            <img class="w-5" src="{% static 'images/copy.png' %}" alt="Copy">
+                                        </button>
+                                    {% endif %}
+
+                                    <!-- Delete -->
+                                    {% if request.user.is_superuser or request.user.is_finnancial and expense.created_by != user %}
+                                        <form method="post" 
+                                            action="{% url 'accounts:expense-delete' expense.id %}" 
+                                            style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" 
+                                                    onclick="return confirm('Are you sure you want to delete this expense?');" 
+                                                    title="Delete Expense">
+                                                <img class="w-5" src="{% static 'images/delete.png' %}" alt="Delete">
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="p-6 text-center text-gray-500">No expenses found.</div>
+        {% endif %}
+    </div>
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mt-4 gap-2">
+        
+        <!-- Page Info -->
+        <p class="text-sm text-gray-500">
+            Showing {{ page_obj.start_index }} – {{ page_obj.end_index }} of {{ paginator.count }} results
+        </p>
+
+        <!-- Pagination Controls -->
+        <div class="flex gap-2">
+            <!-- Previous -->
+            {% if page_obj.has_previous %}
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}"
+                class="px-2 py-1 border rounded hover:bg-gray-100">
+                    ← Previous
+                </a>
+            {% else %}
+                <span class="px-2 py-1 border rounded text-gray-400 cursor-not-allowed">
+                    ← Previous
+                </span>
+            {% endif %}
+
+            <!-- Page Numbers -->
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                    <span class="px-2 py-1 border rounded bg-[#183665] text-white">
+                        {{ num }}
+                    </span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?{{ request.GET.urlencode }}&page={{ num }}"
+                    class="px-2 py-1 border rounded hover:bg-gray-100">
+                        {{ num }}
+                    </a>
+                {% endif %}
+            {% endfor %}
+
+            <!-- Next -->
+            {% if page_obj.has_next %}
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}"
+                class="px-2 py-1 border rounded hover:bg-gray-100">
+                    Next →
+                </a>
+            {% else %}
+                <span class="px-2 py-1 border rounded text-gray-400 cursor-not-allowed">
+                    Next →
+                </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal -->
+<div id="expenseStatusModal" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center z-50">
+    <div class="bg-white rounded shadow-lg w-80 p-6">
+        <h2 class="text-lg font-semibold mb-4">Update Expense Status</h2>
+        <form id="expenseStatusForm">
+            {% csrf_token %}
+            <input type="hidden" name="expense_id" id="modalExpenseId">
+            <label class="block text-sm font-medium mb-1">New Status:</label>
+            <select name="new_status" id="modalExpenseNewStatus" class="w-full border rounded px-3 py-2 mb-4">
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+            </select>
+            <div class="flex justify-end space-x-2">
+                <button type="button" id="cancelExpenseModal" class="px-4 py-2 bg-gray-400 text-white rounded">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-[#183665] text-white rounded">Update</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.slice(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+
+$(document).ready(function () {
+    $('.copy-meeting-btn').click(function (e) {
+        e.preventDefault();
+        const url = $(this).data('copy-url');
+        const csrftoken = getCookie('csrftoken');
+        $.ajax({
+            url: url,
+            type: 'POST',
+            headers: { 'X-CSRFToken': csrftoken },
+            success: function () {
+                alert("Expense copied successfully!");
+                location.reload();
+            },
+            error: function (xhr) {
+                alert("Failed to copy Expense. Error: " + xhr.statusText);
+            }
+        });
+    });
+});
+
+// === Status Modal ===
+const expenseModal = document.getElementById("expenseStatusModal");
+const modalExpenseId = document.getElementById("modalExpenseId");
+const modalExpenseNewStatus = document.getElementById("modalExpenseNewStatus");
+const cancelExpenseModal = document.getElementById("cancelExpenseModal");
+
+document.querySelectorAll(".edit-expense-btn").forEach(button => {
+    button.addEventListener("click", () => {
+        modalExpenseId.value = button.dataset.id;
+        modalExpenseNewStatus.value = button.dataset.currentStatus;
+        expenseModal.classList.remove("hidden");
+        expenseModal.classList.add("flex");
+    });
+});
+
+cancelExpenseModal.addEventListener("click", () => {
+    expenseModal.classList.add("hidden");
+});
+
+document.getElementById("expenseStatusForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    fetch("{% url 'accounts:update-expense-status' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams(new FormData(this))
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+});
+</script>
+{% endblock %}
+
+
+
+
+{% comment %} {% extends "dashboard/layout/dashboardLayout.html" %}
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+        <h2 class="text-2xl font-bold">Expenses</h2>
+        <div class="flex flex-row gap-2">
+            {% if request.user.is_superuser or request.user.is_finnancial %}
+                <a href="{% url 'accounts:expense_create' %}" 
+                   class="bg-[#183665] font-bold text-white py-2 px-4 rounded">
+                    Create Expenses
+                </a>
+            {% endif %}
+            <form method="get" action="{% url 'accounts:expense_download' %}" class="inline">
+                {% if status_filter %}
+                    <input type="hidden" name="status" value="{{ status_filter }}">
+                {% endif %}
+                {% if created_by_filter %}
+                    <input type="hidden" name="created_by" value="{{ created_by_filter }}">
+                {% endif %}
+                {% if from_date %}
+                    <input type="hidden" name="from_date" value="{{ from_date }}">
+                {% endif %}
+                {% if to_date %}
+                    <input type="hidden" name="to_date" value="{{ to_date }}">
+                {% endif %}
+                <button type="submit" 
+                        class="bg-[#E6EAEF] text-[#183665] font-bold py-2 px-4 rounded transition-all">
+                    Download Excel
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <hr class="mb-5 border-gray-200">
+
+    <!-- Filter Section -->
+    <form method="get" action="{% url 'accounts:expense_list' %}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+
+        <!-- Status -->
+        <div>
+            <label class="block font-medium mb-1">Status</label>
+            <select name="status" class="border border-black px-3 py-2 rounded w-full">
+                <option value="" {% if not status_filter %}selected{% endif %}>All</option>
+                <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+            </select>
+        </div>
+
+        <!-- Created By -->
+        <div>
+            <label class="block font-medium mb-1">Created By</label>
+            <select name="created_by" class="border border-black px-3 py-2 rounded w-full">
+                <option value="" {% if not created_by_filter %}selected{% endif %}>All</option>
+                {% for user in users %}
+                    <option value="{{ user.id }}" {% if created_by_filter == user.id|stringformat:"s" %}selected{% endif %}>
+                        {{ user.get_full_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- From Date -->
+        <div>
+            <label class="block font-medium mb-1">From Date</label>
+            <input type="date" name="from_date" value="{{ from_date }}" class="border border-black px-3 py-2 rounded w-full">
+        </div>
+
+        <!-- To Date -->
+        <div>
+            <label class="block font-medium mb-1">To Date</label>
+            <input type="date" name="to_date" value="{{ to_date }}" class="border border-black px-3 py-2 rounded w-full">
+        </div>
+
+        <!-- Filter Button -->
+        <div class="flex items-end">
+            <button type="submit" class="bg-[#183665] text-white py-2 px-4 rounded w-full">Filter</button>
+        </div>
+    </form>
+
+    <!-- Table -->
+    <div class="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+        {% if expenses %}
+            <table id="dataTable" class=" w-full text-left text-sm">
+                <thead class="bg-gray-100 font-semibold">
+                    <tr>
+                        <th class="p-2 text-center">Expenses Date</th>
+                        <th class="p-2 text-center">Purpose</th>
+                        <th class="p-2 text-center">Status</th>
+                        <th class="p-2 text-center">Created By</th>
+                        <th class="p-2 text-center">Amount</th>
+                        <th class="p-2 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expense in expenses %}
+                        <tr>
+                            <td class="p-2 border border-gray-100 text-center">{{ expense.expense_date|date:"M d, Y" }}</td>
+                            <td class="p-2 border border-gray-100 text-center">{{ expense.purpose }}</td>
+                            <td class="p-2 border border-gray-100 text-center">
+                                <span class="px-2 py-1 rounded-full 
+                                    {% if expense.status == 'approved' %}text-green-600 font-bold
+                                    {% elif expense.status == 'rejected' %}text-red-600 font-bold
+                                    {% else %}text-yellow-600 font-bold{% endif %}">
+                                    {{ expense.status|title }}
+                                </span>
+                            </td>
+                            <td class="p-2 border border-gray-100 text-center">{{ expense.created_by.get_full_name }}</td>
+                            <td class="p-2 border border-gray-100 text-center">${{ expense.amount|floatformat:2 }}</td>
+                            <td class="p-2 border border-gray-100 text-center flex justify-center gap-2">
+                                <a href="{% url 'accounts:expense_detail' expense.id %}" class="text-blue-600 bg-blue-50 px-3 py-1 rounded">View</a>
+                                {% if request.user.is_superuser or request.user.is_finnancial %}
+                                    <button type="button"
+                                            class="copy-meeting-btn bg-[#183665] text-white px-3 py-1 rounded text-sm"
+                                            data-copy-url="{% url 'accounts:expenses-copy' expense.id %}">
+                                        Copy
+                                    </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="p-6 text-center text-gray-500">No expenses found.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.slice(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+$(document).ready(function () {
+    $('.copy-meeting-btn').click(function (e) {
+        e.preventDefault();
+        const url = $(this).data('copy-url');
+        const csrftoken = getCookie('csrftoken');
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            headers: { 'X-CSRFToken': csrftoken },
+            success: function () {
+                alert("Expense copied successfully!");
+                location.reload();
+            },
+            error: function (xhr) {
+                alert("Failed to copy Expense. Error: " + xhr.statusText);
+            }
+        });
+    });
+});
+</script>
+{% endblock %} {% endcomment %}

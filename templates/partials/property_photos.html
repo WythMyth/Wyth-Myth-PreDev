@@ -1,0 +1,3 @@
+{% for image in property.images.all %}
+    <img src="{{ image.image.url }}" class="rounded-md h-40 object-cover w-full" />
+{% endfor %}

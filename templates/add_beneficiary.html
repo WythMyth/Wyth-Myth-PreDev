@@ -1,0 +1,97 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white shadow rounded-lg p-6">
+    <h2 class="text-xl font-bold mb-4">Add Beneficiaries</h2>
+
+    <form method="POST">
+        {% csrf_token %}
+        {{ formset.management_form }}
+        <table class="w-full border-collapse" id="beneficiary-table">
+            <thead class="bg-gray-100">
+                <tr>
+                    <th class="p-2 border text-left">SL</th>
+                    <th class="p-2 border text-left">Beneficiary Name</th>
+                    <th class="p-2 border text-left">Percentage</th>
+                    <th class="p-2 border text-left">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for form in formset %}
+                <tr class="beneficiary-row">
+                    <td class="p-2 border text-center">{{ forloop.counter }}</td>
+                    <td class="p-2 border">{{ form.name }}</td>
+                    <td class="p-2 border">{{ form.percentage }}</td>
+                    <td class="p-2 border text-center">
+                        <button type="button" class="remove-row text-red-600">✖</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="mt-4 flex justify-between">
+            <button type="button" id="add-row" class="bg-blue-600 text-white px-3 py-1 rounded">+ Add Row</button>
+            <button type="submit" class="bg-green-600 text-white px-4 py-1 rounded">Save</button>
+        </div>
+    </form>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addRowBtn = document.getElementById('add-row');
+    const tableBody = document.querySelector('#beneficiary-table tbody');
+    const totalForms = document.querySelector('#id_form-TOTAL_FORMS');
+
+    // ✅ Function to update SL numbers dynamically
+    function updateSerialNumbers() {
+        tableBody.querySelectorAll('tr').forEach((row, index) => {
+            row.querySelector('td:first-child').textContent = index + 1;
+        });
+    }
+
+    addRowBtn.addEventListener('click', function() {
+        const currentCount = parseInt(totalForms.value);
+        const firstRowHtml = tableBody.querySelector('tr').outerHTML;
+        const newFormHtml = firstRowHtml
+            .replace(/form-\d+/g, `form-${currentCount}`)
+            .replace(/value="[^"]*"/g, 'value=""'); // clear old input values
+
+        tableBody.insertAdjacentHTML('beforeend', newFormHtml);
+        totalForms.value = currentCount + 1;
+
+        updateSerialNumbers(); // ✅ re-number SL column
+    });
+
+    tableBody.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-row')) {
+            e.target.closest('tr').remove();
+            updateSerialNumbers(); // ✅ re-number after removing row
+        }
+    });
+
+    // initial numbering
+    updateSerialNumbers();
+});
+</script>
+
+
+{% comment %} <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addRowBtn = document.getElementById('add-row');
+    const tableBody = document.querySelector('#beneficiary-table tbody');
+    const totalForms = document.querySelector('#id_form-TOTAL_FORMS');
+
+    addRowBtn.addEventListener('click', function() {
+        const currentCount = parseInt(totalForms.value);
+        const newFormHtml = tableBody.querySelector('tr').outerHTML.replace(/form-0/g, `form-${currentCount}`);
+        tableBody.insertAdjacentHTML('beforeend', newFormHtml);
+        totalForms.value = currentCount + 1;
+    });
+
+    tableBody.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-row')) {
+            e.target.closest('tr').remove();
+        }
+    });
+});
+</script> {% endcomment %}
+{% endblock content %}

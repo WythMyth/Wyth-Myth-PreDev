@@ -1,0 +1,129 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+{% block title %}Recordings{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6 mt-5 mx-4">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+        <h2 class="text-2xl font-bold">Recording</h2>
+
+        {% if request.user.is_superuser %}
+            <a href="{% url 'recording-create' %}" class="bg-[#183665] font-bold text-white py-2 px-4 rounded">
+                Add Recording
+            </a>
+        {% endif %}
+    </div>
+    <hr class="mb-5 px-5 border-gray-200">
+
+    <!-- Filter -->
+    <form method="get" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <!-- Title -->
+        <div>
+            <label class="block font-medium mb-1">Title</label>
+            <input type="text" name="title" value="{{ title_filter }}"
+                   class="border border-black px-3 py-2 rounded w-full" placeholder="Search title">
+        </div>
+
+        <!-- From Date -->
+        <div>
+            <label class="block font-medium mb-1">From Date</label>
+            <input type="date" name="from_date" value="{{ from_date_filter }}"
+                   class="border border-black px-3 py-2 rounded w-full">
+        </div>
+
+        <!-- To Date -->
+        <div>
+            <label class="block font-medium mb-1">To Date</label>
+            <input type="date" name="to_date" value="{{ to_date_filter }}"
+                   class="border border-black px-3 py-2 rounded w-full">
+        </div>
+
+        <!-- Search Button -->
+        <div class="flex items-end">
+            <button type="submit" class="bg-[#183665] text-white py-2 px-4 rounded w-full mb-1">
+                Filter
+            </button>
+        </div>
+    </form>
+
+    <!-- Table -->
+    {% if recordings %}
+    <div class="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+        <table class="min-w-[800px] w-full text-left text-sm">
+            <thead class="bg-gray-100 font-semibold">
+                <tr>
+                    <th class="p-2 text-center">Meeting</th>
+                    <th class="p-2 text-center">Description</th>
+                    <th class="p-2 text-center">Meeting Date</th>
+                    <th class="p-2 text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for recording in recordings %}
+                <tr>
+                    <td class="p-2 border-2 border-gray-100 text-center">{{ recording.meeting.title }}</td>
+                    <td class="p-2 border-2 border-gray-100 text-center">{{ recording.description }}</td>
+                    <td class="p-2 border-2 border-gray-100 text-center">{{ recording.meeting.date }}</td>
+                    <td class="p-2 border-2 border-gray-100 text-center">
+                        <div class="flex justify-center gap-2">
+                            <a href="{{ recording.recording_url }}" target="_blank" title="Go to the link">
+                                <img class="w-5" src="{% static 'images/view.png' %}" alt="view">
+                            </a>
+                            {% if request.user.is_superuser %}
+                                <a href="{% url 'recording-update' recording.pk %}" title="Edit Recording">
+                                    <img class="w-5" src="{% static 'images/edit.png' %}" alt="edit">
+                                </a>
+                                <a href="{% url 'recording-delete' recording.pk %}" title="Delete Recording">
+                                    <img class="w-5" src="{% static 'images/delete.png' %}" alt="delete">
+                                </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mt-4 gap-2">
+        <div class="flex gap-2">
+            <p class="text-sm text-gray-500">
+                Showing {{ recordings.start_index }} - {{ recordings.end_index }} of {{ recordings.paginator.count }} Results
+            </p>
+
+            {% if recordings.has_previous %}
+                <a href="?page={{ recordings.previous_page_number }}" class="px-2 py-1 border rounded">← Previous</a>
+            {% endif %}
+
+            {% for num in recordings.paginator.page_range %}
+                {% if num == recordings.number %}
+                    <span class="px-2 py-1 border rounded bg-gray-200">{{ num }}</span>
+                {% else %}
+                    <a href="?page={{ num }}" class="px-2 py-1 border rounded">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if recordings.has_next %}
+                <a href="?page={{ recordings.next_page_number }}" class="px-2 py-1 border rounded">Next →</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+
+    {% else %}
+        {% if request.user.is_superuser %}
+            <div class="text-center py-8 text-gray-600">
+                <p>You haven't added any recordings yet.</p>
+                <a href="{% url 'recording-create' %}" class="text-[#183665] hover:underline mt-2 inline-block">Add your first recording</a>
+            </div>
+        {% else %}
+            <div class="text-center py-8 text-gray-600">
+                <p>No Recording Available.</p>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

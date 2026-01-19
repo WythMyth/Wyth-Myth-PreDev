@@ -1,0 +1,317 @@
+<!-- office_management_dashboard.html -->
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+{% block content %}
+
+<div class="max-w-full mx-auto bg-white rounded-xl shadow p-6">
+    <!-- Header -->
+    <div class="flex flex-col lg:flex-row justify-between lg:items-center gap-4 mb-6">
+        <div>
+            <h2 class="text-2xl font-bold">Office Management Dashboard</h2>
+            <p class="text-sm text-gray-600 mt-1">
+                Combined view of all payments and profit deductions received in your account
+            </p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3">
+            <div class="bg-blue-600 text-white py-2 px-4 rounded text-center">
+                <p class="text-sm">Payments Received</p>
+                <p class="text-xl font-bold">${{ total_payments|floatformat:2 }}</p>
+            </div>
+            <div class="bg-red-600 text-white py-2 px-4 rounded text-center">
+                <p class="text-sm">Profit Deductions</p>
+                <p class="text-xl font-bold">${{ total_deductions|floatformat:2 }}</p>
+            </div>
+            <div class="bg-green-600 text-white py-2 px-4 rounded text-center">
+                <p class="text-sm">Total Income</p>
+                <p class="text-xl font-bold">${{ total_income|floatformat:2 }}</p>
+            </div>
+        </div>
+    </div>
+
+    <hr class="mb-6 border-gray-200">
+
+    <!-- Filters -->
+    <!--  -->
+
+    <!-- Summary Statistics -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Payment Summary by User -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 class="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-money-bill-wave"></i>
+                Payment Summary by User
+            </h3>
+            <div class="space-y-2 max-h-60 overflow-y-auto">
+                {% for summary in payment_summary %}
+                <div class="flex justify-between items-center bg-white p-2 rounded border">
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium">{{ summary.user__short_name }}</span>
+                        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                            {{ summary.payment_count }} payment{{ summary.payment_count|pluralize }}
+                        </span>
+                    </div>
+                    <span class="font-bold text-green-600">
+                        ${{ summary.total_amount|floatformat:2 }}
+                    </span>
+                </div>
+                {% empty %}
+                <p class="text-gray-500 text-center py-4">No payment data found</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Deduction Summary by User -->
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+            <h3 class="font-semibold text-red-900 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-chart-pie"></i>
+                Hfall Management deduction by user's
+            </h3>
+            <div class="space-y-2 max-h-60 overflow-y-auto">
+                {% for summary in deduction_summary %}
+                <div class="flex justify-between items-center bg-white p-2 rounded border">
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium">{{ summary.user__short_name }}</span>
+                        <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
+                            {{ summary.deduction_count }} deduction{{ summary.deduction_count|pluralize }}
+                        </span>
+                    </div>
+                    <span class="font-bold text-red-600">
+                        ${{ summary.total_deduction|floatformat:2 }}
+                    </span>
+                </div>
+                {% empty %}
+                <p class="text-gray-500 text-center py-4">No deduction data found</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs for Detailed View -->
+    <div class="mb-6">
+        <div class="border-b border-gray-200">
+            <nav class="flex space-x-8" aria-label="Tabs">
+                <button onclick="showTab('payments')" id="payments-tab"
+                    class="py-2 px-4 border-b-2 font-medium text-sm tab-button active">
+                    <i class="fa-solid fa-credit-card mr-2"></i>
+                    Office Management Payments ({{ payments.count }})
+                </button>
+                <button onclick="showTab('deductions')" id="deductions-tab"
+                    class="py-2 px-4 border-b-2 font-medium text-sm tab-button">
+                    <i class="fa-solid fa-percentage mr-2"></i>
+                    Profit Deductions ({{ deductions.count }})
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Payments Tab Content -->
+    <div id="payments-content" class="tab-content">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="p-3 text-left">Date</th>
+                        <th class="p-3 text-left">User</th>
+                        <th class="p-3 text-left">Bank</th>
+                        <th class="p-3 text-left">Amount</th>
+                        <th class="p-3 text-left">Receipt</th>
+                        <th class="p-3 text-left">Approved By</th>
+                        <th class="p-3 text-left">Approved At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in payments %}
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3">{{ payment.created_at|date:"M d, Y" }}</td>
+                        <td class="p-3">
+                            <div>
+                                <div class="font-medium">{{ payment.user.short_name }}</div>
+                                <div class="text-xs text-gray-500">{{ payment.user.email }}</div>
+                            </div>
+                        </td>
+                        <td class="p-3">{{ payment.bank.name }}</td>
+                        <td class="p-3 font-semibold text-green-600">
+                            ${{ payment.amount|floatformat:2 }}
+                        </td>
+                        <td class="p-3">
+                            {% if payment.receipt %}
+                            <a href="{{ payment.receipt.url }}" target="_blank"
+                                class="text-blue-600 hover:text-blue-800">
+                                View
+                            </a>
+                            {% else %}
+                            <span class="text-gray-400">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-3">{{ payment.approved_by.short_name|default:"-" }}</td>
+                        <td class="p-3">{{ payment.approved_at|date:"M d, Y H:i"|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="p-8 text-center text-gray-500">
+                            <i class="fa-solid fa-inbox text-3xl mb-2 block"></i>
+                            No office management payments found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% if payments %}
+                <tfoot class="bg-gray-50 font-bold">
+                    <tr>
+                        <td colspan="3" class="p-3 text-right">Total:</td>
+                        <td class="p-3 text-green-600">${{ total_payments|floatformat:2 }}</td>
+                        <td colspan="3"></td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+
+    <!-- Deductions Tab Content -->
+    <div id="deductions-content" class="tab-content hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="p-3 text-left">Date</th>
+                        <th class="p-3 text-left">Property</th>
+                        <th class="p-3 text-left">User</th>
+                        <th class="p-3 text-left">Seq #</th>
+                        <th class="p-3 text-left">Profit Share</th>
+                        <th class="p-3 text-left">Deduction %</th>
+                        <th class="p-3 text-left">Deduction Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for deduction in deductions %}
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3">{{ deduction.created_at|date:"M d, Y" }}</td>
+                        <td class="p-3">
+                            <div>
+                                <div class="font-medium">{{ deduction.property.title }}</div>
+                                <div class="text-xs text-gray-500">
+                                    Sold: ${{ deduction.property.selling_price|floatformat:2 }}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-3">
+                            <div>
+                                <div class="font-medium">{{ deduction.user.short_name }}</div>
+                                <div class="text-xs text-gray-500">
+                                    Group: {{ deduction.user.user_group.name|default:"None" }}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-3">
+                            <span class="bg-gray-100 px-2 py-1 rounded text-xs">
+                                #{{ deduction.sequence_number }}
+                            </span>
+                        </td>
+                        <td class="p-3 text-blue-600">
+                            ${{ deduction.profit_share|floatformat:2 }}
+                        </td>
+                        <td class="p-3 text-red-600">
+                            {{ deduction.deduction_percentage|floatformat:2 }}%
+                        </td>
+                        <td class="p-3 font-bold text-red-700">
+                            ${{ deduction.deduction_amount|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="p-8 text-center text-gray-500">
+                            <i class="fa-solid fa-chart-pie text-3xl mb-2 block"></i>
+                            No profit deductions found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% if deductions %}
+                <tfoot class="bg-gray-50 font-bold">
+                    <tr>
+                        <td colspan="6" class="p-3 text-right">Total Deductions:</td>
+                        <td class="p-3 text-red-700">${{ total_deductions|floatformat:2 }}</td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+
+    <!-- Current Balance -->
+    <div class="mt-8 p-4 bg-gradient-to-r from-green-500 to-green-600 rounded-lg text-white">
+        <div class="flex justify-between items-center">
+            <div>
+                <p class="text-sm opacity-90">Your Current Account Balance</p>
+                <p class="text-3xl font-bold">{{ office_manager.get_full_name }}</p>
+            </div>
+            <div class="text-right">
+                <p class="text-4xl font-bold">${{ office_manager.balance|floatformat:2 }}</p>
+                <p class="text-sm opacity-90">
+                    Includes payments and profit deductions
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .tab-button {
+        border-color: transparent;
+        color: #6b7280;
+        white-space: nowrap;
+    }
+
+    .tab-button.active {
+        border-color: #183665;
+        color: #183665;
+    }
+
+    .tab-button:hover:not(.active) {
+        border-color: #d1d5db;
+        color: #374151;
+    }
+
+    .tab-content {
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+</style>
+
+<script>
+    function showTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+
+        // Remove active class from all tabs
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.classList.remove('active');
+        });
+
+        // Show selected tab content
+        document.getElementById(tabName + '-content').classList.remove('hidden');
+
+        // Activate selected tab button
+        document.getElementById(tabName + '-tab').classList.add('active');
+    }
+
+    // Initialize with payments tab
+    document.addEventListener('DOMContentLoaded', function () {
+        showTab('payments');
+    });
+</script>
+
+{% endblock %}

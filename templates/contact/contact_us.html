@@ -1,0 +1,116 @@
+{% extends 'layout/homeLayout.html' %} {% load static %} {% block content %}
+  <div>
+    <img src="{% static 'assets/images/contact_us.png' %}" loading="lazy" alt="contact" class="w-full" />
+  </div>
+  <section class="bg-gray-100 flex items-center justify-center md:py-20 overflow-hidden">
+    <!-- Contact Form Container -->
+    <div class="relative z-10 w-full max-w-5xl bg-white rounded-lg shadow-xl flex flex-col gap-6 md:flex-row rounded overflow-hidden">
+      <!-- Left Side (Image) -->
+      <div class="md:w-1/2 flex items-center justify-center hidden md:block">
+        <img src="{% static 'assets/images/message.jpg' %}" loading="lazy" alt="Person Typing on
+      Laptop" class="w-full h-full object-cover" />
+      </div>
+
+      <!-- Right Side (Form) -->
+      <div class="md:w-1/2 p-6 space-y-4">
+        <form id="contact-form" class="space-y-4 p-2">
+          {% csrf_token %}
+          <h1 class="text-xl font-bold text-center">Send Us A Message</h1>
+          <!-- Full Name Input -->
+          <label for="full-name" class="block text-sm font-medium text-gray-700">Full Name</label>
+          <input type="text" id="name" name="name" required placeholder="Enter your full name" class="w-full px-4 py-2 mt-1 border border-gray-300 rounded focus:outline-none focus:border-orange-500" />
+
+          <!-- Email Input -->
+          <label for="email" class="block text-sm font-medium text-gray-700 mt-4">Email Address</label>
+          <input type="email" id="email" name="email" required placeholder="Enter your email address" class="w-full px-4 py-2 mt-1 border border-gray-300 rounded focus:outline-none focus:border-orange-500" />
+
+          <!-- Phone Number Input -->
+          <label for="subject" class="block text-sm font-medium text-gray-700 mt-4">Phone Number</label>
+          <input type="tel" id="subject" name="subject" placeholder="Enter your phone number" class="w-full px-4 py-2 mt-1 border border-gray-300 rounded focus:outline-none focus:border-orange-500" />
+
+          <!-- Message Input -->
+          <label for="message" class="block text-sm font-medium text-gray-700 mt-4">Message</label>
+          <textarea id="message" name="message" rows="4" placeholder="Please add your details or message..." class="w-full px-4 py-2 mt-1 border border-gray-300 rounded focus:outline-none focus:border-[#F79533]"></textarea>
+
+          <!-- Submit Button -->
+          <button type="submit" class="w-full px-4 py-2 mt-4 text-white bg-[#F79533] rounded hover:bg-[#E0852E] focus:outline-none focus:ring-2 focus:ring-[#F79533]">Send Message</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="px-4 py-10 md:py-16 lg:py-20 bg-white">
+    <div class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 overflow-hidden">
+      <!-- Contact Info -->
+      <div class="p-8 space-y-6 flex flex-col justify-center">
+        <h2 class="text-3xl font-bold text-gray-800">Contact Us</h2>
+
+        <div class="flex items-start space-x-3">
+          <i class="fas fa-phone-alt text-[#F79533] mt-1"></i>
+          <span class="text-gray-700 text-base">929-301-6028</span>
+        </div>
+
+        <div class="flex items-start space-x-3">
+          <i class="fas fa-envelope text-[#F79533] mt-1"></i>
+          <span class="text-gray-700 text-base">info@hfallrealty.com</span>
+        </div>
+
+        <div class="flex items-start space-x-3">
+          <i class="fa-solid fa-globe text-[#F79533] mt-1"></i>
+          <span class="text-gray-700 text-base">https://hfallrealty.com</span>
+        </div>
+
+        <div class="flex items-start space-x-3">
+          <i class="fas fa-map-marker-alt text-[#F79533] mt-1"></i>
+          <span class="text-gray-700 text-base">625W 57th St, New York, NY 10019</span>
+        </div>
+      </div>
+
+      <!-- Map Embed -->
+      <div class="w-full h-full">
+        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3021.587132539933!2d-73.99491378792699!3d40.771104633875005!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c2585b7dadcbb5%3A0x27a3ccf1df31e15f!2s625W%20W%2057th%20St%2C%20New%20York%2C%20NY%2010019%2C%20USA!5e0!3m2!1sen!2sbd!4v1753676741970!5m2!1sen!2sbd" class="w-full h-full min-h-[300px] lg:min-h-[500px]" style="border: 0" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+{% block scripts %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('contact-form').addEventListener('submit', function (event) {
+        event.preventDefault()
+        const form = event.target
+        const formData = new FormData(form)
+        const submitButton = form.querySelector("button[type='submit']")
+        submitButton.disabled = true // Disable the submit button during processing
+    
+        fetch("{% url 'media:contact_us' %}", {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+          }
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              alert('Message sent successfully!')
+              form.reset() // Reset the form after successful submission
+            } else {
+              console.log('Validation errors:', data.errors)
+              let errorMessage = ''
+              for (const [field, messages] of Object.entries(data.errors)) {
+                errorMessage += `${field}: ${messages.join(', ')}\n`
+              }
+              alert(errorMessage) // Show validation errors in an alert
+            }
+            submitButton.disabled = false // Re-enable the submit button
+          })
+          .catch((error) => {
+            alert('An error occurred. Please try again.')
+            console.error(error)
+            submitButton.disabled = false // Re-enable the submit button
+          })
+      })
+    })
+  </script>
+{% endblock %}

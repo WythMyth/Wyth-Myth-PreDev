@@ -1,0 +1,196 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ object.title }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 p-6">
+  <div class="max-w-5xl mx-auto bg-white rounded shadow overflow-hidden">
+    <!-- Back button -->
+    <div class="p-4 bg-white border-b">
+      <a href="{% url 'accounts:property_list' %}" class="flex items-center text-blue-600 hover:text-blue-800">
+        <i class="fas fa-arrow-left mr-2"></i> View All Properties
+      </a>
+    </div>
+
+    <!-- Image gallery section -->
+    <div class="relative">
+      <div class="grid grid-cols-4 grid-rows-2 gap-1 h-96">
+        <!-- Main large image -->
+        {% with main_image=property_images.first %}
+        <div class="col-span-2 row-span-2 relative">
+          {% if main_image %}
+            <img src="{{ main_image.image.url }}" alt="{{ object.title }}" class="w-full h-full object-cover">
+          {% else %}
+            <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+              <span class="text-gray-400">No image available</span>
+            </div>
+          {% endif %}
+        </div>
+        {% endwith %}
+
+        <!-- Smaller images -->
+        {% for image in property_images|slice:"1:5" %}
+          <div class="relative overflow-hidden">
+            <img src="{{ image.image.url }}" alt="{{ object.title }}" class="w-full h-full object-cover">
+          </div>
+        {% endfor %}
+
+        <!-- See all photos button -->
+        <a href="{% url 'accounts:property_gallery' object.pk %}" 
+           class="absolute bottom-4 right-4 bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 rounded shadow flex items-center">
+          <i class="fas fa-th-large mr-2"></i> View All Photos
+        </a>
+      </div>
+    </div>
+
+    <!-- Property details section -->
+    <div class="p-6">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="flex items-center space-x-2 mb-1">
+            <span class="px-2 py-1 bg-{{ object.status|yesno:'green-100,orange-100,red-100,gray-100' }} text-{{ object.status|yesno:'green-800,orange-800,red-800,gray-800' }} text-xs rounded-full">
+              {% if object.status == 'active' %}Active{% elif object.status == 'pending' %}Pending{% elif object.status == 'sold' %}Sold{% else %}Off Market{% endif %}
+            </span>
+          </div>
+          <h1 class="text-3xl font-bold mb-1">{{ object.title }}</h1>
+          <p class="text-gray-700 mb-2">{{ object.address }}</p>
+          <p class="text-gray-700 mb-4">{{ object.city }}, {{ object.state }} {{ object.zip_code }}</p>
+        </div>
+        <div class="text-right">
+          <div class="text-3xl text-blue-700 font-bold mb-1">
+            ৳{{ object.final_price }}
+          </div>
+          <div class="text-sm text-gray-600">
+            {% if object.listed_date %}
+              Listed on {{ object.listed_date|date:"F j, Y" }}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Features -->
+      <div class="flex flex-wrap gap-6 py-4 border-t border-b border-gray-200 my-4">
+        <div class="flex items-center">
+          <i class="fas fa-bed text-gray-600 mr-2"></i>
+          <div>
+            <div class="font-semibold">{{ object.bedrooms }}</div>
+            <div class="text-xs text-gray-500">Bedrooms</div>
+          </div>
+        </div>
+        <div class="flex items-center">
+          <i class="fas fa-bath text-gray-600 mr-2"></i>
+          <div>
+            <div class="font-semibold">{{ object.bathrooms }}</div>
+            <div class="text-xs text-gray-500">Bathrooms</div>
+          </div>
+        </div>
+        <div class="flex items-center">
+          <i class="fas fa-utensils text-gray-600 mr-2"></i>
+          <div>
+            <div class="font-semibold">{{ object.dining_rooms }}</div>
+            <div class="text-xs text-gray-500">Dining Rooms</div>
+          </div>
+        </div>
+        <div class="flex items-center">
+          <i class="fas fa-vector-square text-gray-600 mr-2"></i>
+          <div>
+            <div class="font-semibold">{{ object.square_feet }}</div>
+            <div class="text-xs text-gray-500">Square Feet</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Price breakdown -->
+      <div class="bg-gray-50 p-4 rounded my-4">
+        <h3 class="text-lg font-semibold mb-2">Price Breakdown</h3>
+        <ul class="space-y-2">
+          <li class="flex justify-between">
+            <span>Auction Price</span>
+            <span>৳{{ object.auction_price }}</span>
+          </li>
+          <li class="flex justify-between">
+            <span>Service Cost</span>
+            <span>৳{{ object.service_cost }}</span>
+          </li>
+          <li class="flex justify-between">
+            <span>Profit</span>
+            <span>৳{{ object.profit }}</span>
+          </li>
+          <li class="flex justify-between font-bold pt-2 border-t">
+            <span>Total Price</span>
+            <span>৳{{ object.final_price }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Description -->
+      <div class="my-6">
+        <h3 class="text-xl font-semibold mb-3">Description</h3>
+        <div class="text-gray-700">
+          {{ object.description|linebreaks }}
+        </div>
+      </div>
+
+      <!-- Admin actions -->
+      {% if user.is_superuser %}
+      <div class="flex gap-4 mt-8 pt-4 border-t">
+        <a href="{% url 'accounts:property_update' object.pk %}" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+          <i class="fas fa-edit mr-1"></i> Edit
+        </a>
+        <a href="{% url 'accounts:property_delete' object.pk %}" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+          <i class="fas fa-trash-alt mr-1"></i> Delete
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</body>
+</html>
+
+
+
+{% comment %} {% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Property Details</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+
+  <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
+    <img src="{{ object.image.url }}" class="w-full h-64 object-cover mb-6 rounded">
+    <h1 class="text-3xl font-bold mb-2">{{ object.title }}</h1>
+    <p class="text-gray-700 mb-4">{{ object.city }}, {{ object.state }} {{ object.zip_code }}</p>
+
+    <div class="text-lg text-blue-700 font-bold mb-4">
+      Final Price: ${{ object.final_price }}
+    </div>
+    <ul class="text-sm text-gray-600 mb-4 space-y-1">
+      <li>Auction Price: ${{ object.auction_price }}</li>
+      <li>Service Cost: ${{ object.service_cost }}</li>
+      <li>Profit: ${{ object.profit }}</li>
+    </ul>
+
+    <div class="text-sm text-gray-700 mb-6">
+      <span>🛏 {{ object.bedrooms }} Beds</span> •
+      <span>🛁 {{ object.bathrooms }} Baths</span> •
+      <span>🍽 {{ object.dining_rooms }} Dining</span> •
+      <span>📐 {{ object.square_feet }} sqft</span>
+    </div>
+
+    <div class="flex gap-4">
+      <a href="{% url 'accounts:property_update' object.pk %}" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Edit</a>
+      <a href="{% url 'accounts:property_delete' object.pk %}" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete</a>
+    </div>
+  </div>
+
+</body>
+</html>
+ {% endcomment %}

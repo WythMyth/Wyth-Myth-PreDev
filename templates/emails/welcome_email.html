@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Welcome to HFall Realty!</title>
+  </head>
+  <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f0f0f0;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f0f0f0; padding: 20px;">
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid #e0e0e0;">
+            <!-- Header -->
+            <tr>
+              <td style="padding: 25px 30px; background-color: #ffffff;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td>
+                      <img src="https://hfallrealty.com/static/assets/images/logo.png" style="width: 100px;" alt="HFAll Realty Logo" />
+                    </td>
+                    <td align="right">
+                      <span style="font-size: 13px; color: #666666;">{% now 'j M Y' %}</span>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Main Content -->
+            <tr>
+              <td style="padding: 40px 30px; color: #333333; font-size: 14px; line-height: 1.6;">
+                <p>
+                  Dear <strong>{{ user_full_name }}</strong>,
+                </p>
+
+                <p>Thank you for becoming a Member of this real estate journey.</p>
+
+                <p>
+                  <strong>Email:</strong> {{ user.email }}
+                </p>
+                <p>
+                  <strong>Password:</strong> {{ password }}
+                </p>
+
+                <p>Please save this email and password for your future reference.</p>
+
+                <p>
+                  You are now an honorable member of the <strong>HFall Team</strong>. You can use your User ID and Password to log in to the Dashboard.
+                </p>
+
+                <p>With Best Regards,</p>
+                <p>
+                  <strong>Mohammad Tofael Kabir Sharkar</strong><br />President, HFall Realty
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="padding: 30px; background-color: #ffffff; text-align: center; border-top: 1px solid #e0e0e0;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center" style="color: #333333; font-size: 14px; line-height: 1.6;">
+                      <div style="margin-bottom: 8px;">
+                        <a href="https://hfallrealty.com" style="color: #333333; text-decoration: none;">https://hfallrealty.com</a>
+                        <span style="margin: 0 8px;"><img src="https://hfallrealty.com/static/assets/images/favicon.png" width="14" height="14" alt="|" /></span>
+                        <a href="mailto:info@hfallrealty.com" style="color: #333333; text-decoration: none;">info@hfallrealty.com</a>
+                        <span style="margin: 0 8px;"><img src="https://hfallrealty.com/static/assets/images/favicon.png" width="14" height="14" alt="|" /></span>
+                        <span>929-301-6028</span>
+                      </div>
+                      <div>625W 57th St, New York, NY 10019</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -1,0 +1,31 @@
+{% load static %}
+<footer class="relative bg-cover bg-center text-white" style="background-image: url('{% static "assets/images/footer.png" %}');">
+  <div class="absolute inset-0  "></div>
+
+  <div class="relative z-10 max-w-7xl mx-auto px-6 py-12 flex flex-col md:flex-row justify-between items-start md:items-center space-y-8 md:space-y-0">
+    
+    <!-- Left: Logo and Text -->
+    <div class="max-w-md">
+      <img src="{% static "assets/images/logo_white.png" %}" alt="Hfall Logo" class="h-10 mb-4">
+      <p class="text-sm leading-relaxed">
+        HFall [Housing for All] delivering the modern living spaces through bold renovations and smart investments.
+      </p>
+    </div>
+
+    <!-- Right: Social Media -->
+    <div class="text-sm">
+      <h2 class="mb-3 font-semibold text-white">Social Media</h2>
+      <div class="flex space-x-4">
+        <a href="#" class="hover:text-gray-300"><i class="fab fa-facebook-f"></i></a>
+        <a href="#" class="hover:text-gray-300"><i class="fab fa-linkedin-in"></i></a>
+        <a href="#" class="hover:text-gray-300"><i class="fab fa-instagram"></i></a>
+        <a href="#" class="hover:text-gray-300"><i class="fab fa-twitter"></i></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Bar -->
+  <div class="relative z-10 text-center text-xs text-gray-300 py-4 border-t border-gray-700">
+    © 2025 HFall Realty. All Rights Reserved. Designed & Developed by <a href="#" class="underline hover:text-white">Wyth Myth</a>
+  </div>
+</footer>

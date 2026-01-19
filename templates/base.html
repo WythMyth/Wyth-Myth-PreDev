@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-6 max-w-3xl mx-auto bg-white shadow rounded-lg">
+    <h2 class="text-xl font-bold mb-4">Member Profile</h2>
+    <ul class="space-y-2">
+        <li><strong>Name:</strong> {{ member.first_name }} {{ member.last_name }}</li>
+        <li><strong>Email:</strong> {{ member.email }}</li>
+        <li><strong>Phone:</strong> {{ member.phone_number }}</li>
+        <li><strong>Member ID:</strong> {{ member.member_id }}</li>
+        <li><strong>City:</strong> {{ member.city }}</li>
+        <li><strong>State:</strong> {{ member.state }}</li>
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,311 @@
+{% extends 'dashboard//layout/dashboardLayout.html' %}
+
+{% block title %}
+  Expense
+{% endblock %}
+
+{% block content %}
+  <div class="bg-white rounded-xl shadow p-6 mt-5 mx-4">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+      <h2 class="text-2xl font-bold">Expense Details</h2>
+
+      <div class="flex gap-3">
+        {% if request.user.is_superuser or request.user == expense.created_by  %}
+          <a href="{% url 'accounts:expense_update' expense.id %}" class="text-white px-4 py-2 rounded-lg bg-[#183665] font-bold">Update</a>
+        {% endif %}
+        <a href="{% url 'accounts:expense_list' %}" class="text-white px-4 py-2 rounded-lg bg-[#183665] font-bold">Back to Expenses</a>
+      </div>
+    </div>
+    <hr class="mb-5 px-5 border-gray-200" />
+
+    <div class="max-w-full mx-auto space-y-6">
+      <!-- Expense Card -->
+      <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+        <h2 class="font-semibold text-lg mb-3">
+          {{ expense.purpose }}
+          <span class="text-sm py-1 px-3 mx-3 rounded-xl
+            {% if expense.status == 'approved' %}
+               text-green-800 bg-green-100
+            {% elif expense.status == 'rejected' %}
+               text-red-800 bg-red-100
+            {% else %}
+               text-[#BD1C4C] bg-[#F5F5F5]
+            {% endif %}">
+            {{ expense.status|title }}
+          </span>
+        </h2>
+
+        <div class="space-y-3">
+          <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+            <p>
+              <span class="font-bold">Amount:</span> ${{ expense.amount }}
+            </p>
+          </div>
+          <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+            <p>
+              <span class="font-bold">Created By:</span> {{ expense.created_by.get_full_name }}
+            </p>
+          </div>
+          <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+            <p>
+              <span class="font-bold">Created On:</span> {{ expense.created_at|date:'F d, Y H:i' }}
+            </p>
+          </div>
+          {% if expense.property %}
+            <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+              <p>
+                <span class="font-bold">Related Property:</span> {{ expense.property.title }}
+              </p>
+            </div>
+          {% endif %}
+          {% if expense.status != 'pending' %}
+            <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+              <p>
+                <span class="font-bold">{{ expense.status|title }} By:</span> {{ expense.approved_by.get_full_name }}
+              </p>
+            </div>
+            <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+              <p>
+                <span class="font-bold">{{ expense.status|title }} On:</span> {{ expense.updated_at|date:'F d, Y H:i' }}
+              </p>
+            </div>
+          {% endif %}
+          <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+            <p>
+              <span class="font-bold">Description:</span> {{ expense.description }}
+            </p>
+          </div>
+          {% if expense.image %}
+            <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+              <p>
+                <span class="font-bold">Receipt/Invoice:</span>
+                <a href="{{ expense.image.url }}" target="_blank" class="text-[#4F46E5]">View Receipt / Invoice</a>
+              </p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      {% if expense.status == 'pending' and expense.property %}
+        {% if user.is_superuser or user.is_finnancial and expense.created_by != user %}
+          <div class="flex flex-wrap gap-3">
+            <button type="button" onclick="openModal('approve', '{% url 'accounts:expense_approve' expense.id %}')" class="px-6 py-2 bg-[#183665] text-white rounded-md">Approve</button>
+            <button type="button" onclick="openModal('reject', '{% url 'accounts:expense_reject' expense.id %}')" class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">Reject</button>
+            <button type="button" onclick="openModal('clarification', '{% url 'accounts:expense_clarification' expense.id %}')" class="px-6 py-2 bg-orange-100 text-orange-600 rounded-md hover:bg-orange-200">More Clarification</button>
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Confirmation Modal -->
+  <div id="confirmationModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+      <h2 id="modal-title" class="text-lg font-semibold text-gray-800 mb-4">Confirm Action</h2>
+      <p id="modal-message" class="text-sm text-gray-600 mb-4">Are you sure you want to proceed?</p>
+      <form method="post" id="modalForm">
+        {% csrf_token %}
+        <textarea name="clarification_message" rows="4" class="w-full border rounded p-2 mb-4" placeholder="Write your message here..."></textarea>
+        <div class="flex justify-end space-x-4">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 rounded border border-red-300 text-red-700 hover:bg-red-100">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded bg-blue-900 text-white hover:bg-blue-800">Yes, Confirm</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    let actionType = ''
+    
+    function openModal(action, url) {
+      actionType = action
+    
+      const modal = document.getElementById('confirmationModal')
+      const form = document.getElementById('modalForm')
+      const title = document.getElementById('modal-title')
+      const message = document.getElementById('modal-message')
+      const textarea = form.querySelector('textarea[name="clarification_message"]')
+    
+      form.action = url
+    
+      if (action === 'approve') {
+        title.innerText = 'Approve Expense'
+        message.innerText = 'Are you sure you want to approve this expense?'
+        textarea.style.display = 'none'
+        textarea.required = false
+      } else if (action === 'reject') {
+        title.innerText = 'Reject Expense'
+        message.innerText = 'Please provide a reason to reject this expense.'
+        textarea.style.display = 'block'
+        textarea.required = true
+      } else if (action === 'clarification') {
+        title.innerText = 'Request Clarification'
+        message.innerText = 'Please enter your clarification message.'
+        textarea.style.display = 'block'
+        textarea.required = true
+      }
+    
+      textarea.value = ''
+      modal.classList.remove('hidden')
+    }
+    
+    function closeModal() {
+      document.getElementById('confirmationModal').classList.add('hidden')
+      actionType = ''
+    }
+  </script>
+{% endblock %}
+
+
+{% comment %} {% extends "dashboard//layout/dashboardLayout.html" %}
+
+{% block title %}Expense{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6 mt-5 mx-4">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+        <h2 class="text-2xl font-bold">Expense Details</h2>
+
+        <div class="flex gap-3">
+            {% if request.user.is_superuser or request.user.is_finnancial %}
+                <a href="{% url 'accounts:expense_update' expense.id %}" 
+                   class="text-white px-4 py-2 rounded-lg bg-[#183665] font-bold">
+                    Update
+                </a>
+            {% endif %}
+            <a href="{% url 'accounts:expense_list' %}" 
+               class="text-white px-4 py-2 rounded-lg bg-[#183665] font-bold">
+                Back to Expenses
+            </a>
+        </div>
+    </div>
+    <hr class="mb-5 px-5 border-gray-200">
+
+    <div class="max-w-full mx-auto space-y-6">
+
+        <!-- Expense Card -->
+        <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+            <h2 class="font-semibold text-lg mb-3">
+                {{ expense.purpose }}
+                <span class="text-sm py-1 px-3 mx-3 rounded-xl
+                    {% if expense.status == 'approved' %} text-green-800 bg-green-100
+                    {% elif expense.status == 'rejected' %} text-red-800 bg-red-100
+                    {% else %} text-[#BD1C4C] bg-[#F5F5F5] {% endif %}">
+                    {{ expense.status|title }}
+                </span>
+            </h2>
+
+            <div class="space-y-3">
+                <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                    <p><span class="font-bold">Amount: </span> ${{ expense.amount }}</p>
+                </div>
+                <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                    <p><span class="font-bold">Created By: </span> {{ expense.created_by.get_full_name }}</p>
+                </div>
+                <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                    <p><span class="font-bold">Created On: </span> {{ expense.created_at|date:"F d, Y H:i" }}</p>
+                </div>
+                {% if expense.property %}
+                <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                    <p><span class="font-bold">Related Property: </span> {{ expense.property.title }}</p>
+                </div>
+                {% endif %}
+                {% if expense.status != 'pending' %}
+                <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                    <p><span class="font-bold">{{ expense.status|title }} By: </span> {{ expense.approved_by.get_full_name }}</p>
+                </div>
+                <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                    <p><span class="font-bold">{{ expense.status|title }} On: </span> {{ expense.updated_at|date:"F d, Y H:i" }}</p>
+                </div>
+                {% endif %}
+                <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                    <p><span class="font-bold">Description: </span> {{ expense.description }}</p>
+                </div>
+                {% if expense.image %}
+                <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                    <p><span class="font-bold">Receipt/Invoice: </span>
+                        <a href="{{ expense.image.url }}" target="_blank" class="text-[#4F46E5]">
+                            View Receipt / Invoice
+                        </a>
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        {% if user.is_superuser or user.is_finnancial %}
+        {% if expense.status == 'pending' %}
+        <div class="flex flex-wrap gap-3">
+            <button class="px-6 py-2 bg-[#183665] text-white rounded-md"
+                data-url="{% url 'accounts:expense_approve' expense.id %}"
+                data-message="Are you sure you want to approve this expense?"
+                onclick="openModal(this)">
+                Approve
+            </button>
+            <button class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                data-url="{% url 'accounts:expense_reject' expense.id %}"
+                data-message="Are you sure you want to reject this expense?"
+                onclick="openModal(this)">
+                Reject
+            </button>
+            <button class="px-6 py-2 bg-orange-100 text-orange-600 rounded-md hover:bg-orange-200"
+                data-url="{% url 'accounts:expense_clarification' expense.id %}"
+                data-message="Are you sure you want to request more clarification for this expense?"
+                onclick="openModal(this)">
+                More Clarification
+            </button>
+        </div>
+        {% endif %}
+        {% endif %}
+
+    </div>
+</div>
+
+<!-- Clarification Modal -->
+<div id="confirmationModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Request Clarification</h2>
+        <p class="text-sm text-gray-600 mb-4" id="modalMessage">
+            Are you sure you want to request more clarification for this expense?
+        </p>
+        <form method="post" id="modalForm">
+            {% csrf_token %}
+            <textarea 
+                name="clarification_message" 
+                rows="4" 
+                class="w-full border rounded p-2 mb-4" 
+                placeholder="Write your clarification message here..."
+                required
+            ></textarea>
+            <div class="flex justify-end space-x-4">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 rounded border border-red-300 text-red-700 hover:bg-red-100">Cancel</button>
+                <button type="submit" class="px-4 py-2 rounded bg-blue-900 text-white hover:bg-blue-800">Send Clarification</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openModal(button) {
+        const modal = document.getElementById('confirmationModal');
+        const form = document.getElementById('modalForm');
+        const message = document.getElementById('modalMessage');
+
+        form.action = button.getAttribute('data-url');
+        message.innerText = button.getAttribute('data-message') || "Please provide a clarification message.";
+        form.querySelector('textarea[name="clarification_message"]').value = "";
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('confirmationModal').classList.add('hidden');
+    }
+</script>
+{% endblock %} {% endcomment %}

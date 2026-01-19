@@ -1,0 +1,21 @@
+{% extends "layout/homeLayout.html" %}
+{% load static %}
+{% block content %}
+<div class="bg-cover bg-center min-h-screen flex items-center justify-center mb-20" style="background-image: url('{% static 'assets/images/success-bg.png' %}');">
+        <div class="bg-white shadow-xl rounded-lg p-8 w-full max-w-md mx-4">
+            <div class="flex justify-center">
+                <img src="{% static 'assets/images/success-icon.png' %}" alt="" >
+            </div>
+          <h2 class="text-2xl font-semibold text-gray-800 mb-2 text-center mt-5">Registration Successful!</h2>
+          <p class="text-md text-gray-600 mb-6 text-center">
+           You have been successfully registered with <strong>HFall Realty</strong>.
+                An email has been sent to your registered address. You can now login to your account.
+          </p>
+          <p class="text-sm text-gray-600 mb-6 text-center">
+          You can now login to your account.
+          </p>
+          <a href="{% url "accounts:login" %}" class="flex justify-center"><button class="px-16 py-2 rounded bg-[#F79533] hover:bg-[#E0852E] text-white">Login Now</button></a>
+          
+        </div>
+    </div>
+{% endblock content %}

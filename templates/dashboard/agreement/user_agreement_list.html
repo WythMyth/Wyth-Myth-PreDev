@@ -1,0 +1,187 @@
+{% extends "dashboard//layout/dashboardLayout.html" %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6 mx-4 my-5">
+    
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+        <h2 class="text-2xl font-bold">User Agreement List</h2>
+    </div>
+    <hr class="mb-5 px-5 border-gray-200">
+
+    <!-- Table Wrapper -->
+    <div class="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+        <table class="min-w-[800px] w-full text-left text-sm">
+            <thead class="bg-gray-100 font-semibold">
+                <tr>
+                    <th class="p-2 text-center">No.</th>
+                    <th class="p-2 text-center">Agreement Uploader Name</th>
+                    <th class="p-2 text-center">Agreement File</th>
+                    <th class="p-2 text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for agreement in uploaded_agreements %}
+                <tr>
+                    <td class="p-2 border-2 border-gray-100 text-center">{{ forloop.counter }}</td>
+                    <td class="p-2 border-2 border-gray-100 text-center">{{ agreement.user.get_full_name }}</td>
+                    <td class="p-2 border-2 border-gray-100 text-center">
+                        {% if agreement.uploaded_file %}
+                            <a href="{{ agreement.uploaded_file.url }}" target="_blank" 
+                               class="bg-gray-200 px-3 py-1 rounded text-sm hover:bg-gray-300 transition">
+                                View
+                            </a>
+                        {% else %}
+                            <span class="text-gray-500 italic">No file uploaded</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-2 border-2 border-gray-100 text-center">
+                        {% if request.user == agreement.user or request.user.is_superuser %}
+                            <button class="bg-gray-200 px-3 py-1 rounded text-sm hover:bg-gray-300 transition delete-agreement-btn" 
+                                    data-id="{{ agreement.id }}">
+                                Delete
+                            </button>
+                        {% else %}
+                            <span class="bg-gray-100 text-gray-400 px-3 py-1 rounded text-sm cursor-not-allowed">
+                                Delete
+                            </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-gray-500 py-4">
+                        No user agreement available.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mt-4 gap-2">
+        <p class="text-sm text-gray-500">
+            Showing {{ page_obj.start_index }} – {{ page_obj.end_index }} of {{ paginator.count }} results
+        </p>
+        <div class="flex gap-2">
+            <!-- Previous -->
+            {% if page_obj.has_previous %}
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}"
+                   class="px-2 py-1 border rounded hover:bg-gray-100">
+                    ← Previous
+                </a>
+            {% else %}
+                <span class="px-2 py-1 border rounded text-gray-400 cursor-not-allowed">
+                    ← Previous
+                </span>
+            {% endif %}
+
+            <!-- Page Numbers -->
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                    <span class="px-2 py-1 border rounded bg-[#183665] text-white">
+                        {{ num }}
+                    </span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?{{ request.GET.urlencode }}&page={{ num }}"
+                       class="px-2 py-1 border rounded hover:bg-gray-100">
+                        {{ num }}
+                    </a>
+                {% endif %}
+            {% endfor %}
+
+            <!-- Next -->
+            {% if page_obj.has_next %}
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}"
+                   class="px-2 py-1 border rounded hover:bg-gray-100">
+                    Next →
+                </a>
+            {% else %}
+                <span class="px-2 py-1 border rounded text-gray-400 cursor-not-allowed">
+                    Next →
+                </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-agreement-modal"
+         class="fixed inset-0 z-50 flex hidden items-center justify-center bg-black bg-opacity-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                Are you sure you want to delete this User Agreement?
+            </h3>
+            <div class="flex justify-end space-x-4">
+                <button id="cancel-agreement-delete"
+                        class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400">
+                    Cancel
+                </button>
+                <button id="confirm-agreement-delete"
+                        class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+  {{ block.super }}
+  <script>
+    const ContactManager = {
+      modal: document.getElementById("delete-agreement-modal"),
+      currentContactId: null,
+
+      init() { this.bindEvents(); },
+
+      bindEvents() {
+        document.querySelectorAll(".delete-agreement-btn").forEach((btn) => {
+          btn.addEventListener("click", this.handleDeleteClick.bind(this));
+        });
+        document.getElementById("cancel-agreement-delete")
+          .addEventListener("click", this.closeModal.bind(this));
+        document.getElementById("confirm-agreement-delete")
+          .addEventListener("click", this.confirmDelete.bind(this));
+      },
+
+      handleDeleteClick(e) {
+        this.currentContactId = e.target.closest(".delete-agreement-btn").dataset.id;
+        this.modal.classList.remove("hidden");
+      },
+
+      closeModal() {
+        this.modal.classList.add("hidden");
+        this.currentContactId = null;
+      },
+
+      confirmDelete() {
+        if (!this.currentContactId) return;
+        fetch(`/dashboard/user-agreement/${this.currentContactId}/delete/`, {
+          method: "DELETE",
+          headers: {
+            "X-CSRFToken": this.getCSRFToken(),
+            "Content-Type": "application/json",
+          },
+        })
+          .then((response) => {
+            if (response.ok) location.reload();
+            else alert("Failed to delete the agreement.");
+          })
+          .catch(() => alert("An error occurred while deleting the agreement."));
+        this.closeModal();
+      },
+
+      getCSRFToken() {
+        return document.cookie.split("; ")
+          .find((row) => row.startsWith("csrftoken="))
+          ?.split("=")[1] || null;
+      },
+    };
+
+    document.addEventListener("DOMContentLoaded", () => ContactManager.init());
+  </script>
+{% endblock scripts %}
