@@ -1,0 +1,729 @@
+{% extends "layout/homeLayout.html" %}
+{% load static %}
+{% block content %}
+    <section class="relative  bg-cover object-cover bg-center bg-[url('/static/assets/images/bg.png')] h-[600px]">
+        <!-- Content Container -->
+        <div class="container mx-auto px-4 py-40 flex flex-col relative z-10">
+            
+            <h2 class="text-xl font-semibold text-white uppercase mb-2" data-i18n="Real Estate & Property Management">
+                Real Estate & Property Management
+            </h2>
+            <h1 class="text-5xl font-bold text-white mb-4" data-i18n="Elite Property Group">HFall Realty</h1>
+            <p class="text-lg text-white mb-8" data-i18n="Buy, Sell, Invest">Buy, Sell, Invest</p>
+            <p class="text-white"></p>
+            <div class="relative">
+                <form method="GET" action="#" class="flex items-center w-1/4">
+                <input type="text" name="q" placeholder="Search by city, zip, or address..." 
+                       class="flex-grow px-4 py-2 rounded-l-md text-gray-900 focus:outline-none">
+                <button type="submit" class="bg-white text-blue-600 font-semibold px-4 py-2 rounded-r-md hover:bg-gray-100">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+            </form>
+            </div>
+           
+        </div>
+    </section>
+
+    <!-- Hero Section -->
+    <section class="grid md:grid-cols-2 grid-cols-1 place-items-center gap-10 px-4 container mx-auto mt-10 py-10">
+        <div class="">
+            <h2 class="text-3xl font-bold mb-4">Recent properties in HFALL Realty</h2>
+            <p class="text-lg mb-6 md:w-[65%]">Ready to find your next favorite place? Dive into stunning video tours and one-of-a-kind listings you won’t see anywhere else!</p>
+            <button id="video-btn" class="bg-[#F79533] text-white px-6 py-2 rounded flex items-center justify-center gap-4">
+                <span data-i18n="The Story of SALAM">See Property</span>
+                <i class="fas fa-play-circle mr-2"></i>
+            </button>
+        </div>
+         <div>
+            <img src="{% static "assets/images/video.png" %}" alt="">
+         </div>
+    </section>
+
+
+    <!-- Property Grid -->
+    <section class="max-w-7xl mx-auto px-4 py-12">
+        <h3 class="text-2xl font-bold mb-6 text-gray-800">Featured Properties</h3>
+        <div class="space-y-6 relative mb-10">
+        {% if properties %}
+        <div class="">
+            <!-- Swiper -->
+            <div class="swiper property-swiper" data-swiper-id="1">
+            <div class="swiper-wrapper">
+                {% for property in properties %}
+                <div class="swiper-slide md:p-1 p-4">
+                <div
+                    class="bg-white rounded-lg shadow-md overflow-hidden h-full flex flex-col cursor-pointer property-card"
+                    data-property-id="{{ property.id }}"
+                    data-title="{{ property.title }}"
+                    data-description="{{ property.description }}"
+                    data-status="{{ property.get_status_display }}"
+                    data-auction-price="{{ property.auction_price }}"
+                    data-buying-price="{{ property.buying_price }}"
+                    data-service-cost="{{ property.service_cost|default:'' }}"
+                    data-asking-price="{{ property.asking_price|default:'' }}"
+                    data-estimated-price="{{ property.estimated_price|default:'' }}"
+                    data-booking-fee="{{ property.booking_fee|default:'' }}"
+                    data-selling-price="{{ property.selling_price|default:'' }}"
+                    data-profit="{{ property.profit|default:'' }}"
+                    data-address="{{ property.address }}"
+                    data-city="{{ property.city }}"
+                    data-state="{{ property.state }}"
+                    data-zip-code="{{ property.zip_code }}"
+                    data-bedrooms="{{ property.bedrooms }}"
+                    data-bathrooms="{{ property.bathrooms }}"
+                    data-dining-rooms="{{ property.dining_rooms }}"
+                    data-square-feet="{{ property.square_feet }}"
+                    data-buying-date="{{ property.buying_date|date:'Y-m-d'|default:'' }}"
+                    data-selling-date="{{ property.selling_date|date:'Y-m-d'|default:'' }}"
+                    data-listed-date="{{ property.listed_date|date:'Y-m-d' }}"
+                    data-auction-date="{{ property.auction_date|date:'Y-m-d' }}"
+                >
+                    <!-- Images -->
+                    <div class="relative">
+                    {% with images=property.images.all %} {% if images %}
+                    <img
+                        src="{{ images.0.image.url }}"
+                        alt="{{ property.title }}"
+                        class="w-full h-48 object-cover rounded-md"
+                    />
+                    {% else %}
+                    <div
+                        class="bg-gray-100 text-center text-sm text-gray-500 py-10 rounded"
+                    >
+                        No Images Available
+                    </div>
+                    {% endif %} {% endwith %}
+                    
+                    </div>
+
+                    <!-- Info -->
+                    <div class="p-6">
+                    <div>
+                        <div>
+                            <div class="">
+                              {% if property.asking_price %}
+                            <h3 class="font-semibold">
+                             $ {{ property.asking_price }}
+                            </h3>
+                            {% else %}
+                            <h2 class="text-xl font-bold">$ N/A</h2>
+                            {% endif %}
+                            </div>
+                            <p class="text-gray-600">
+                            {{ property.bedrooms }} bd <span class="font-bold text-2xl text-[#F79533]">.</span> {{ property.bathrooms }} ba <span  class="font-bold text-2xl text-[#F79533]">.</span>
+                            {{ property.square_feet }} sqft
+                            </p>
+                        </div>
+                        <p class="text-gray-500 text-sm mt-2">
+                         <i class="fa-solid fa-location-dot"></i> {{ property.address }}, {{ property.city }}, {{ property.state }} {{ property.zip_code }}
+                        </p>
+                    </div>
+                    </div>
+                    <div class="flex justify-center p-4">
+                    <button
+                        class="bg-gray-100 px-3 py-2 font-bold hover:text-white hover:bg-[#E0852E] rounded text-[#F79533] border w-full"
+                    >
+                        View Details
+                    </button>
+                    </div>
+                </div>
+                </div>
+                {% endfor %}
+            </div>
+            </div>
+            {% if properties|length > 3 %}
+                <div
+                class="absolute top-1/2 md:-left-10 md:-right-10 -left-4 -right-4 flex justify-between px-4 z-20 -translate-y-1/2"
+                >
+                <!-- Prev Button -->
+                <div
+                    class="group custom-swiper-prev cursor-pointer bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-[#E0852E]" data-swiper-id="1"
+                >
+                    <i
+                    class="fa-solid fa-arrow-left text-lg text-gray-700 group-hover:text-white transition-colors duration-200"
+                    ></i>
+                </div>
+
+                <!-- Next Button -->
+                <div
+                    class="group custom-swiper-next cursor-pointer bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md hover:bg-[#F79533]" data-swiper-id="1"
+                >
+                    <i
+                    class="fa-solid fa-arrow-right text-lg text-gray-700 group-hover:text-white transition-colors duration-200"
+                    ></i>
+                </div>
+                </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        </div>
+    </section>
+    
+
+
+    <!-- Modal for Video Playback -->
+    <div id="video-modal" class="fixed inset-0 hidden overflow-y-auto z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <!-- Backdrop with fade animation -->
+            <div
+            class="bg-black bg-opacity-75 absolute inset-0 transition-opacity duration-300 ease-in-out opacity-0"
+            id="modal-backdrop"
+            ></div>
+
+            <!-- Modal content with scale and fade animation -->
+            <div
+            id="modal-content"
+            class="relative bg-black rounded-lg shadow-xl w-full max-w-7xl transform transition-all duration-300 ease-in-out scale-95 opacity-0"
+            >
+            <!-- Close button -->
+            <button
+                id="close-video-modal"
+                class="absolute top-2 right-2 z-10 text-white text-[#183665] bg-opacity-50 rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-70 focus:outline-none transition duration-200"
+                aria-label="Close modal"
+            >
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <!-- Video container with aspect ratio -->
+            <div class="relative w-full" style="padding-bottom: 56.25%">
+                {% if video.video_url %}
+                    {% if 'embed' in video.video_url %}
+                        <!-- Already an embed URL -->
+                        <iframe
+                            id="youtube-iframe"
+                            src="{{ video.video_url }}"
+                            title="{{ video.title }}"
+                            class="absolute top-0 left-0 w-full h-full rounded-lg"
+                            allowfullscreen
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        ></iframe>
+                    {% else %}
+                        <!-- Convert watch?v= to embed/ -->
+                        <iframe
+                            id="youtube-iframe"
+                            src="https://www.youtube.com/embed/{{ video.video_url|cut:'https://www.youtube.com/watch?v=' }}"
+                            title="{{ video.title }}"
+                            class="absolute top-0 left-0 w-full h-full rounded-lg"
+                            allowfullscreen
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        ></iframe>
+                    {% endif %}
+                {% elif video.video %}
+                    <video controls class="absolute top-0 left-0 w-full h-full rounded-lg">
+                        <source src="{{ video.video.url }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                {% endif %}
+            </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Background -->
+<div
+  id="modal-bg"
+  class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden flex justify-center items-center p-4 backdrop-blur-sm"
+></div>
+
+<!-- Property Modal -->
+<div id="property-modal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 flex items-center justify-center p-4">
+    <div
+      class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
+    >
+      <!-- Modal Header -->
+      <div class="flex justify-between items-center p-4 border-b">
+        <div class="flex items-center">
+          <button
+            id="back-to-search"
+            class="mr-4 text-white rounded px-4 py-1 bg-blue-900"
+          >
+            <i class="fas fa-arrow-left"></i> Back
+          </button>
+          <span class="font-semibold">Property Details</span>
+        </div>
+        <div class="flex gap-4">
+          <button class="text-gray-500 hover:text-gray-700 flex items-center">
+            <i class="far fa-heart mr-1"></i> Save
+          </button>
+          <button class="text-gray-500 hover:text-gray-700 flex items-center">
+            <i class="fas fa-share-alt mr-1"></i> Share
+          </button>
+          <!-- Modal Close Button -->
+          <button
+            id="close-modal"
+            class=" text-gray-500 hover:text-gray-700 bg-blue-600 rounded-full w-8 h-8 flex items-center justify-center shadow-md"
+          >
+            <i class="fas fa-times text-white"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Content -->
+      <div class="flex-grow overflow-y-auto" id="modal-content">
+        <!-- Property Info View -->
+        <div id="property-info" class="block">
+          <!-- Image Grid -->
+          <div
+            id="property-image-grid"
+            class="grid grid-cols-4 grid-rows-2 gap-1 h-80"
+          >
+            <!-- Dynamic image grid will be populated here -->
+          </div>
+
+          <!-- Property Details -->
+          <div class="p-6 mt-[100px]">
+            <div class="flex justify-between items-start">
+              <div>
+                <div
+                  id="property-status"
+                  class="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded mb-2"
+                >
+                  <!-- Status -->
+                </div>
+                <h1 id="property-title" class="text-2xl font-bold">
+                  <!-- Title -->
+                </h1>
+                <p id="property-address" class="text-gray-600">
+                  <!-- Address -->
+                </p>
+              </div>
+            </div>
+
+            <!-- Property Description -->
+            <div class="mt-4">
+              <p id="property-description" class="text-gray-700">
+                <!-- Description -->
+              </p>
+            </div>
+
+            <!-- Property Details Card -->
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-6">
+              <h3 class="font-semibold text-lg mb-3">Property Details</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <p class="text-gray-500 text-sm">Estimated Price</p>
+                  <p id="property-estimated-price" class="font-semibold">
+                    <!-- Estimated Price -->
+                  </p>
+                </div>
+                <div>
+                  <p class="text-gray-500 text-sm">Asking Price</p>
+                  <p id="property-asking-price" class="font-semibold">
+                    <!-- Asking Price -->
+                  </p>
+                </div>
+                <div>
+                  <p class="text-gray-500 text-sm">Listed Date</p>
+                  <p id="property-listed-date" class="font-semibold">
+                    <!-- Listed Date -->
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Features -->
+            <div class="mt-6">
+              <h3 class="font-semibold text-lg mb-3">Features</h3>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="flex items-center">
+                  <i class="fas fa-bed text-gray-500 mr-2"></i>
+                  <span id="property-bedrooms" class="mr-1"><!-- Bedrooms --></span> Bedrooms
+                </div>
+                <div class="flex items-center">
+                  <i class="fas fa-bath text-gray-500 mr-2"></i>
+                  <span id="property-bathrooms" class="mr-1"><!-- Bathrooms --></span>
+                  Bathrooms
+                </div>
+                <div class="flex items-center">
+                  <i class="fas fa-utensils text-gray-500 mr-2"></i>
+                  <span id="property-dining-rooms" class="mr-1"><!-- Dining Rooms --></span>
+                  Dining Rooms
+                </div>
+                <div class="flex items-center">
+                  <i class="fas fa-expand-alt text-gray-500 mr-2"></i>
+                  <span id="property-square-feet" class="mr-1"><!-- Square Feet --></span>
+                  sqft
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-8 max-h-72 overflow-y-auto">
+              <div id="story-list" class="flex flex-col space-y-4">
+                <!-- Stories will be injected here -->
+                <p id="no-stories" class="text-sm text-gray-500">
+                  No stories yet.
+                </p>
+              </div>
+            </div>
+            <!-- CTA Buttons -->
+            <div class="mt-8 space-y-3">
+              <a
+                id="contact-link"
+                href="#"
+                class="block w-full text-[#183665] hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded text-center"
+              >
+                Contact about this property
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Photo Gallery View (initially hidden) -->
+        <div id="photo-gallery" class="hidden">
+          <div class="flex justify-between items-center p-4 border-b">
+            <button
+              id="back-to-info"
+              class="font-semibold flex items-center text-blue-600"
+            >
+              <i class="fas fa-arrow-left mr-2"></i> Back to property
+            </button>
+            <div>
+              <span id="current-photo">1</span> of
+              <span id="total-photos">0</span> photos
+            </div>
+          </div>
+          <div
+            id="gallery-container"
+            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4"
+          >
+            <!-- Dynamic gallery images will be populated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll(".property-swiper").forEach((swiperEl, index) => {
+  const id = swiperEl.dataset.swiperId;
+  new Swiper(swiperEl, {
+    slidesPerView: 1,
+    spaceBetween: 10,
+    navigation: {
+      nextEl: `.custom-swiper-next[data-swiper-id="${id}"]`,
+      prevEl: `.custom-swiper-prev[data-swiper-id="${id}"]`,
+    },
+    breakpoints: {
+      640: { slidesPerView: 1, spaceBetween: 20 },
+      768: { slidesPerView: 2, spaceBetween: 30 },
+        1024: { slidesPerView: 3, spaceBetween: 40 },
+        },
+    });
+    });
+  // Additional logic to handle arrow visibility
+  if (propertyCount <= 3) {
+    const nextButton = document.querySelector(".custom-swiper-next");
+    const prevButton = document.querySelector(".custom-swiper-prev");
+
+    if (nextButton) nextButton.style.display = "none";
+    if (prevButton) prevButton.style.display = "none";
+  }
+</script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+        
+        // <=================== for the video moal start here ===============>
+        const modal = document.getElementById("video-modal");
+        const backdrop = document.getElementById("modal-backdrop");
+        const modalContent = document.getElementById("modal-content");
+        const closeButton = document.getElementById("close-video-modal");
+        const iframe = document.getElementById("youtube-iframe");
+        const videoBtn = document.getElementById("video-btn");
+
+        // Function to open modal with animations
+        function openModal() {
+            modal.classList.remove("hidden");
+            setTimeout(() => {
+            backdrop.classList.add("opacity-100");
+            modalContent.classList.remove("scale-95", "opacity-0");
+            modalContent.classList.add("scale-100", "opacity-100");
+            }, 10);
+        }
+
+        // Function to close modal with animations
+        function closeModal() {
+            backdrop.classList.remove("opacity-100");
+            modalContent.classList.remove("scale-100", "opacity-100");
+            modalContent.classList.add("scale-95", "opacity-0");
+
+            setTimeout(() => {
+            modal.classList.add("hidden");
+            const src = iframe.src;
+            iframe.src = "";
+            setTimeout(() => {
+                iframe.src = src;
+            }, 100);
+            }, 300);
+        }
+
+        if (videoBtn) {
+            videoBtn.addEventListener("click", openModal);
+        }
+        closeButton.addEventListener("click", closeModal);
+
+        modal.addEventListener("click", function (e) {
+            if (e.target === modal || e.target === backdrop) {
+            closeModal();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape" && !modal.classList.contains("hidden")) {
+            closeModal();
+            }
+        });
+        //   <=================== for the vido moal finish here ===============>
+
+
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const propertyCards = document.querySelectorAll('.property-card');
+            const modalBg = document.getElementById('modal-bg');
+            const propertyModal = document.getElementById('property-modal');
+            const closeModal = document.getElementById('close-modal');
+            const backToSearch = document.getElementById('back-to-search');
+            const propertyInfo = document.getElementById('property-info');
+            const photoGallery = document.getElementById('photo-gallery');
+            const backToInfo = document.getElementById('back-to-info');
+            const currentPhoto = document.getElementById('current-photo');
+            const totalPhotos = document.getElementById('total-photos');
+            
+            // Function to format currency
+            function formatCurrency(amount) {
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                }).format(amount);
+            }
+            
+            // Open modal when a property card is clicked
+            propertyCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    // Get data attributes from the card
+                    const propertyId = this.dataset.propertyId;
+                    const title = this.dataset.title;
+                    const description = this.dataset.description;
+                    const status = this.dataset.status;
+                    const estimatedPrice = this.dataset.estimatedPrice;
+                    const askingPrice = this.dataset.askingPrice;
+                    const address = this.dataset.address;
+                    const city = this.dataset.city;
+                    const state = this.dataset.state;
+                    const zipCode = this.dataset.zipCode;
+                    const bedrooms = this.dataset.bedrooms;
+                    const bathrooms = this.dataset.bathrooms;
+                    const diningRooms = this.dataset.diningRooms;
+                    const squareFeet = this.dataset.squareFeet;
+                    const listedDate = this.dataset.listedDate;
+                    
+
+                    document.getElementById("property-title").textContent = title || "N/A";
+                    document.getElementById("property-description").textContent =
+                    description || "N/A";
+                    document.getElementById("property-status").textContent =
+                    status || "N/A";
+                    document.getElementById("property-address").textContent = `${
+                    address || ""
+                    }, ${city || ""}, ${state || ""} ${zipCode || ""}`;
+
+                    document.getElementById("property-asking-price").textContent =
+                    askingPrice ? formatCurrency(askingPrice) : "N/A";
+
+                    document.getElementById("property-estimated-price").textContent =
+                    estimatedPrice ? formatCurrency(estimatedPrice) : "N/A";
+
+                    // Selling price and profit
+
+                    // Dates
+                    document.getElementById("property-listed-date").textContent = listedDate
+                    ? new Date(listedDate).toLocaleDateString()
+                    : "N/A";
+                    // Misc
+                    document.getElementById("property-bedrooms").textContent =
+                    bedrooms || "N/A";
+                    document.getElementById("property-bathrooms").textContent =
+                    bathrooms || "N/A";
+                    document.getElementById("property-dining-rooms").textContent =
+                    diningRooms || "N/A";
+                    document.getElementById("property-square-feet").textContent =
+                    squareFeet || "N/A";
+
+                    // Contact link
+                    document.getElementById(
+                    "contact-link"
+                    ).href = `/contact/?property=${propertyId}`;
+                    
+                    // Contact link
+                    document.getElementById('contact-link').href = `/contact/?property=${propertyId}`;
+                    
+                    // Fetch property images
+                    fetchPropertyImages(propertyId);
+                    
+                    // Show the modal
+                    modalBg.classList.remove('hidden');
+                    propertyModal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden'; // Prevent scrolling of background content
+                });
+            });
+            
+            // Fetch property images via AJAX
+            function fetchPropertyImages(propertyId) {
+                // Make AJAX request to get property images
+                fetch(`/api/property/${propertyId}/images/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Clear any existing images
+                        const imageGrid = document.getElementById('property-image-grid');
+                        imageGrid.innerHTML = '';
+                        
+                        const galleryContainer = document.getElementById('gallery-container');
+                        galleryContainer.innerHTML = '';
+                        
+                        // If no images are returned, show placeholder
+                        if (data.length === 0) {
+                            imageGrid.innerHTML = `
+                                <div class="col-span-4 h-full flex items-center justify-center bg-gray-100">
+                                    <p class="text-gray-500">No images available</p>
+                                </div>
+                            `;
+                            return;
+                        }
+                        
+                        // Update total photos count
+                        totalPhotos.textContent = data.length;
+                        
+                        // Add main image (first image)
+                        if (data.length > 0) {
+                            const mainImageDiv = document.createElement('div');
+                            mainImageDiv.className = 'col-span-2 row-span-2';
+                            mainImageDiv.innerHTML = `
+                                <img src="${data[0].image}" alt="Main Property Image" class="w-full h-full object-contain">
+                            `;
+                            imageGrid.appendChild(mainImageDiv);
+                        }
+                        
+                        // Add next 3 images to grid (or fewer if less than 4 total)
+                        for (let i = 1; i < Math.min(5, data.length); i++) {
+                            const imgDiv = document.createElement('div');
+                            imgDiv.className = i === 4 ? 'relative' : '';
+                            
+                            // For the last visible image, add "See all photos" button if there are more than 4 images
+                            if (i === 4 && data.length > 5) {
+                                imgDiv.innerHTML = `
+                                    <img src="${data[i].image}" alt="Property Image ${i+1}" class="w-full h-full object-cover">
+                                    <button id="view-all-photos" class="absolute inset-0 bg-black bg-opacity-50 text-white flex items-center justify-center">
+                                        <div>
+                                            <i class="fas fa-th-large text-xl block text-center"></i>
+                                            <span>See all ${data.length} photos</span>
+                                        </div>
+                                    </button>
+                                `;
+                            } else {
+                                imgDiv.innerHTML = `
+                                    <img src="${data[i].image}" alt="Property Image ${i+1}" class="w-full h-full object-cover">
+                                `;
+                            }
+                            
+                            imageGrid.appendChild(imgDiv);
+                        }
+                        
+                        // Add all images to gallery view
+                        data.forEach((img, index) => {
+                          const galleryItem = document.createElement('div');
+                          galleryItem.className = 'w-full aspect-[4/3] overflow-hidden rounded-lg'; // Fixed ratio (4:3)
+
+                          galleryItem.innerHTML = `
+                            <img 
+                              src="${img.image}" 
+                              alt="Property Image ${index + 1}" 
+                              class="w-full h-full object-cover"
+                            />
+                          `;
+
+                          galleryContainer.appendChild(galleryItem);
+                        });
+                        
+                        // Reattach view all photos button event
+                        const viewAllPhotosBtn = document.getElementById('view-all-photos');
+                        if (viewAllPhotosBtn) {
+                            viewAllPhotosBtn.addEventListener('click', () => {
+                                propertyInfo.classList.add('hidden');
+                                photoGallery.classList.remove('hidden');
+                            });
+                        }
+                        
+                        // Setup intersection observer for gallery photos
+                        setupIntersectionObserver();
+                    })
+                    .catch(error => {
+                        console.error('Error fetching property images:', error);
+                        // Show placeholder if error
+                        document.getElementById('property-image-grid').innerHTML = `
+                            <div class="col-span-4 h-full flex items-center justify-center bg-gray-100">
+                                <p class="text-gray-500">Error loading images</p>
+                            </div>
+                        `;
+                    });
+            }
+            
+            // Setup intersection observer for gallery photos
+            function setupIntersectionObserver() {
+                const photoItems = document.querySelectorAll('.photo-item');
+                const options = {
+                    root: null,
+                    rootMargin: '0px',
+                    threshold: 0.7 // When 70% of the item is visible
+                };
+                
+                // Clear existing observer if any
+                if (window.galleryObserver) {
+                    window.galleryObserver.disconnect();
+                }
+                
+                window.galleryObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const index = entry.target.dataset.index;
+                            currentPhoto.textContent = index;
+                        }
+                    });
+                }, options);
+                
+                photoItems.forEach(item => {
+                    window.galleryObserver.observe(item);
+                });
+            }
+            
+            // Close modal functions
+            const closeModalFunction = () => {
+                modalBg.classList.add('hidden');
+                propertyModal.classList.add('hidden');
+                document.body.style.overflow = ''; // Restore scrolling
+                // Reset to property info view when closing
+                propertyInfo.classList.remove('hidden');
+                photoGallery.classList.add('hidden');
+            };
+            
+            closeModal.addEventListener('click', closeModalFunction);
+            backToSearch.addEventListener('click', closeModalFunction);
+            modalBg.addEventListener('click', closeModalFunction);
+            
+            // Back to property info button
+            backToInfo.addEventListener('click', () => {
+                photoGallery.classList.add('hidden');
+                propertyInfo.classList.remove('hidden');
+            });
+        });
+    </script>
+{% endblock scripts %}

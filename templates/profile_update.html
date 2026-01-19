@@ -1,0 +1,418 @@
+{% extends "dashboard//layout/dashboardLayout.html" %}
+{% block content %}
+<div class="container mx-auto max-w-4xl md:py-10">
+    <div class="bg-white rounded-lg shadow-lg">
+        <div class="text-center mb-8 mt-5">
+            <h2 class="text-3xl font-bold text-gray-800 py-5">Please enter your Updated personal and contact information.</h2>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="p-8">
+            {% csrf_token %}
+            {% if form.errors %}
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-10">
+                <p class="font-medium">Please correct the following errors:</p>
+                <ul class="list-disc ml-5 mt-2">
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li>{{ field.label }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Personal Info -->
+            <div class="pb-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="id_first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                        <input type="text" name="first_name" id="id_first_name" value="{{ form.instance.first_name }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div>
+                        <label for="id_middle_name" class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                        <input type="text" name="middle_name" id="id_middle_name" value="{{ form.instance.middle_name|default_if_none:"" }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div>
+                        <label for="id_last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                        <input type="text" name="last_name" id="id_last_name" value="{{ form.instance.last_name }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Info -->
+            <div class="pb-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="id_email" class="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
+                        <input type="email" name="email" id="id_email" value="{{ form.instance.email }}" readonly class="w-full px-3 py-2 border border-gray-300 bg-gray-100 rounded-md cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label for="id_phone_number" class="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                        <input type="text" name="phone_number" id="id_phone_number" value="{{ form.instance.phone_number }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Birth Info -->
+            <div class="pb-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="id_birth_year" class="block text-sm font-medium text-gray-700 mb-1">Birth Year</label>
+                        {{ form.birth_year }}
+                    </div>
+                    <div>
+                        <label for="id_birth_month" class="block text-sm font-medium text-gray-700 mb-1">Birth Month</label>
+                        {{ form.birth_month }}
+                    </div>
+                    <div>
+                        <label for="id_birth_date" class="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
+                        {{ form.birth_date }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Address Info -->
+            <div class="pb-4">
+                <div class="mb-4">
+                    <label for="id_home_address_line_1" class="block text-sm font-medium text-gray-700 mb-1">Home Address Line 1 </label>
+                    <input type="text" name="home_address_line_1" id="id_home_address_line_1" value="{{ form.instance.home_address_line_1 }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                <div class="mb-4">
+                    <label for="id_home_address_line_2" class="block text-sm font-medium text-gray-700 mb-1">Home Address Line 2</label>
+                    <input type="text" name="home_address_line_2" id="id_home_address_line_2" value="{{ form.instance.home_address_line_2|default_if_none:"" }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="id_city" class="block text-sm font-medium text-gray-700 mb-1">City</label>
+                        <input type="text" name="city" id="id_city" value="{{ form.instance.city }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div class="mb-6">
+                        <label for="id_state" class="block text-sm font-medium text-gray-700 mb-1">State *</label>
+                        <select name="state" id="id_state" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            <option value="">Select State</option>
+                            {% for val, label in form.fields.state.choices %}
+                                <option value="{{ val }}" {% if form.data.state == val|stringformat:"s" %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <span class="error-message" id="stateerror" style="color: red; font-size: 14px;"></span>
+                    </div>
+                    <div>
+                        <label for="id_zip_code" class="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
+                        <input type="text" name="zip_code" id="id_zip_code" value="{{ form.instance.zip_code }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emergency Contact -->
+            <div class="pb-4">
+                <div>
+                    <label for="id_emergency_contact" class="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
+                    <input type="text" name="emergency_contact" id="id_emergency_contact" value="{{ form.instance.emergency_contact|default_if_none:"" }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+            </div>
+            <div class="pb-4 border-t pt-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-semibold text-gray-800">Beneficiaries</h3>
+                    
+                </div>
+                <table class="w-full border-collapse border" id="beneficiary-table">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="p-2 border text-left">SL</th>
+                            <th class="p-2 border text-left">Beneficiary Name</th>
+                            <th class="p-2 border text-left">Percentage (%)</th>
+                            <th class="p-2 border text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="beneficiary-tbody">
+                        {% if form.instance.beneficiaries %}
+                            {% for beneficiary in form.instance.beneficiaries %}
+                            <tr class="beneficiary-row">
+                                <td class="p-2 border text-center">{{ forloop.counter }}</td>
+                                <td class="p-2 border">
+                                    <input type="text" name="beneficiary_name[]" value="{{ beneficiary.name }}" class="w-full px-2 py-1 border rounded" placeholder="Enter name">
+                                </td>
+                                <td class="p-2 border">
+                                    <input type="number" name="beneficiary_percentage[]" value="{{ beneficiary.percentage }}" step="0.01" min="0" class="w-full px-2 py-1 border rounded" placeholder="Enter %">
+                                </td>
+                                <td class="p-2 border text-center">
+                                    <button type="button" class="remove-beneficiary text-red-600 hover:text-red-800">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr class="beneficiary-row">
+                                <td class="p-2 border text-center">1</td>
+                                <td class="p-2 border">
+                                    <input type="text" name="beneficiary_name[]" class="w-full px-2 py-1 border rounded" placeholder="Enter name">
+                                </td>
+                                <td class="p-2 border">
+                                    <input type="number" name="beneficiary_percentage[]" step="0.01" min="0" class="w-full px-2 py-1 border rounded" placeholder="Enter %">
+                                </td>
+                                <td class="p-2 border text-center">
+                                    <button type="button" class="remove-beneficiary text-red-600 hover:text-red-800">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+                <div class="mt-2 text-sm text-gray-600">
+                    {% comment %} <p><strong>Note:</strong> Enter beneficiary information (percentage can be any value)</p> {% endcomment %}
+                    <button type="button" id="add-beneficiary-row" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+                        <i class="fa-solid fa-plus mr-1"></i> Add Beneficiary
+                    </button>
+                </div>
+            </div>
+
+            <!-- Documents Upload Section -->
+            <div class="pb-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Personal Image -->
+                    <div>
+                        <label class="block mb-2 font-medium">Personal Image</label>
+
+                        {% if form.instance.personal_image %}
+                        <div class="mb-2">
+                            <p class="text-sm text-gray-600 mb-1">Current Image:</p>
+                            <img src="{{ form.instance.personal_image.url }}" alt="Current Personal Image" class="w-32 h-32 object-cover rounded-md border">
+                        </div>
+                        {% endif %}
+
+                        <input type="file" name="personal_image" accept="image/*" id="personalImageInput"
+                            class="block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-sm file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-orange-50 file:text-orange-700
+                                hover:file:bg-orange-100"/>
+
+                        <div id="personalImagePreview" class="mt-3 hidden">
+                            <p class="text-sm text-gray-600 mb-1">Preview:</p>
+                            <img src="" alt="Personal Image Preview" class="w-32 h-32 object-cover rounded-md border">
+                        </div>
+                    </div>
+
+                    <!-- Photo ID -->
+                    <div>
+                        <label class="block mb-2 font-medium">Photo ID</label>
+
+                        {% if form.instance.photo_id %}
+                        <div class="mb-2">
+                            <p class="text-sm text-gray-600 mb-1">Current ID:</p>
+                            <img src="{{ form.instance.photo_id.url }}" alt="Current Photo ID" class="w-32 h-32 object-cover rounded-md border">
+                        </div>
+                        {% endif %}
+
+                        <input type="file" name="photo_id" accept="image/*" id="photoIdInput"
+                            class="block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-sm file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-orange-50 file:text-orange-700
+                                hover:file:bg-orange-100"/>
+
+                        <div id="photoIdPreview" class="mt-3 hidden">
+                            <p class="text-sm text-gray-600 mb-1">Preview:</p>
+                            <img src="" alt="Photo ID Preview" class="w-32 h-32 object-cover rounded-md border">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="flex justify-center">
+                <button type="submit" class="px-8 py-3 bg-orange-500 w-full mt-10 text-white font-medium rounded-lg hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-300 transition-all">
+                    Update Profile
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+#id_birth_year, #id_birth_month, #id_birth_date {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    background-color: white;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #374151;
+    outline: none;
+    transition: all 0.15s ease-in-out;
+}
+#id_birth_year:focus, #id_birth_month:focus, #id_birth_date:focus {
+    border-color: #f97316;
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+}
+</style>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addBtn = document.getElementById('add-beneficiary-row');
+    const tbody = document.getElementById('beneficiary-tbody');
+    
+ 
+    function updateSerialNumbers() {
+        const rows = tbody.querySelectorAll('.beneficiary-row');
+        rows.forEach((row, index) => {
+            row.querySelector('td:first-child').textContent = index + 1;
+        });
+    }
+    
+   
+    addBtn.addEventListener('click', function() {
+        const newRow = document.createElement('tr');
+        newRow.className = 'beneficiary-row';
+        newRow.innerHTML = `
+            <td class="p-2 border text-center">1</td>
+            <td class="p-2 border">
+                <input type="text" name="beneficiary_name[]" class="w-full px-2 py-1 border rounded" placeholder="Enter name">
+            </td>
+            <td class="p-2 border">
+                <input type="number" name="beneficiary_percentage[]" step="0.01" min="0" class="w-full px-2 py-1 border rounded" placeholder="Enter %">
+            </td>
+            <td class="p-2 border text-center">
+                <button type="button" class="remove-beneficiary text-red-600 hover:text-red-800">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(newRow);
+        updateSerialNumbers();
+    });
+    
+   
+    tbody.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-beneficiary') || e.target.parentElement.classList.contains('remove-beneficiary')) {
+            const row = e.target.closest('.beneficiary-row');
+            if (tbody.querySelectorAll('.beneficiary-row').length > 1) {
+                row.remove();
+                updateSerialNumbers();
+            } else {
+                alert('At least one beneficiary row must remain. You can leave it empty if not needed.');
+            }
+        }
+    });
+});
+</script>
+<script>
+    // Image preview function
+    function previewImage(input, previewContainerId) {
+        const previewContainer = document.getElementById(previewContainerId);
+        if (!previewContainer) {
+            console.error('Preview container not found:', previewContainerId);
+            return;
+        }
+        
+        const img = previewContainer.querySelector('img');
+        if (!img) {
+            console.error('Image element not found in preview container');
+            return;
+        }
+
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file.');
+                input.value = '';
+                previewContainer.classList.add('hidden');
+                return;
+            }
+            
+            // Validate file size (optional - 5MB limit)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB.');
+                input.value = '';
+                previewContainer.classList.add('hidden');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                img.src = e.target.result;
+                previewContainer.classList.remove('hidden');
+            };
+            reader.onerror = function() {
+                console.error('Error reading file');
+                alert('Error reading the selected file.');
+            };
+            reader.readAsDataURL(file);
+        } else {
+            previewContainer.classList.add('hidden');
+            img.src = '';
+        }
+    }
+
+    // Wait for DOM to be fully loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Personal Image Preview
+        const personalImageInput = document.getElementById('personalImageInput');
+        if (personalImageInput) {
+            personalImageInput.addEventListener('change', function () {
+                previewImage(this, 'personalImagePreview');
+            });
+        }
+
+        // Photo ID Preview  
+        const photoIdInput = document.getElementById('photoIdInput');
+        if (photoIdInput) {
+            photoIdInput.addEventListener('change', function () {
+                previewImage(this, 'photoIdPreview');
+            });
+        }
+
+        / Birth date functionality
+const birthYear = document.getElementById('id_birth_year');
+const birthMonth = document.getElementById('id_birth_month');
+const birthDate = document.getElementById('id_birth_date');
+
+function updateBirthDates() {
+    if (!birthYear || !birthMonth || !birthDate) return;
+    
+    const year = parseInt(birthYear.value);
+    const month = parseInt(birthMonth.value);
+    const currentSelectedDate = birthDate.value; // Store current selection
+    
+    // Clear existing options except the first one
+    birthDate.innerHTML = '<option value="">Select Birth Date</option>';
+    
+    if (year && month) {
+        const daysInMonth = new Date(year, month, 0).getDate();
+        for (let day = 1; day <= daysInMonth; day++) {
+            const option = document.createElement('option');
+            option.value = day;
+            option.textContent = day;
+            
+            // Restore the previously selected date if it's still valid
+            if (currentSelectedDate && parseInt(currentSelectedDate) === day) {
+                option.selected = true;
+            }
+            
+            birthDate.appendChild(option);
+        }
+    }
+}
+
+if (birthYear) birthYear.addEventListener('change', updateBirthDates);
+if (birthMonth) birthMonth.addEventListener('change', updateBirthDates);
+
+// Initialize birth dates on page load if values are already selected
+updateBirthDates();
+    });
+</script>
+{% endblock scripts %}

@@ -1,0 +1,277 @@
+{% extends "dashboard//layout/dashboardLayout.html" %}
+{% load form_tags %}
+
+{% block content %}
+<div class="bg-white m-5 rounded-lg p-4">
+    <h1 class="text-2xl font-bold">
+        {% if form.instance.pk %}
+            Update Expense
+        {% else %}
+            Create New Expense
+        {% endif %}
+    </h1>
+    <hr class="my-4 border-gray-300">
+
+    <div class="max-w-full mx-auto space-y-6">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <!-- Date & Purpose -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block font-medium">{{ form.expense_date.label }}</label>
+                    {{ form.expense_date|add_class:"w-full border rounded-md px-3 py-2" }}
+                    {% if form.expense_date.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.expense_date.errors }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block font-medium">Purpose</label>
+                    {{ form.purpose|add_class:"w-full border rounded-md px-3 py-2" }}
+                    {% if form.purpose.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.purpose.errors }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label class="block font-medium">Description</label>
+                {{ form.description|add_class:"w-full border rounded-md px-3 py-2" }}
+                {% if form.description.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.description.errors }}</p>
+                {% endif %}
+            </div>
+    </div>
+
+    <!-- Extra fields section -->
+    <div class="p-6 bg-white rounded-lg shadow-md mx-auto">
+        <div class="grid items-end grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+
+            <!-- Related Property -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Related Property <span class="text-xs">(Optional)</span>
+                </label>
+                {{ form.property|add_class:"w-full border rounded-md px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400" }}
+                {% if form.property.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.property.errors }}</p>
+                {% endif %}
+            </div>
+
+            <!-- NEW: Paid By User -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Paid By User <span class="text-xs">(Optional)</span>
+                </label>
+                {{ form.paid_by_user|add_class:"w-full border rounded-md px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400" }}
+                <p class="text-xs text-gray-500 mt-1">Select if a user paid with their own money (for reimbursement)</p>
+                {% if form.paid_by_user.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.paid_by_user.errors }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="grid items-end grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Amount -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Amount <span class="text-xs">($)</span>
+                </label>
+                {{ form.amount|add_class:"w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400" }}
+                {% if form.amount.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.amount.errors }}</p>
+                {% endif %}
+            </div>
+
+            <!-- File Upload -->
+            <div class="px-6">
+                <label class="block text-gray-700 font-medium mb-3">
+                    Attach Image <span class="text-xs">(Optional)</span>
+                </label>
+                <input type="file" name="{{ form.image.name }}" id="{{ form.image.id_for_label }}"
+                       class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 
+                              file:rounded-md file:border-0 
+                              file:text-sm file:font-medium
+                              file:bg-gray-100 file:text-gray-700
+                              hover:file:bg-gray-200 cursor-pointer" />
+                <div id="file-name" class="mt-2 text-sm text-gray-500">
+                    {% if form.instance.image %}
+                        Current: {{ form.instance.image.url|default:"None" }}
+                    {% else %}
+                        No file chosen
+                    {% endif %}
+                </div>
+                {% if form.image.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.image.errors }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 class="font-semibold text-blue-800 mb-2">💡 How it works:</h3>
+            <ul class="text-sm text-blue-700 space-y-1">
+                <li>• <strong>Property-related + User selected:</strong> Expense will be deducted from all investors, and the selected user will be reimbursed via expense payment.</li>
+                <li>• <strong>Property-related + No user:</strong> Expense will be deducted from investors only (no reimbursement needed).</li>
+                <li>• <strong>Non-property expense:</strong> Will be added to expense balance for payment (regardless of user selection).</li>
+            </ul>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex justify-center space-x-4 mt-6">
+            <button type="submit" class="px-6 py-2 bg-[#183665] text-white rounded-md transition">
+                {% if form.instance.pk %}
+                    Update Expense
+                {% else %}
+                    Submit Expense
+                {% endif %}
+            </button>
+
+            <a href="{% url 'accounts:expense_list' %}"
+               class="px-6 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition">
+                Cancel
+            </a>
+        </div>
+    </div>
+    </form>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    // Show selected file name
+    document.getElementById('{{ form.image.id_for_label }}').addEventListener('change', function(e) {
+        const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+        document.getElementById('file-name').textContent = fileName;
+    });
+</script>
+{% endblock scripts %}
+
+{% comment %} {% extends "dashboard//layout/dashboardLayout.html" %}
+{% load form_tags %}
+
+{% block content %}
+<div class="bg-white m-5 rounded-lg p-4">
+    <h1 class="text-2xl font-bold">
+        {% if form.instance.pk %}
+            Update Expense
+        {% else %}
+            Create New Expense
+        {% endif %}
+    </h1>
+    <hr class="my-4 border-gray-300">
+
+    <div class="max-w-full mx-auto space-y-6">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <!-- Date & Purpose -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block font-medium">{{ form.expense_date.label }}</label>
+                    {{ form.expense_date|add_class:"w-full border rounded-md px-3 py-2" }}
+                    {% if form.expense_date.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.expense_date.errors }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block font-medium">Purpose</label>
+                    {{ form.purpose|add_class:"w-full border rounded-md px-3 py-2" }}
+                    {% if form.purpose.errors %}
+                        <p class="text-red-500 text-xs italic">{{ form.purpose.errors }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label class="block font-medium">Description</label>
+                {{ form.description|add_class:"w-full border rounded-md px-3 py-2" }}
+                {% if form.description.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.description.errors }}</p>
+                {% endif %}
+            </div>
+    </div>
+
+    <!-- Extra fields section -->
+    <div class="p-6 bg-white rounded-lg shadow-md mx-auto">
+        <div class="grid items-end grid-cols-1 md:grid-cols-3 gap-4">
+
+            <!-- Related Property -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Related Property <span class="text-xs">(Optional)</span>
+                </label>
+                {{ form.property|add_class:"w-full border rounded-md px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400" }}
+                {% if form.property.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.property.errors }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Amount -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Amount <span class="text-xs">($)</span>
+                </label>
+                {{ form.amount|add_class:"w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400" }}
+                {% if form.amount.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.amount.errors }}</p>
+                {% endif %}
+            </div>
+
+            <!-- File Upload -->
+            <div class="px-6">
+                <label class="block text-gray-700 font-medium mb-3">
+                    Attach Image <span class="text-xs">(Optional)</span>
+                </label>
+                <input type="file" name="{{ form.image.name }}" id="{{ form.image.id_for_label }}"
+                       class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 
+                              file:rounded-md file:border-0 
+                              file:text-sm file:font-medium
+                              file:bg-gray-100 file:text-gray-700
+                              hover:file:bg-gray-200 cursor-pointer" />
+                <div id="file-name" class="mt-2 text-sm text-gray-500">
+                    {% if form.instance.image %}
+                        Current: {{ form.instance.image.url|default:"None" }}
+                    {% else %}
+                        No file chosen
+                    {% endif %}
+                </div>
+                {% if form.image.errors %}
+                    <p class="text-red-500 text-xs italic">{{ form.image.errors }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex justify-center space-x-4 mt-6">
+            <button type="submit" class="px-6 py-2 bg-[#183665] text-white rounded-md transition">
+                {% if form.instance.pk %}
+                    Update Expense
+                {% else %}
+                    Submit Expense
+                {% endif %}
+            </button>
+
+            <a href="{% url 'accounts:expense_list' %}"
+               class="px-6 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition">
+                Cancel
+            </a>
+        </div>
+    </div>
+    </form>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    // Show selected file name
+    document.getElementById('{{ form.image.id_for_label }}').addEventListener('change', function(e) {
+        const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+        document.getElementById('file-name').textContent = fileName;
+    });
+</script>
+{% endblock scripts %} {% endcomment %}

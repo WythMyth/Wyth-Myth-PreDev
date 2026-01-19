@@ -1,0 +1,119 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Square Payment</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% if environment == "sandbox" %}
+  <script src="https://sandbox.web.squarecdn.com/v1/square.js"></script>
+  {% else %}
+  <script src="https://web.squarecdn.com/v1/square.js"></script>
+  {% endif %}
+  <style>
+    .field { margin-bottom: 12px; }
+    #card-container { margin: 16px 0; }
+    button[disabled] { opacity: .6; cursor: not-allowed; }
+    .msg { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Square Deposit (Web Payments SDK)</h2>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="msg {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <form id="pay-form" method="POST" action="{% url 'accounts:square_create_payment' %}">
+    {% csrf_token %}
+    <div class="field">
+      <label>Amount (USD)</label><br/>
+      <input type="number" name="amount" id="amount" step="0.01" min="0.01" required
+             value="{{ prefill_amount|default_if_none:'' }}">
+    </div>
+
+    <div class="field">
+      <label>Notes (optional)</label><br/>
+      <textarea name="notes" id="notes">{{ prefill_notes|default_if_none:'' }}</textarea>
+    </div>
+
+    <!-- Square Card Element -->
+    <div id="card-container"></div>
+
+    <!-- Hidden field to carry token -->
+    <input type="hidden" name="source_id" id="source_id" />
+
+    <button id="pay-btn" type="submit">Pay Now</button>
+  </form>
+
+  <div id="error" class="msg" style="color:#b00020;"></div>
+
+  <script>
+    (async function() {
+      const appId = "{{ square_app_id }}";
+      const locationId = "{{ square_location_id }}";
+
+      if (!window.Square) {
+        document.getElementById('error').innerText = "Square SDK failed to load.";
+        return;
+      }
+
+      let payments;
+      try {
+        payments = window.Square.payments(appId, locationId);
+      } catch (e) {
+        document.getElementById('error').innerText = e.message;
+        return;
+      }
+
+      const card = await payments.card();
+      await card.attach('#card-container');
+
+      const form = document.getElementById('pay-form');
+      const payBtn = document.getElementById('pay-btn');
+      const sourceInput = document.getElementById('source_id');
+      const errBox = document.getElementById('error');
+
+      let submitting = false;
+
+      form.addEventListener('submit', async function(evt) {
+        if (submitting) return; // prevent double submit
+        evt.preventDefault();
+
+        errBox.innerText = '';
+        payBtn.disabled = true;
+        payBtn.innerText = 'Processing...';
+
+        // Basic client-side checks
+        const amount = document.getElementById('amount').value;
+        if (!amount || parseFloat(amount) <= 0) {
+          errBox.innerText = "Please enter a valid amount.";
+          payBtn.disabled = false;
+          payBtn.innerText = 'Pay Now';
+          return;
+        }
+
+        try {
+          const result = await card.tokenize();
+          if (result.status === 'OK') {
+            sourceInput.value = result.token; // <-- send to server
+            submitting = true;
+            form.submit();
+          } else {
+            errBox.innerText = result.errors?.map(e => e.message).join(', ') || "Tokenization failed.";
+            payBtn.disabled = false;
+            payBtn.innerText = 'Pay Now';
+          }
+        } catch (e) {
+          console.error("Tokenize error:", e);
+          errBox.innerText = e.message || "Card tokenization error.";
+          payBtn.disabled = false;
+          payBtn.innerText = 'Pay Now';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

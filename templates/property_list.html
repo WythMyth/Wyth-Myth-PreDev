@@ -1,0 +1,678 @@
+{% extends "dashboard//layout/dashboardLayout.html" %}
+{% load static %}
+{% load humanize %}
+{% block content %}
+<div class="bg-white m-5 rounded-lg p-4  ">
+    <h1 class="text-2xl font-bold">Property List</h1>
+    <hr class="my-4 border-gray-300">
+
+    <div class="flex flex-col sm:flex-row justify-between items-end mb-6 gap-4">
+        <!-- Filter -->
+        <div class="flex flex-col space-y-2">
+            <label for="status" class="text-sm font-medium text-gray-700">Status</label>
+            <form method="get">
+                <select name="status" id="status"
+                        onchange="this.form.submit()"
+                        class="border px-3 py-2 rounded w-64">
+                    <option value="">All</option>
+                    {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if value == selected_status %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        <!-- Add New Property Button -->
+        {% if user.is_superuser or user.is_property %}
+        <div class="items-end">
+            <a href="{% url 'accounts:property_create' %}">
+                <button class="bg-[#183665] text-white py-2 px-4 rounded">
+                    + Add New Property
+                </button>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for property in properties %}
+    <!-- Property Card -->
+    <div class="bg-white shadow">
+          <div class="bg-white rounded-lg  overflow-hidden cursor-pointer property-card" 
+            data-property-id="{{ property.id }}"
+            data-title="{{ property.title }}"
+            data-url = "{{ property.url }}"
+            data-description="{{ property.description }}"
+            data-status="{{ property.get_status_display }}"
+            data-auction-price="{{ property.auction_price }}"
+            data-buying-price="{{ property.buying_price|default:'' }}"
+            data-service-cost="{{ property.service_cost|default:'' }}"
+            data-asking-price="{{ property.asking_price|default:'' }}"
+            data-estimated-price="{{ property.estimated_price|default:'' }}"
+            data-booking-fee="{{ property.booking_fee|default:'' }}"
+            data-selling-price="{{ property.selling_price|default:'' }}"
+            data-profit="{{ property.profit|default:'' }}"
+            data-address="{{ property.address }}"
+            data-city="{{ property.city }}"
+            data-state="{{ property.state }}"
+            data-zip-code="{{ property.zip_code }}"
+            data-bedrooms="{{ property.bedrooms }}"
+            data-bathrooms="{{ property.bathrooms }}"
+            data-dining-rooms="{{ property.dining_rooms }}"
+            data-square-feet="{{ property.square_feet }}"
+            data-buying-date="{{ property.buying_date|date:'Y-m-d'|default:'' }}"
+            data-selling-date="{{ property.selling_date|date:'Y-m-d'|default:'' }}"
+            data-listed-date="{{ property.listed_date|date:'Y-m-d' }}"
+            data-auction-date="{{ property.auction_date|date:'Y-m-d' }}">
+            <!-- Images -->
+            <div class="space-y-2 relative">
+              {% with images=property.images.all %} {% if images %}
+              <img
+                src="{{ images.0.image.url }}"
+                alt="{{ property.title }}"
+                class="w-full h-48 object-cover rounded-md"
+              />
+              {% else %}
+              <div
+                class="bg-gray-100 text-center text-sm text-gray-500 py-10 rounded"
+              >
+                No Images Available
+              </div>
+              {% endif %} {% endwith %}
+              <div
+                    class="absolute top-3 left-[-30px] bg-white text-gray-700 text-xs font-semibold px-10 py-1 rotate-[-45deg] shadow z-10"
+                >
+                    {{ property.get_status_display }}
+            </div>
+
+            </div>
+
+            <!-- Property Info -->
+              <div class="p-4">
+                <div class="flex items-center space-x-4 mt-2">
+                  {% if property.status == 'wishlist' or property.status == 'failed_to_bought' or property.status == 'move_to_next_option' %}
+                    <!-- Auction Price -->
+                    {% if  property.auction_price %}
+                      <div class="text-center">
+                        <div class="text-xl font-bold text-black">
+                          $ {{ property.auction_price|floatformat:2|intcomma|default:"N/A" }}
+                        </div>
+                        <div class="text-gray-500 text-sm">Auction Price</div>
+                      </div>
+                    {% endif %}
+
+                    <!-- Divider -->
+                    <div class="h-10 rounded w-1 bg-orange-500"></div>
+
+                    <!-- Estimated Price -->
+                    <div class="text-center">
+                      <div class="text-xl font-bold text-black">
+                        $ {{ property.estimated_price|floatformat:2|intcomma|default:"N/A" }}
+                      </div>
+                      <div class="text-gray-500 text-sm">Estimated Price</div>
+                    </div>
+                  {% endif %}
+                  {% if  property.status == "bought"%}
+                    <!-- Auction Price -->
+                    {% if  property.auction_price %}
+                      <div class="text-center">
+                        <div class="text-xl font-bold text-black">
+                          $ {{ property.auction_price|floatformat:2|intcomma|default:"N/A" }}
+                        </div>
+                        <div class="text-gray-500 text-sm">Auction Price</div>
+                      </div>
+                    {% endif %}
+
+                    <!-- Divider -->
+                    <div class="h-10 rounded w-1 bg-orange-500"></div>
+
+                    <!-- Estimated Price -->
+                    <div class="text-center">
+                      <div class="text-xl font-bold text-black">
+                        $ {{ property.buying_price|floatformat:2|intcomma|default:"N/A" }}
+                      </div>
+                      <div class="text-gray-500 text-sm">Buying Price</div>
+                    </div>
+                  {% endif %}
+                  {% if  property.status == "sold"%}
+                    <!-- Auction Price -->
+                    {% if  property.auction_price %}
+                      <div class="text-center">
+                        <div class="text-xl font-bold text-black">
+                          $ {{ property.buying_price|floatformat:2|intcomma|default:"N/A" }}
+                        </div>
+                        <div class="text-gray-500 text-sm">Buying Price</div>
+                      </div>
+                    {% endif %}
+
+                    <!-- Divider -->
+                    <div class="h-10 rounded w-1 bg-orange-500"></div>
+
+                    <!-- Estimated Price -->
+                    <div class="text-center">
+                      <div class="text-xl font-bold text-black">
+                        $ {{ property.selling_price|floatformat:2|intcomma|default:"N/A" }}
+                      </div>
+                      <div class="text-gray-500 text-sm">Selling Price</div>
+                    </div>
+                  {% endif %}
+                  {% if  property.status == "ready_to_sell"%}
+                    <!-- Auction Price -->
+                      <div class="text-center">
+                        <div class="text-xl font-bold text-black">
+                          $ {{ property.asking_price|floatformat:2|intcomma|default:"N/A" }}
+                        </div>
+                        <div class="text-gray-500 text-sm">Asking Price</div>
+                      </div>
+
+                  {% endif %}
+                  
+                </div>
+                <!-- Property Info -->
+              <p class="text-gray-600 mt-2 mb-2">
+                {{ property.bedrooms }} bd <span class="font-bold text-2xl text-orange-600">.</span> {{ property.bathrooms }} ba <span class="font-bold text-2xl text-orange-600">.</span>
+                {{ property.square_feet }} sqft
+              </p>
+
+              <p class="text-gray-500 text-sm">
+                <i class="fa-solid fa-location-dot"></i> {{ property.address }}, {{ property.city }}, {{ property.state }} {{ property.zip_code }}
+              </p>
+              </div>
+      </div>
+      <div class="flex gap-5 p-4">
+        {% if user.is_superuser or user.is_property %}
+          <a href="{% url 'accounts:property_update' property.id %}">
+          <Button class="bg-blue-900 text-white px-4 py-2 rounded-sm mt-5">Update</Button>
+          </a>
+          {% if  property.status == 'wishlist' or property.status == 'failed_to_bought' or property.status == 'move_to_next_option' %}
+          <a href="{% url 'accounts:property_delete' property.id %}">
+          <Button class="hover:bg-red-600 bg-gray-100 hover:text-white font-md font-bold px-4 py-2 rounded-sm mt-5">Delete</Button>
+          </a>
+        {% endif %}
+        {% if property.url %}
+          <a href="{{ property.url}} ">
+          <Button class="hover:bg-orange-600 bg-gray-100 hover:text-white font-md font-bold px-4 py-2 rounded-sm mt-5">URL</Button>
+          </a>
+        {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    {% endfor %}
+  </div>
+
+
+        <!-- Modal Background -->
+    <div
+      id="modal-bg"
+      class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden flex justify-center items-center p-4 backdrop-blur-sm"
+    ></div>
+        
+    <!-- Property Modal -->
+    <div id="property-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div
+            class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
+            >
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center p-4 border-b">
+                <div class="flex items-center">
+                    <button
+                        id="back-to-search"
+                        class="mr-4 text-gray-700 rounded px-4 py-1"
+                    >
+                        <i class="fas fa-arrow-left"></i> 
+                    </button>
+                    <p class="text-gray-700">Back to Property List</p>
+                </div>
+                <div class="flex gap-4">
+
+                <!-- Modal Close Button -->
+                <button
+                    id="close-modal"
+                    class=" text-gray-500 hover:text-gray-700 bg-blue-600 rounded-full w-8 h-8 flex items-center justify-center shadow-md"
+                >
+                    <i class="fas fa-times text-white"></i>
+                </button>
+                </div>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="flex-grow overflow-y-auto" id="modal-content">
+                <!-- Property Info View -->
+                <div id="property-info" class="block">
+                <!-- Image Grid -->
+                <div
+                    id="property-image-grid"
+                    class="grid grid-cols-4 grid-rows-2 gap-1 h-80"
+                >
+                    <!-- Dynamic image grid will be populated here -->
+                </div>
+
+                    <!-- Property Details -->
+                    <div class="p-6 mt-[50px]">
+                        <div class="space-y-6 mt-6">
+                            <!-- Title & Info -->
+                            <div class="grid grid-cols-12 space-x-5">
+                                <div class="col-span-4">
+                                    <div class="">
+                                        <div class="flex items-center justify-between">
+                                            <h1 id="property-title" class="text-2xl font-bold"><!-- Title --></h1>
+                                            <p id="property-status" class="bg-[#F5F5F5] py-1 px-2 rounded text-sm"><!-- Status --></p>
+                                        </div>
+                                        <p id="property-address" class="text-gray-600 text-xs"><!-- Address --></p>
+                                        <p id="property-description" class="text-gray-500 mt-2"><!-- Description --></p>
+                                        <a id="property-url" class="text-orange-700 underline mt-2 block" target="_blank" rel="noopener noreferrer">
+                                            <!-- Will be filled by JS -->
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <!-- Features -->
+                                <div class="col-span-8 space-y-4 space-x-5">
+                                    <div class="grid grid-cols-4 gap-4 text-left">
+                                        <h1 class="text-xl font-semibold">Features</h1>
+                                    </div>
+                                    <div class="grid grid-cols-4 gap-4 text-left">
+                                        <div class="text-[#2B2B2B99]">Bedrooms <br><b id="property-bedrooms"></b></div>
+                                        <div class="text-[#2B2B2B99]">Dining Rooms <br><b id="property-dining-rooms"></b></div>
+                                        <div class="text-[#2B2B2B99]">Bathrooms <br><b id="property-bathrooms"></b></div>
+                                        <div class="text-[#2B2B2B99]">Sqft <br><b id="property-square-feet"></b></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Property Details -->
+                            <div class="bg-gray-100 p-4 rounded-lg grid grid-cols-3 gap-4">
+                                <p>Auction Price: <br> <b id="property-auction-price"></b></p>
+                                <p>Estimated Price: <br> <b id="property-estimated-price"></b></p>
+                                <p>Auction Date: <br> <b id="property-auction-date"></b></p>
+                                <p>Booking Fee: <br> <b id="property-booking-fee"></b></p>
+                                <p>Buying Price: <br> <b id="property-buying-price"></b></p>
+                                <p>Service Cost: <br> <b id="property-service-cost"></b></p>
+                                <p>Asking Price: <br> <b id="property-asking-price"></b></p>
+                                <p id="property-selling-price-container">Selling Price: <br><b id="property-selling-price"></b></p>
+                                <p id="property-profit-container">Profit: <br><b id="property-profit"></b></p>
+                                <p>Buying Date: <br> <b id="property-buying-date"></b></p>
+                                <p>Listed Date: <br> <b id="property-listed-date"></b></p>
+                            </div>
+
+                            <!-- Status Updates -->
+                            <div id="story-list" class="space-y-3">
+                                <p id="no-stories" class="text-sm text-gray-500">No stories yet.</p>
+                            </div>
+
+                            <!-- Contact Button -->
+                            <div class="text-center">
+                                <a id="contact-link" href="#" class="text-orange-500 px-6 py-2 rounded-lg">
+                                    Contact About This Property
+                                </a>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Photo Gallery View (initially hidden) -->
+                <div id="photo-gallery" class="hidden">
+                <div class="flex justify-between items-center p-4 border-b">
+                    <button
+                    id="back-to-info"
+                    class="font-semibold flex items-center text-blue-600"
+                    >
+                    <i class="fas fa-arrow-left mr-2"></i> Back to property
+                    </button>
+                    <div>
+                    <span id="current-photo">1</span> of
+                    <span id="total-photos">0</span> photos
+                    </div>
+                </div>
+                <div
+                    id="gallery-container"
+                    class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4"
+                >
+                    <!-- Dynamic gallery images will be populated here -->
+                </div>
+                </div>
+            </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+{% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Elements
+    const propertyCards = document.querySelectorAll(".property-card");
+    const modalBg = document.getElementById("modal-bg");
+    const propertyModal = document.getElementById("property-modal");
+    const closeModal = document.getElementById("close-modal");
+    const backToSearch = document.getElementById("back-to-search");
+    const propertyInfo = document.getElementById("property-info");
+    const photoGallery = document.getElementById("photo-gallery");
+    const backToInfo = document.getElementById("back-to-info");
+    const currentPhoto = document.getElementById("current-photo");
+    const totalPhotos = document.getElementById("total-photos");
+
+    // Function to format currency
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(amount);
+    }
+
+    // Open modal when a property card is clicked
+    propertyCards.forEach((card) => {
+      card.addEventListener("click", function () {
+        // Get data attributes from the card
+        const propertyId = this.dataset.propertyId;
+        const title = this.dataset.title;
+        const url = this.dataset.url;
+        const description = this.dataset.description;
+        const status = this.dataset.status;
+        const auctionPrice = this.dataset.auctionPrice;
+        const serviceCost = this.dataset.serviceCost;
+        const buyingPrice = this.dataset.buyingPrice;
+        const estimatedPrice = this.dataset.estimatedPrice;
+        const askingPrice = this.dataset.askingPrice;
+        const sellingPrice = this.dataset.sellingPrice;
+        const profit = this.dataset.profit;
+        const address = this.dataset.address;
+        const city = this.dataset.city;
+        const state = this.dataset.state;
+        const zipCode = this.dataset.zipCode;
+        const bedrooms = this.dataset.bedrooms;
+        const bathrooms = this.dataset.bathrooms;
+        const diningRooms = this.dataset.diningRooms;
+        const squareFeet = this.dataset.squareFeet;
+        const listedDate = this.dataset.listedDate;
+        const auctionDate = this.dataset.auctionDate;
+        const buyingDate = this.dataset.buyingDate;
+        const bookingFee = this.dataset.bookingFee;
+
+        document.getElementById("property-title").textContent = title || "N/A";
+        document.getElementById("property-description").textContent =
+          description || "N/A";
+          const anchor = document.getElementById("property-url");
+
+        if (url) {
+          anchor.href = url;
+          anchor.textContent = `URL : ${url}`;
+        } else {
+          anchor.textContent = "URL : N/A";
+          anchor.removeAttribute("href");
+        }
+        document.getElementById("property-status").textContent =
+          status || "N/A";
+        document.getElementById("property-address").textContent = `${
+          address || ""
+        }, ${city || ""}, ${state || ""} ${zipCode || ""}`;
+
+        document.getElementById("property-asking-price").textContent =
+          askingPrice ? formatCurrency(askingPrice) : "N/A";
+        document.getElementById("property-auction-price").textContent =
+          auctionPrice ? formatCurrency(auctionPrice) : "N/A";
+        document.getElementById("property-buying-price").textContent =
+          buyingPrice ? formatCurrency(buyingPrice) : "N/A";
+        document.getElementById("property-service-cost").textContent =
+          serviceCost ? formatCurrency(serviceCost) : "N/A";
+        document.getElementById("property-booking-fee").textContent = bookingFee
+          ? formatCurrency(bookingFee)
+          : "N/A";
+
+        document.getElementById("property-estimated-price").textContent =
+          estimatedPrice ? formatCurrency(estimatedPrice) : "N/A";
+
+        // Selling price and profit
+        if (sellingPrice) {
+          document.getElementById("property-selling-price").textContent =
+            sellingPrice ? formatCurrency(sellingPrice) : "N/A";
+          document
+            .getElementById("property-selling-price-container")
+            .classList.remove("hidden");
+        } else {
+          document
+            .getElementById("property-selling-price-container")
+            .classList.add("hidden");
+        }
+
+        if (profit) {
+          document.getElementById("property-profit").textContent = profit
+            ? formatCurrency(profit)
+            : "N/A";
+          document
+            .getElementById("property-profit-container")
+            .classList.remove("hidden");
+        } else {
+          document
+            .getElementById("property-profit-container")
+            .classList.add("hidden");
+        }
+
+        // Dates
+        document.getElementById("property-listed-date").textContent = listedDate
+          ? new Date(listedDate).toLocaleDateString()
+          : "N/A";
+        document.getElementById("property-buying-date").textContent = buyingDate
+          ? new Date(buyingDate).toLocaleDateString()
+          : "N/A";
+        document.getElementById("property-auction-date").textContent =
+          auctionDate ? new Date(auctionDate).toLocaleDateString() : "N/A";
+
+        // Misc
+        document.getElementById("property-bedrooms").textContent =
+          bedrooms || "N/A";
+        document.getElementById("property-bathrooms").textContent =
+          bathrooms || "N/A";
+        document.getElementById("property-dining-rooms").textContent =
+          diningRooms || "N/A";
+        document.getElementById("property-square-feet").textContent =
+          squareFeet || "N/A";
+
+        // Contact link
+        document.getElementById(
+          "contact-link"
+        ).href = `/contact/?property=${propertyId}`;
+
+        //fetch propery stories
+        loadStories(propertyId);
+        // Fetch property images
+        fetchPropertyImages(propertyId);
+
+        // Show the modal
+        modalBg.classList.remove("hidden");
+        propertyModal.classList.remove("hidden");
+        document.body.style.overflow = "hidden"; // Prevent scrolling of background content
+      });
+    });
+    // fetch propery story usnig ajax
+    function loadStories(propertyId) {
+      fetch(`/api/stories/${propertyId}/`)
+        .then((response) => response.json())
+        .then((data) => {
+          const storyList = document.getElementById("story-list");
+          storyList.innerHTML = ""; // clear current content
+
+          if (data.stories.length === 0) {
+            storyList.innerHTML =
+              '<p class="text-sm text-gray-500">No stories yet.</p>';
+          } else {
+            data.stories.forEach((story) => {
+              const storyItem = document.createElement("div");
+              storyItem.className =
+                "w-full bg-gray-100 rounded-lg p-4 shadow-md";
+              storyItem.innerHTML = `
+                        <p class="text-sm text-gray-700 mt-2">${story.message}</p>
+                        <p class="text-xs text-gray-400 mt-1">${story.timestamp}</p>
+                        `;
+              storyList.appendChild(storyItem);
+            });
+          }
+        })
+        .catch((error) => {
+          console.error("Error loading stories:", error);
+        });
+    }
+    // Fetch property images via AJAX
+    function fetchPropertyImages(propertyId) {
+      // Make AJAX request to get property images
+      fetch(`/api/property/${propertyId}/images/`)
+        .then((response) => response.json())
+        .then((data) => {
+          // Clear any existing images
+          const imageGrid = document.getElementById("property-image-grid");
+          imageGrid.innerHTML = "";
+
+          const galleryContainer = document.getElementById("gallery-container");
+          galleryContainer.innerHTML = "";
+
+          // If no images are returned, show placeholder
+          if (data.length === 0) {
+            imageGrid.innerHTML = `
+                                <div class="col-span-4 h-full flex items-center justify-center bg-gray-100">
+                                    <p class="text-gray-500">No images available</p>
+                                </div>
+                            `;
+            return;
+          }
+
+          // Update total photos count
+          totalPhotos.textContent = data.length;
+
+          // Add main image (first image)
+          if (data.length > 0) {
+            const mainImageDiv = document.createElement("div");
+            mainImageDiv.className = "col-span-2 row-span-2";
+            mainImageDiv.innerHTML = `
+                                <img src="${data[0].image}" alt="Main Property Image" class="w-full h-full object-contain">
+                            `;
+            imageGrid.appendChild(mainImageDiv);
+          }
+
+          // Add next 3 images to grid (or fewer if less than 4 total)
+          for (let i = 1; i < Math.min(5, data.length); i++) {
+            const imgDiv = document.createElement("div");
+            imgDiv.className = i === 4 ? "relative" : "";
+
+            // For the last visible image, add "See all photos" button if there are more than 4 images
+            if (i === 4 && data.length > 5) {
+              imgDiv.innerHTML = `
+                                    <img src="${
+                                      data[i].image
+                                    }" alt="Property Image ${
+                i + 1
+              }" class="w-full h-full object-cover">
+                                    <button id="view-all-photos" class="absolute inset-0 bg-black bg-opacity-50 text-white flex items-center justify-center">
+                                        <div>
+                                            <i class="fas fa-th-large text-xl block text-center"></i>
+                                            <span>See all ${
+                                              data.length
+                                            } photos</span>
+                                        </div>
+                                    </button>
+                                `;
+            } else {
+              imgDiv.innerHTML = `
+                                    <img src="${
+                                      data[i].image
+                                    }" alt="Property Image ${
+                i + 1
+              }" class="w-full h-full object-cover">
+                                `;
+            }
+
+            imageGrid.appendChild(imgDiv);
+          }
+
+          // Add all images to gallery view
+          data.forEach((img, index) => {
+            const galleryItem = document.createElement('div');
+            galleryItem.className = 'w-full aspect-[4/3] overflow-hidden rounded-lg'; // Fixed ratio (4:3)
+
+            galleryItem.innerHTML = `
+              <img 
+                src="${img.image}" 
+                alt="Property Image ${index + 1}" 
+                class="w-full h-full object-cover"
+              />
+            `;
+
+            galleryContainer.appendChild(galleryItem);
+          });
+
+          // Reattach view all photos button event
+          const viewAllPhotosBtn = document.getElementById("view-all-photos");
+          if (viewAllPhotosBtn) {
+            viewAllPhotosBtn.addEventListener("click", () => {
+              propertyInfo.classList.add("hidden");
+              photoGallery.classList.remove("hidden");
+            });
+          }
+
+          // Setup intersection observer for gallery photos
+          setupIntersectionObserver();
+        })
+        .catch((error) => {
+          console.error("Error fetching property images:", error);
+          // Show placeholder if error
+          document.getElementById("property-image-grid").innerHTML = `
+                            <div class="col-span-4 h-full flex items-center justify-center bg-gray-100">
+                                <p class="text-gray-500">Error loading images</p>
+                            </div>
+                        `;
+        });
+    }
+    // Setup intersection observer for gallery photos
+    function setupIntersectionObserver() {
+      const photoItems = document.querySelectorAll(".photo-item");
+      const options = {
+        root: null,
+        rootMargin: "0px",
+        threshold: 0.7, // When 70% of the item is visible
+      };
+
+      // Clear existing observer if any
+      if (window.galleryObserver) {
+        window.galleryObserver.disconnect();
+      }
+
+      window.galleryObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const index = entry.target.dataset.index;
+            currentPhoto.textContent = index;
+          }
+        });
+      }, options);
+
+      photoItems.forEach((item) => {
+        window.galleryObserver.observe(item);
+      });
+    }
+
+    // Close modal functions
+    const closeModalFunction = () => {
+      modalBg.classList.add("hidden");
+      propertyModal.classList.add("hidden");
+      document.body.style.overflow = ""; // Restore scrolling
+      // Reset to property info view when closing
+      propertyInfo.classList.remove("hidden");
+      photoGallery.classList.add("hidden");
+    };
+
+    closeModal.addEventListener("click", closeModalFunction);
+    backToSearch.addEventListener("click", closeModalFunction);
+    modalBg.addEventListener("click", closeModalFunction);
+
+    // Back to property info button
+    backToInfo.addEventListener("click", () => {
+      photoGallery.classList.add("hidden");
+      propertyInfo.classList.remove("hidden");
+    });
+  });
+</script>
+{% endblock scripts %}

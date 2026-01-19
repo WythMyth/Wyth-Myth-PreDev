@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Make Payment - {{ bank.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex">
+
+    <!-- Sidebar (same as dashboard) -->
+    <aside class="w-64 bg-white shadow-md h-screen p-6 space-y-4">
+        <h2 class="text-xl font-bold mb-4">Dashboard</h2>
+        <a href="{% url 'accounts:dashboard' %}" class="block bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded">Dashboard</a>
+        <a href="{% url 'accounts:profile' %}" class="block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Profile</a>
+        <a href="{% url 'accounts:expense_list' %}" class="block bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded">Expenses</a>
+        {% comment %} <a href="{% url 'accounts:payment_banks' %}" class="block bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded">Payment</a> {% endcomment %}
+        <a href="{% url 'accounts:my_payments' %}" class="block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded">My Payments</a>
+        {% if user.is_superuser %}
+        <a href="{% url 'accounts:member_list' %}" class="block bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded">All Members</a>
+        <a href="{% url 'accounts:property_list' %}" class="block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Manage Properties</a>
+        <a href="{% url 'accounts:pending_payments' %}" class="block bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded">Pending Payments</a>
+        <a href="{% url 'media:contact-list' %}" class="block bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded">Contact US</a>
+        <a href="{% url 'media:video-list' %}" class="block bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded">Hero Video</a>
+        {% endif %}
+    </aside>
+
+    <!-- Main content area -->
+    <div class="flex-1 flex flex-col">
+        <!-- Topbar -->
+        <header class="bg-white shadow px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold">Make Payment via {{ bank.name }}</h1>
+            <div class="text-right">
+                <p class="text-green-600 font-bold">Balance: ${{ user.balance }}</p>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="flex-1 p-6">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-2xl font-bold mb-6">Payment Instructions</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="space-y-4">
+                        <h3 class="text-xl font-semibold">Bank Details</h3>
+                        <p>{{ bank.account_details|linebreaks }}</p>
+                        
+                        {% if bank.qr_code %}
+                        <div class="mt-6">
+                            <h3 class="text-xl font-semibold mb-3">Scan QR Code</h3>
+                            <img src="{{ bank.qr_code.url }}" alt="QR Code" class="max-w-xs">
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4">Submit Payment Details</h3>
+                        
+                        <form method="post" enctype="multipart/form-data" class="space-y-4">
+                            {% csrf_token %}
+                            
+                            <div>
+                                <label for="{{ form.amount.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
+                                {{ form.amount }}
+                                {% if form.amount.errors %}
+                                <p class="text-red-500 text-sm mt-1">{{ form.amount.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                            
+                            <div>
+                                <label for="{{ form.receipt.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Payment Receipt</label>
+                                <p class="text-sm text-gray-500 mb-2">Upload screenshot or PDF of payment confirmation</p>
+                                {{ form.receipt }}
+                                {% if form.receipt.errors %}
+                                <p class="text-red-500 text-sm mt-1">{{ form.receipt.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                            
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">
+                                Submit Payment
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

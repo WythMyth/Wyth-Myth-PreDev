@@ -1,0 +1,238 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+
+{% block content %}
+<div class="bg-white m-5 rounded-lg p-6">
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Office Expense Management</h1>
+            <p class="text-gray-600 mt-1">All expenses not related to property (any status)</p>
+        </div>
+        <div class="text-right">
+            <p class="text-sm text-gray-600">Office Manager Balance</p>
+            <p class="text-2xl font-bold text-green-600">${{ office_manager_balance|floatformat:2 }}</p>
+            {% if office_manager %}
+            <p class="text-xs text-gray-500 mt-1">{{ office_manager.get_full_name }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-purple-700 text-sm font-medium">Total Expenses</p>
+                    <p class="text-2xl font-bold text-purple-800 mt-1">{{ total_expenses }}</p>
+                </div>
+                <div class="bg-purple-200 rounded-full p-3">
+                    <svg class="w-8 h-8 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                        </path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-4 border border-yellow-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-yellow-700 text-sm font-medium">Unpaid Amount</p>
+                    <p class="text-2xl font-bold text-yellow-800 mt-1">${{ unpaid_total|floatformat:2 }}</p>
+                </div>
+                <div class="bg-yellow-200 rounded-full p-3">
+                    <svg class="w-8 h-8 text-yellow-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                        </path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-green-700 text-sm font-medium">Paid Amount</p>
+                    <p class="text-2xl font-bold text-green-800 mt-1">${{ paid_total|floatformat:2 }}</p>
+                </div>
+                <div class="bg-green-200 rounded-full p-3">
+                    <svg class="w-8 h-8 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-blue-700 text-sm font-medium">Available Balance</p>
+                    <p class="text-2xl font-bold text-blue-800 mt-1">${{ office_manager_balance|floatformat:2 }}</p>
+                </div>
+                <div class="bg-blue-200 rounded-full p-3">
+                    <svg class="w-8 h-8 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z">
+                        </path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-4 border-gray-300">
+
+    <!-- Debug Info (Development Only) -->
+    {% if debug %}
+    <div class="mb-4 bg-gray-100 border border-gray-300 rounded p-4">
+        <p class="text-xs font-mono">Total Expenses in Queryset: {{ expenses|length }}</p>
+        <p class="text-xs font-mono">Showing Non-Property Expenses Only</p>
+    </div>
+    {% endif %}
+
+    <!-- Expenses Table -->
+    {% if expenses %}
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-200 rounded-lg">
+            <thead class="bg-gradient-to-r from-[#183665] to-[#234a7a] text-white">
+                <tr>
+                    <th class="px-4 py-3 text-left text-sm font-semibold">ID</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold">Date</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold">Purpose</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold">Description</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold">Amount</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold">Created By</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold">Paid By</th>
+                    <!-- <th class="px-4 py-3 text-left text-sm font-semibold">Approval Status</th> -->
+                    <th class="px-4 py-3 text-left text-sm font-semibold">Payment Status</th>
+                    <th class="px-4 py-3 text-center text-sm font-semibold">Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for expense in expenses %}
+                <tr class="hover:bg-gray-50 transition duration-150">
+                    <td class="px-4 py-3 text-sm font-mono text-gray-600">#{{ expense.id }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ expense.expense_date|date:"d M, Y"|default:"N/A" }}
+                    </td>
+                    <td class="px-4 py-3 text-sm font-medium text-gray-800">{{ expense.purpose|truncatewords:5 }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">{{ expense.description|truncatewords:8 }}</td>
+                    <td class="px-4 py-3 text-sm font-bold text-gray-900">${{ expense.amount|floatformat:2 }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ expense.created_by.short_name }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ expense.paid_by_user.short_name }}</td>
+                    <!-- <td class="px-4 py-3">
+                        {% if expense.status == 'approved' %}
+                        <span
+                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            ✓ Approved
+                        </span>
+                        {% elif expense.status == 'rejected' %}
+                        <span
+                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            ✗ Rejected
+                        </span>
+                        {% else %}
+                        <span
+                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            ⏳ Pending
+                        </span>
+                        {% endif %}
+                    </td> -->
+                    <td class="px-4 py-3">
+                        {% if expense.payment_status == 'paid' %}
+                        <span
+                            class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Paid
+                        </span>
+                        {% else %}
+                        <span
+                            class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Unpaid
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        {% if expense.payment_status == 'unpaid' %}
+                        <a href="{% url 'accounts:office_expense_payment' expense.id %}"
+                            class="inline-flex items-center px-4 py-2 bg-[#183665] text-white text-sm font-medium rounded-md hover:bg-[#234a7a] transition duration-150">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z">
+                                </path>
+                            </svg>
+                            Pay Now
+                        </a>
+                        {% else %}
+                        <span
+                            class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-md cursor-not-allowed">
+                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Already Paid
+                        </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="flex justify-center items-center space-x-2 mt-6">
+        {% if page_obj.has_previous %}
+        <a href="?page=1" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition">First</a>
+        <a href="?page={{ page_obj.previous_page_number }}"
+            class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition">Previous</a>
+        {% endif %}
+
+        <span class="px-4 py-2 bg-[#183665] text-white rounded-md">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}"
+            class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition">Next</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}"
+            class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition">Last</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-12">
+        <svg class="mx-auto h-24 w-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+            </path>
+        </svg>
+        <h3 class="mt-4 text-lg font-medium text-gray-900">No Office Expenses</h3>
+        <p class="mt-2 text-sm text-gray-500">No non-property expense has been created yet.</p>
+        <p class="mt-1 text-xs text-gray-400">(Only non-property expenses will be displayed here)</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script> 
+console.log("Office Expense List Page Loaded");
+console.log("Total Expenses:", {{ total_expenses }}); 
+console.log("Office Manager Balance:", {{ office_manager_balance }}); </script>
+{% endblock scripts %}

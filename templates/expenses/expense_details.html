@@ -1,0 +1,18 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white shadow rounded-xl p-6">
+
+    <h2 class="text-2xl font-bold mb-4">Expense Details</h2>
+
+    <div class="grid grid-cols-2 gap-4 text-sm">
+        <div><strong>Date:</strong> {{ expense.expense_date }}</div>
+        <div><strong>Amount:</strong> ${{ expense.amount }}</div>
+        <div><strong>Purpose:</strong> {{ expense.purpose }}</div>
+        <div><strong>Property:</strong> {{ expense.property.name }}</div>
+        <div><strong>Created By:</strong> {{ expense.created_by.short_name }}</div>
+        <div><strong>Paid By:</strong> {{ expense.paid_by_user.short_name|default:"—" }}</div>
+        <div><strong>Status:</strong> {{ expense.status }}</div>
+        <div><strong>Payment Status:</strong> {{ expense.payment_status }}</div>
+    </div>
+</div>
+{% endblock %}

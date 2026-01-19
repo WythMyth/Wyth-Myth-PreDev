@@ -1,0 +1,78 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+
+{% block title %}{% if form.instance.pk %}Edit Recording{% else %}Add Recording{% endif %}{% endblock %}
+
+{% block content %}
+<div class="bg-white m-5 rounded-lg p-4">
+    <h1 class="text-2xl font-bold">
+        {% if form.instance.pk %}Edit Recording{% else %}Add New Recording{% endif %}
+    </h1>
+    <hr class="my-4 border-gray-300">
+
+    <form method="post" class="max-w-full mx-auto space-y-6">
+        {% csrf_token %}
+
+        <!-- Meeting Select -->
+        <div>
+            <label for="{{ form.meeting.id_for_label }}" class="block font-medium mb-1">Meeting</label>
+            <select name="{{ form.meeting.name }}" id="{{ form.meeting.id_for_label }}"
+                class="w-full border border-black rounded-md px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                {% for option in form.fields.meeting.queryset %}
+                    <option value="{{ option.pk }}" {% if form.meeting.value|stringformat:'s' == option.pk|stringformat:'s' %}selected{% endif %}>
+                        {{ option.title }} ({{ option.date }})
+                    </option>
+                {% endfor %}
+            </select>
+            {% if form.meeting.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.meeting.errors.0 }}</p>
+            {% endif %}
+            {% if form.fields.meeting.queryset.count == 0 %}
+                <p class="mt-1 text-sm text-yellow-600">
+                    <i class="fas fa-circle-exclamation mr-1"></i>
+                    No active meetings.
+                    <a href="{% url 'meeting-create' %}" class="text-blue-600 hover:underline">Create one first</a>.
+                </p>
+            {% endif %}
+        </div>
+
+        <!-- Recording URL -->
+        <div>
+            <label for="{{ form.recording_url.id_for_label }}" class="block font-medium mb-1">Recording URL</label>
+            <input type="url" name="{{ form.recording_url.name }}" id="{{ form.recording_url.id_for_label }}"
+                value="{{ form.recording_url.value|default:'' }}"
+                class="w-full border border-black rounded-md px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400">
+            {% if form.recording_url.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.recording_url.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Description -->
+        <div>
+            <label for="{{ form.description.id_for_label }}" class="block font-medium mb-1">
+                Description <span class="text-xs">(Optional)</span>
+            </label>
+            <textarea name="{{ form.description.name }}" id="{{ form.description.id_for_label }}" rows="3"
+                class="w-full border border-black rounded-md px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400">{{ form.description.value|default:'' }}</textarea>
+            {% if form.description.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
+            {% endif %}
+            <p><span class="font-bold">Note:</span> Adding a recording will automatically mark the meeting as expired.</p>
+        </div>
+
+        <!-- Buttons -->
+        <div class="p-6 bg-white rounded-lg shadow-md mx-auto">
+            <div class="flex justify-center space-x-4 mt-6">
+                <button type="submit"
+                    class="px-6 py-2 bg-[#183665] text-white rounded-md transition">
+                    {% if form.instance.pk %}Update{% else %}Add Recording{% endif %}
+                </button>
+                <a href="{% url 'recording-list' %}"
+                    class="px-6 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition">
+                    Cancel
+                </a>
+                
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

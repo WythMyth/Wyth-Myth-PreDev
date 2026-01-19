@@ -1,0 +1,242 @@
+<!-- templates/square_manual_verification.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Square Payment</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            text-align: center;
+        }
+        .square-logo {
+            font-size: 48px;
+            color: #006AFF;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .payment-details {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 5px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #495057;
+        }
+        .detail-value {
+            color: #212529;
+        }
+        .verification-section {
+            background-color: #fff3cd;
+            border: 2px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .verification-question {
+            font-size: 18px;
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 15px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 15px 30px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        .loading {
+            display: none;
+            color: #007bff;
+            font-weight: bold;
+        }
+        .error-message {
+            color: #dc3545;
+            margin-top: 10px;
+            display: none;
+        }
+        .instructions {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="square-logo">⬜</div>
+        <h1>Square Payment Verification</h1>
+        
+        <div class="instructions">
+            <strong>📋 Instructions:</strong>
+            <ul>
+                <li>You just completed a payment through Square</li>
+                <li>If your payment was successful, click "Yes, Payment Completed"</li>
+                <li>If there was any issue, click "No, Payment Failed"</li>
+                <li>This step helps us confirm your payment status</li>
+            </ul>
+        </div>
+        
+        <div class="payment-details">
+            <div class="detail-row">
+                <span class="detail-label">Amount:</span>
+                <span class="detail-value">${{ amount }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Payment Method:</span>
+                <span class="detail-value">Square Payment</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Session ID:</span>
+                <span class="detail-value">{{ session_id|truncatechars:20 }}</span>
+            </div>
+        </div>
+        
+        <div class="verification-section">
+            <div class="verification-question">
+                Did you successfully complete the Square payment?
+            </div>
+            
+            <button id="btn-success" class="btn btn-success" onclick="verifyPayment(true)">
+                ✅ Yes, Payment Completed
+            </button>
+            
+            <button id="btn-failed" class="btn btn-danger" onclick="verifyPayment(false)">
+                ❌ No, Payment Failed
+            </button>
+            
+            <br><br>
+            
+            <a href="{% url 'accounts:payment_banks' %}" class="btn btn-secondary">
+                🔙 Back to Payment Options
+            </a>
+        </div>
+        
+        <div class="loading" id="loading">
+            ⏳ Processing your verification...
+        </div>
+        
+        <div class="error-message" id="error-message"></div>
+    </div>
+
+    <script>
+        function verifyPayment(isSuccessful) {
+            if (!isSuccessful) {
+                // If payment failed, redirect to payment page
+                window.location.href = "{% url 'accounts:payment_banks' %}?error=square_payment_failed";
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('btn-success').disabled = true;
+            document.getElementById('btn-failed').disabled = true;
+            
+            // Send verification request
+            fetch("{% url 'accounts:square_verify_payment' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: `session_id={{ session_id }}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+                
+                if (data.success) {
+                    // Redirect to success page
+                    window.location.href = data.redirect_url;
+                } else {
+                    // Show error
+                    document.getElementById('error-message').textContent = data.error || 'Verification failed';
+                    document.getElementById('error-message').style.display = 'block';
+                    document.getElementById('btn-success').disabled = false;
+                    document.getElementById('btn-failed').disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error-message').textContent = 'Network error occurred';
+                document.getElementById('error-message').style.display = 'block';
+                document.getElementById('btn-success').disabled = false;
+                document.getElementById('btn-failed').disabled = false;
+            });
+        }
+        
+        // Get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-md mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+            <h1 class="text-xl font-bold text-white">Square Payment</h1>
+            <p class="text-blue-100">Complete your payment securely</p>
+        </div>
+
+        <!-- Payment Details -->
+        <div class="px-6 py-4 bg-gray-50 border-b">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-gray-600">Amount:</span>
+                <span class="text-xl font-bold text-gray-900">${{ amount }}</span>
+            </div>
+            {% if notes %}
+            <div class="flex justify-between items-start">
+                <span class="text-gray-600">Note:</span>
+                <span class="text-gray-800 text-right ml-4">{{ notes }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Square Payment Form -->
+        <div class="p-6">
+            <div id="card-container" class="mb-4"></div>
+            
+            <button id="card-button" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
+                    disabled>
+                Processing...
+            </button>
+            
+            <div id="payment-status" class="mt-4 text-center hidden">
+                <!-- Payment status will be shown here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Square Web Payment SDK -->
+<script type="text/javascript" src="https://sandbox.web.squarecdn.com/v1/square.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    const appId = '{{ square_app_id }}';
+    const locationId = '{{ square_location_id }}';
+    
+    if (!window.Square) {
+        console.error('Square.js failed to load properly');
+        return;
+    }
+
+    const payments = window.Square.payments(appId, locationId);
+    let card;
+
+    try {
+        card = await payments.card();
+        await card.attach('#card-container');
+        
+        const cardButton = document.getElementById('card-button');
+        cardButton.textContent = 'Pay ${{ amount }}';
+        cardButton.disabled = false;
+
+        cardButton.addEventListener('click', async (event) => {
+            event.preventDefault();
+            cardButton.disabled = true;
+            cardButton.textContent = 'Processing...';
+
+            try {
+                const result = await card.tokenize();
+                
+                if (result.status === 'OK') {
+                    const token = result.token;
+                    
+                    // Payment process করার জন্য backend এ পাঠান
+                    const response = await fetch('{% url "accounts:process_square_payment" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({
+                            token: token,
+                            amount: {{ amount_in_cents }},
+                            currency: 'USD',
+                            notes: '{{ notes }}',
+                            user_id: {{ user.id }}
+                        })
+                    });
+
+                    const paymentResult = await response.json();
+                    
+                    if (paymentResult.success) {
+                        // Success page এ redirect করুন
+                        window.location.href = '{% url "accounts:square_success" %}' + 
+                            '?amount={{ amount }}&user_id={{ user.id }}&notes={{ notes }}&transaction_id=' + 
+                            paymentResult.transaction_id;
+                    } else {
+                        throw new Error(paymentResult.error || 'Payment failed');
+                    }
+                    
+                } else {
+                    throw new Error('Card tokenization failed: ' + (result.errors || 'Unknown error'));
+                }
+                
+            } catch (error) {
+                console.error('Payment error:', error);
+                
+                const statusDiv = document.getElementById('payment-status');
+                statusDiv.innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        <strong>Payment failed:</strong> ${error.message}
+                    </div>
+                `;
+                statusDiv.classList.remove('hidden');
+                
+                cardButton.disabled = false;
+                cardButton.textContent = 'Try Again';
+            }
+        });
+        
+    } catch (error) {
+        console.error('Square card initialization error:', error);
+        
+        const statusDiv = document.getElementById('payment-status');
+        statusDiv.innerHTML = `
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                <strong>Error:</strong> Unable to initialize payment form. Please try again or contact support.
+            </div>
+        `;
+        statusDiv.classList.remove('hidden');
+    }
+});
+</script>
+{% endblock content %}

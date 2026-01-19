@@ -1,0 +1,1801 @@
+{% extends "dashboard//layout/dashboardLayout.html" %}
+{% load form_tags %}
+{% block content %}
+  <div class="bg-white rounded-xl shadow p-6 mt-5 mx-4">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+      <h2 class="text-2xl font-bold">{{ view.object.pk|yesno:"Edit Property,Add New Property" }}</h2>
+    </div>
+    <hr class="mb-5 px-5 border-gray-200">
+
+    <form method="post" enctype="multipart/form-data" class="max-w-full mx-auto space-y-6">
+      {% csrf_token %}
+
+      {% if form.errors %}
+      <div class="bg-red-100 text-red-800 p-4 mb-4 rounded">
+        <strong>Form Errors:</strong>
+        <ul>
+          {% for field in form %}
+            {% for error in field.errors %}
+              <li>{{ field.label }}: {{ error }}</li>
+            {% endfor %}
+          {% endfor %}
+          {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if image_formset.errors %}
+        <div class="bg-red-100 text-red-800 p-4 mb-4 rounded">
+          <strong>Image Formset Errors:</strong>
+          <ul>
+            {% for form in image_formset.forms %}
+              {% for field in form %}
+                {% for error in field.errors %}
+                  <li>{{ field.name }}: {{ error }}</li>
+                {% endfor %}
+              {% endfor %}
+              {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+              {% endfor %}
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      <!-- Title -->
+      <div>
+        <label class="block font-medium">{{ form.title.label }}</label>
+        {{ form.title|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+      </div>
+
+      <!-- Description -->
+      <div>
+        <label class="block font-medium">{{ form.description.label }}</label>
+        {{ form.description|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+      </div>
+
+      <!-- Address -->
+      <div>
+        <label class="block font-medium">{{ form.address.label }}</label>
+        {{ form.address|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+      </div>
+
+      <!-- City & State -->
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block font-medium">{{ form.city.label }}</label>
+          {{ form.city|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
+        <div>
+          <label class="block font-medium">{{ form.state.label }}</label>
+          {{ form.state|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
+      </div>
+
+      <!-- Zip, Bedrooms, Bathrooms -->
+      <div class="grid grid-cols-3 gap-4">
+        <div>
+          <label class="block font-medium">{{ form.zip_code.label }}</label>
+          {{ form.zip_code|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
+        <div>
+          <label class="block font-medium">{{ form.bedrooms.label }}</label>
+          {{ form.bedrooms|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
+        <div>
+          <label class="block font-medium">{{ form.bathrooms.label }}</label>
+          {{ form.bathrooms|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
+      </div>
+
+      <!-- Dining Rooms & Square Feet -->
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block font-medium">{{ form.dining_rooms.label }}</label>
+          {{ form.dining_rooms|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
+        <div>
+          <label class="block font-medium">{{ form.square_feet.label }}</label>
+          {{ form.square_feet|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
+      </div>
+
+      <!-- Fixed Box (First Level Buyers) - TOP PRIORITY -->
+      <div class="md:col-span-2 bg-purple-50 p-4 rounded-lg border-2 border-purple-400">
+          <div class="flex justify-between items-center mb-2">
+              <label class="block font-medium text-lg">Invested Layer</label>
+              <span class="text-sm text-purple-700 italic">Priority investors - Fixed amounts, ALL sequences allowed</span>
+          </div>
+          <div class="bg-white p-3 rounded border border-purple-300 space-y-3" id="fixed-box-container">
+              <p class="text-gray-400 text-sm text-center py-2" id="fixed-box-empty">No 1st level buyers yet. Move any sequence from Active Box below.</p>
+          </div>
+      </div>
+
+      <!-- Selected Contributors Section (Active Box) -->
+      <div class="md:col-span-2 bg-green-50 p-4 rounded-lg">
+          <label class="block font-medium mb-2 text-lg">Active Layer</label>
+          <div class="bg-white p-3 rounded border border-green-300 space-y-3" id="selected-contributors-container">
+              <!-- Selected contributors will be dynamically moved here -->
+          </div>
+      </div>
+
+      <!-- Available Contributors Section (Inactive Box) -->
+      <div class="md:col-span-2 bg-blue-50 p-4 rounded-lg">
+          <label class="block font-medium mb-2 text-lg">Non-invested Layer</label>
+          <div class="bg-white p-3 rounded border border-blue-300 space-y-3" id="available-contributors-container">
+              <!-- Available contributors will be dynamically moved here -->
+          </div>
+      </div>
+
+      <!-- Hidden container for initial rendering -->
+      <div style="display: none;" id="initial-contributors-container">
+          {% for user in all_users %}
+              {% with user_contributions|get_item:user.id as contributions %}
+                  {% if contributions %}
+                      {% for contrib in contributions %}
+                      <div class="contributor-row border-b pb-3 mb-3" 
+                          data-user-id="{{ user.id }}" 
+                          data-sequence="{{ contrib.investment_sequence }}"
+                          data-is-fixed="{% if contrib.is_fixed_amount %}true{% else %}false{% endif %}">
+                          <div class="flex items-center justify-between">
+                              <label class="flex items-center min-w-[200px]">
+                                  <input type="checkbox" 
+                                        name="select_user_{{ user.id }}_{{ contrib.investment_sequence }}" 
+                                        value="{{ user.id }}" 
+                                        class="mr-2 contributor-checkbox" 
+                                        data-user-id="{{ user.id }}" 
+                                        data-sequence="{{ contrib.investment_sequence }}" 
+                                        checked>
+                                  <span class="font-medium">{{ user.get_full_name }}</span>
+                                  <span class="ml-2 text-sm text-gray-600">(Balance: $<span class="user-balance-{{ user.id }}">{{ user.balance|floatformat:2 }}</span>)</span>
+                                  <span class="ml-2 text-xs text-blue-600 font-semibold">#{{ contrib.investment_sequence }}</span>
+                                  
+                                  {% if contrib.is_fixed_amount %}
+                                  <span class="ml-2 px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full fixed-badge">1ST LEVEL (#{{ contrib.investment_sequence }})</span>
+                                  {% endif %}
+                              </label>
+                              <div class="flex space-x-2 items-center">
+                                  <label class="flex items-center text-sm hidden">
+                                      <input type="checkbox" 
+                                            name="fixed_{{ user.id }}_{{ contrib.investment_sequence }}" 
+                                            value="1"
+                                            class="mr-1 fixed-checkbox" 
+                                            {% if contrib.is_fixed_amount %}checked{% endif %}>
+                                      {% comment %} <span class="text-green-700 font-semibold">Fixed</span> {% endcomment %}
+                                  </label>
+                                  <input type="number" 
+                                        step="0.01" 
+                                        name="invest_{{ user.id }}_{{ contrib.investment_sequence }}" 
+                                        placeholder="Invest"
+                                        value="{{ contrib.invest_amount }}"
+                                        class="w-24 border rounded px-2 py-1 text-right invest-input"
+                                        data-user-id="{{ user.id }}" 
+                                        data-sequence="{{ contrib.investment_sequence }}">
+                                  
+                                  <input type="number" 
+                                        step="0.000001" 
+                                        name="using_{{ user.id }}_{{ contrib.investment_sequence }}" 
+                                        placeholder="Used"
+                                        value="{{ contrib.contribution }}"
+                                        class="w-24 border rounded px-2 py-1 text-right using-input" 
+                                        readonly>
+                                  
+                                  <input type="number" 
+                                        step="0.01" 
+                                        name="remain_{{ user.id }}_{{ contrib.investment_sequence }}" 
+                                        placeholder="Remain"
+                                        value="{{ contrib.remaining }}"
+                                        class="w-24 border rounded px-2 py-1 text-right remain-input" 
+                                        readonly>
+                                  
+                                  <input type="text" 
+                                        value="{% if contrib.ratio %}{{ contrib.ratio|floatformat:2 }}%{% endif %}" 
+                                        readonly
+                                        class="w-20 border rounded px-2 py-1 text-right ratio-input">
+                                  
+                                  {% comment %} <button type="button" 
+                                          class="remove-row-btn text-red-500 hover:text-red-700 font-bold text-xl px-2" 
+                                          data-user-id="{{ user.id }}" 
+                                          data-sequence="{{ contrib.investment_sequence }}" 
+                                          title="Remove this investment">
+                                      ×
+                                  </button> {% endcomment %}
+                              </div>
+                          </div>
+                          
+                          <div class="grid grid-cols-5 gap-3 mt-2 ml-6">
+                              <div>
+                                  <label class="block text-xs text-gray-600 mb-1">Investment Date</label>
+                                  <input type="date" 
+                                        name="date_{{ user.id }}_{{ contrib.investment_sequence }}" 
+                                        class="w-full border rounded px-2 py-1 text-sm date-input"
+                                        value="{% if contrib.investment_date %}{{ contrib.investment_date|date:'Y-m-d' }}{% else %}{{ default_investment_date }}{% endif %}"
+                                        data-user-id="{{ user.id }}" 
+                                        data-sequence="{{ contrib.investment_sequence }}">
+                              </div>
+                              <div>
+                                  <label class="block text-xs text-gray-600 mb-1">Days</label>
+                                  <input type="number" 
+                                        class="w-full border rounded px-2 py-1 text-sm text-right days-input bg-gray-50" 
+                                        value="{% if contrib.total_days %}{{ contrib.total_days }}{% endif %}" 
+                                        readonly>
+                              </div>
+                              <div>
+                                  <label class="block text-xs text-gray-600 mb-1">Days Prop</label>
+                                  <input type="text" 
+                                        class="w-full border rounded px-2 py-1 text-sm text-right days-proportion-input bg-gray-50" 
+                                        value="{% if contrib.days_proportion %}{{ contrib.days_proportion|floatformat:4 }}{% endif %}" 
+                                        readonly>
+                              </div>
+                              <div>
+                                  <label class="block text-xs text-gray-600 mb-1">Invest Ratio</label>
+                                  <input type="text" 
+                                        class="w-full border rounded px-2 py-1 text-sm text-right invest-ratio-input bg-gray-50" 
+                                        value="{% if contrib.investment_ratio %}{{ contrib.investment_ratio|floatformat:4 }}{% endif %}" 
+                                        readonly>
+                              </div>
+                              <div>
+                                  <label class="block text-xs text-gray-600 mb-1">Profit Weight</label>
+                                  <input type="text" 
+                                        class="w-full border rounded px-2 py-1 text-sm text-right profit-weight-input bg-green-50 font-semibold" 
+                                        value="{% if contrib.profit_weight %}{{ contrib.profit_weight|floatformat:6 }}{% endif %}" 
+                                        readonly>
+                              </div>
+                          </div>
+                          
+                          <div class="mt-2 ml-6 move-to-first-btn-container" 
+                              {% if not contrib.is_fixed_amount and contrib.contribution > 0 %}
+                              style="display: block;"
+                              {% else %}
+                              style="display: none;"
+                              {% endif %}>
+                              <button type="button" 
+                                      class="move-to-first-btn px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg font-semibold shadow-md transition-all"
+                                      data-user-id="{{ user.id }}" 
+                                      data-sequence="{{ contrib.investment_sequence }}">
+                                  ⬆️ Move to 1st Level Buyers Box (#{{ contrib.investment_sequence }})
+                              </button>
+                          </div>
+                      </div>
+                      {% endfor %}
+                      
+                      {% if user.balance > 0 %}
+                      {% with contributions|length|add:1 as next_seq %}
+                      <div class="contributor-row border-b pb-3 mb-3 bg-green-50" 
+                          data-user-id="{{ user.id }}" 
+                          data-sequence="{{ next_seq }}"
+                          data-is-fixed="false">
+                          <div class="flex items-center justify-between">
+                              <label class="flex items-center min-w-[200px]">
+                                  <input type="checkbox" 
+                                        name="select_user_{{ user.id }}_{{ next_seq }}" 
+                                        value="{{ user.id }}" 
+                                        class="mr-2 contributor-checkbox" 
+                                        data-user-id="{{ user.id }}" 
+                                        data-sequence="{{ next_seq }}">
+                                  <span class="font-medium">{{ user.get_full_name }}</span>
+                                  <span class="ml-2 text-sm text-green-700 font-semibold">(Available: ${{ user.balance|floatformat:2 }})</span>
+                                  <span class="ml-2 text-xs text-green-600 font-semibold">#{{ next_seq }}</span>
+                                  <span class="ml-2 text-xs text-green-600 italic">✨ New Investment</span>
+                              </label>
+                              <div class="flex space-x-2 items-center">
+                                  <label class="flex items-center text-sm hidden">
+                                      <input type="checkbox" name="fixed_{{ user.id }}_{{ next_seq }}" value="1" class="mr-1 fixed-checkbox">
+                                      <span class="text-green-700 font-semibold">Fixed</span>
+                                  </label>
+                                  <input type="number" step="0.01" 
+                                        name="invest_{{ user.id }}_{{ next_seq }}" 
+                                        placeholder="Invest" value="0"
+                                        class="w-24 border rounded px-2 py-1 text-right invest-input"
+                                        data-user-id="{{ user.id }}" data-sequence="{{ next_seq }}">
+                                  
+                                  <input type="number" step="0.000001" 
+                                        name="using_{{ user.id }}_{{ next_seq }}" 
+                                        placeholder="Used"
+                                        class="w-24 border rounded px-2 py-1 text-right using-input" readonly>
+                                  
+                                  <input type="number" step="0.01" 
+                                        name="remain_{{ user.id }}_{{ next_seq }}" 
+                                        placeholder="Remain"
+                                        class="w-24 border rounded px-2 py-1 text-right remain-input" readonly>
+                                  
+                                  <input type="text" readonly
+                                        class="w-20 border rounded px-2 py-1 text-right ratio-input">
+                                  
+                                  {% comment %} <button type="button" 
+                                          class="remove-row-btn text-red-500 hover:text-red-700 font-bold text-xl px-2" 
+                                          data-user-id="{{ user.id }}" 
+                                          data-sequence="{{ next_seq }}">×</button> {% endcomment %}
+                              </div>
+                          </div>
+                          <div class="grid grid-cols-5 gap-3 mt-2 ml-6">
+                              <div>
+                                  <label class="block text-xs text-gray-600 mb-1">Investment Date</label>
+                                  <input type="date" name="date_{{ user.id }}_{{ next_seq }}" 
+                                        class="w-full border rounded px-2 py-1 text-sm date-input"
+                                        value="{{ default_investment_date }}"
+                                        data-user-id="{{ user.id }}" data-sequence="{{ next_seq }}">
+                              </div>
+                              <div><label class="block text-xs text-gray-600 mb-1">Days</label>
+                                  <input type="number" class="w-full border rounded px-2 py-1 text-sm text-right days-input bg-gray-50" readonly></div>
+                              <div><label class="block text-xs text-gray-600 mb-1">Days Prop</label>
+                                  <input type="text" class="w-full border rounded px-2 py-1 text-sm text-right days-proportion-input bg-gray-50" readonly></div>
+                              <div><label class="block text-xs text-gray-600 mb-1">Invest Ratio</label>
+                                  <input type="text" class="w-full border rounded px-2 py-1 text-sm text-right invest-ratio-input bg-gray-50" readonly></div>
+                              <div><label class="block text-xs text-gray-600 mb-1">Profit Weight</label>
+                                  <input type="text" class="w-full border rounded px-2 py-1 text-sm text-right profit-weight-input bg-green-50 font-semibold" readonly></div>
+                          </div>
+                      </div>
+                      {% endwith %}
+                      {% endif %}
+                  {% else %}
+                      <div class="contributor-row border-b pb-3 mb-3 bg-yellow-50" 
+                          data-user-id="{{ user.id }}" 
+                          data-sequence="1"
+                          data-is-fixed="false">
+                          <div class="flex items-center justify-between">
+                              <label class="flex items-center min-w-[200px]">
+                                  <input type="checkbox" 
+                                        name="select_user_{{ user.id }}_1" 
+                                        value="{{ user.id }}" 
+                                        class="mr-2 contributor-checkbox" 
+                                        data-user-id="{{ user.id }}" 
+                                        data-sequence="1"
+                                        {% if not view.object.pk %}checked{% endif %}>
+                                  <span class="font-medium">{{ user.get_full_name }}</span>
+                                  <span class="ml-2 text-sm text-gray-600">(Balance: $<span class="user-balance-{{ user.id }}">{{ user.balance|floatformat:2 }}</span>)</span>
+                                  <span class="ml-2 text-xs text-blue-600 font-semibold">#1</span>
+                                  {% if view.object.pk %}
+                                  <span class="ml-2 text-xs text-orange-600 italic">🆕 New Investor</span>
+                                  {% endif %}
+                              </label>
+                              <div class="flex space-x-2 items-center">
+                                  <label class="flex items-center text-sm hidden">
+                                      <input type="checkbox" name="fixed_{{ user.id }}_1" value="1" class="mr-1 fixed-checkbox">
+                                      <span class="text-green-700 font-semibold">Fixed</span>
+                                  </label>
+                                  <input type="number" step="0.01" 
+                                        name="invest_{{ user.id }}_1" 
+                                        placeholder="Invest"
+                                        value="{% if not view.object.pk %}{{ user.balance }}{% else %}0{% endif %}"
+                                        class="w-24 border rounded px-2 py-1 text-right invest-input"
+                                        data-user-id="{{ user.id }}" data-sequence="1">
+                                  
+                                  <input type="number" step="0.000001" 
+                                        name="using_{{ user.id }}_1" 
+                                        placeholder="Used"
+                                        class="w-24 border rounded px-2 py-1 text-right using-input" readonly>
+                                  
+                                  <input type="number" step="0.01" 
+                                        name="remain_{{ user.id }}_1" 
+                                        placeholder="Remain"
+                                        class="w-24 border rounded px-2 py-1 text-right remain-input" readonly>
+                                  
+                                  <input type="text" readonly
+                                        class="w-20 border rounded px-2 py-1 text-right ratio-input">
+                                  
+                                  {% comment %} <button type="button" 
+                                          class="remove-row-btn text-red-500 hover:text-red-700 font-bold text-xl px-2" 
+                                          data-user-id="{{ user.id }}" 
+                                          data-sequence="1">×</button> {% endcomment %}
+                              </div>
+                          </div>
+                          <div class="grid grid-cols-5 gap-3 mt-2 ml-6">
+                              <div>
+                                  <label class="block text-xs text-gray-600 mb-1">Investment Date</label>
+                                  <input type="date" name="date_{{ user.id }}_1" 
+                                        class="w-full border rounded px-2 py-1 text-sm date-input"
+                                        value="{{ default_investment_date }}"
+                                        data-user-id="{{ user.id }}" data-sequence="1">
+                              </div>
+                              <div><label class="block text-xs text-gray-600 mb-1">Days</label>
+                                  <input type="number" class="w-full border rounded px-2 py-1 text-sm text-right days-input bg-gray-50" readonly></div>
+                              <div><label class="block text-xs text-gray-600 mb-1">Days Prop</label>
+                                  <input type="text" class="w-full border rounded px-2 py-1 text-sm text-right days-proportion-input bg-gray-50" readonly></div>
+                              <div><label class="block text-xs text-gray-600 mb-1">Invest Ratio</label>
+                                  <input type="text" class="w-full border rounded px-2 py-1 text-sm text-right invest-ratio-input bg-gray-50" readonly></div>
+                              <div><label class="block text-xs text-gray-600 mb-1">Profit Weight</label>
+                                  <input type="text" class="w-full border rounded px-2 py-1 text-sm text-right profit-weight-input bg-green-50 font-semibold" readonly></div>
+                          </div>
+                          
+                          <div class="mt-2 ml-6 move-to-first-btn-container" style="display: none;">
+                              <button type="button" 
+                                      class="move-to-first-btn px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg font-semibold shadow-md transition-all"
+                                      data-user-id="{{ user.id }}" 
+                                      data-sequence="1">
+                                  ⬆️ Move to 1st Level Buyers Box (#1)
+                              </button>
+                          </div>
+                      </div>
+                  {% endif %}
+              {% endwith %}
+          {% endfor %}
+      </div>
+
+      <!-- Summary Row -->
+      <div class="md:col-span-2 mt-4 p-3 bg-gradient-to-r from-indigo-500 to-red-600 rounded text-white">
+          <div class="flex justify-between items-center font-semibold">
+              <span class="text-lg">Total:</span>
+              <div class="flex space-x-4">
+                  <span>Fixed: $<span id="total-fixed">0.00</span></span>
+                  <span>Active: $<span id="total-active">0.00</span></span>
+                  <span>Invest: $<span id="total-invest">0.00</span></span>
+                  <span>Used: $<span id="total-used">0.00</span></span>
+                  <span>Remain: $<span id="total-remain">0.00</span></span>
+              </div>
+          </div>
+      </div>
+
+      <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const fixedBox = document.getElementById('fixed-box-container');
+            const selectedBox = document.getElementById('selected-contributors-container');
+            const availableBox = document.getElementById('available-contributors-container');
+            const initialContainer = document.getElementById('initial-contributors-container');
+            const propertyPrice = parseFloat('{{ view.object.price|default:0 }}') || 0;
+
+            // Initialize containers
+            function initializeContainers() {
+              selectedBox.innerHTML = '';
+              availableBox.innerHTML = '';
+
+              const rows = initialContainer.querySelectorAll('.contributor-row');
+
+              // ✅ Track which users have rows going where
+              const userRowStatus = {};
+
+              // First pass: categorize all rows
+              rows.forEach(row => {
+                const userId = row.dataset.userId;
+                const isFixed = row.dataset.isFixed === 'true';
+                const checkbox = row.querySelector('.contributor-checkbox');
+                const usingInput = row.querySelector('.using-input');
+                const usedAmount = parseFloat(usingInput?.value) || 0;
+
+                // 🔥 CRITICAL: Row should ONLY be checked if it has actual usage
+                const shouldBeChecked = usedAmount > 0;
+
+                if (!userRowStatus[userId]) {
+                  userRowStatus[userId] = {
+                    hasFixedRow: false,
+                    hasActiveRow: false,
+                    hasInactiveRow: false,
+                    hasNewInvestmentRow: false
+                  };
+                }
+
+                if (isFixed) {
+                  userRowStatus[userId].hasFixedRow = true;
+                } else if (shouldBeChecked) {
+                  userRowStatus[userId].hasActiveRow = true;
+                } else {
+                  userRowStatus[userId].hasInactiveRow = true;
+                }
+              });
+
+              rows.forEach(row => {
+                const checkbox = row.querySelector('.contributor-checkbox');
+                const isFixed = row.dataset.isFixed === 'true';
+                const sequence = parseInt(row.dataset.sequence);
+                const userId = row.dataset.userId;
+                const clonedRow = row.cloneNode(true);
+
+                // 🔥 CRITICAL FIX: Determine if row should be active based on USAGE, not checkbox
+                const clonedCheckbox = clonedRow.querySelector('.contributor-checkbox');
+                const clonedUsingInput = clonedRow.querySelector('.using-input');
+                const usedAmount = parseFloat(clonedUsingInput?.value) || 0;
+
+                // ✅ Rule: Row is "active" ONLY if it has actual usage OR is explicitly checked
+                const shouldBeActive = usedAmount > 0 || (clonedCheckbox && clonedCheckbox.checked);
+
+                // 🔥 CRITICAL: For active rows, set invest amount = use amount
+                const investInput = clonedRow.querySelector('.invest-input');
+                const usingInput = clonedRow.querySelector('.using-input');
+
+                if (usingInput && investInput) {
+                  const usedAmount = parseFloat(usingInput.value) || 0;
+                  if (usedAmount > 0) {
+                    // Store original invest amount
+                    const currentInvest = parseFloat(investInput.value) || 0;
+                    investInput.setAttribute('data-original-invest', currentInvest);
+
+                    // Set invest amount = use amount for active investments
+                    investInput.value = usedAmount.toFixed(2);
+
+                    // Update remain amount
+                    const remainInput = clonedRow.querySelector('.remain-input');
+                    if (remainInput) {
+                      const remaining = currentInvest - usedAmount;
+                      remainInput.value = remaining.toFixed(2);
+                    }
+
+                    console.log(`💰 Set invest amount = use amount: ${usedAmount.toFixed(2)} (User: ${userId}, Seq: ${sequence})`);
+                  }
+                }
+
+                attachRowEventListeners(clonedRow);
+
+                // 🔒 Fixed Box Logic - ALL sequences can be in fixed box
+                if (isFixed) {
+                  const emptyMsg = fixedBox.querySelector('#fixed-box-empty');
+                  if (emptyMsg) emptyMsg.remove();
+
+                  fixedBox.appendChild(clonedRow);
+                  clonedRow.classList.add('bg-purple-100', 'border-purple-300');
+                  clonedRow.classList.remove('bg-green-50', 'bg-yellow-50');
+
+                  const chk = clonedRow.querySelector('.contributor-checkbox');
+                  if (chk) chk.checked = true;
+
+                  const moveBtn = clonedRow.querySelector('.move-to-first-btn-container');
+                  if (moveBtn) moveBtn.style.display = 'none';
+
+                  const fixedCheckbox = clonedRow.querySelector('.fixed-checkbox');
+                  if (fixedCheckbox) {
+                    fixedCheckbox.checked = true;
+                    fixedCheckbox.disabled = false;
+
+                    const fixedLabel = fixedCheckbox.closest('label');
+                    if (fixedLabel) {
+                      fixedLabel.style.visibility = 'hidden';
+                      fixedLabel.style.position = 'absolute';
+                    }
+                  }
+
+                  const investInputFixed = clonedRow.querySelector('.invest-input');
+                  if (investInputFixed) investInputFixed.readOnly = true;
+
+                } else if (shouldBeActive) {
+                  // ✅ Row has usage OR explicitly checked - goes to Active Box
+                  selectedBox.appendChild(clonedRow);
+                  clonedRow.classList.remove('bg-green-50', 'bg-yellow-50');
+
+                  // Force checkbox to be checked
+                  if (clonedCheckbox) {
+                    clonedCheckbox.checked = true;
+                  }
+
+                  const moveBtn = clonedRow.querySelector('.move-to-first-btn-container');
+
+                  if (moveBtn && usedAmount > 0) {
+                    moveBtn.style.display = 'block';
+                  }
+
+                  // Apply calculation for active rows
+                  applyNewCalculation(clonedRow);
+
+                  console.log(`✅ Row in Active Box (User: ${userId}, Seq: ${sequence}, Used: ${usedAmount.toFixed(2)})`);
+
+                } else {
+                  // ✅ No usage and not checked = Inactive Box
+                  availableBox.appendChild(clonedRow);
+                  clonedRow.classList.add('bg-green-50');
+
+                  // Force checkbox to be unchecked
+                  if (clonedCheckbox) {
+                    clonedCheckbox.checked = false;
+                  }
+
+                  const moveBtn = clonedRow.querySelector('.move-to-first-btn-container');
+                  if (moveBtn) moveBtn.style.display = 'none';
+
+                  // Clear all calculations
+                  clearCalculations(clonedRow);
+
+                  console.log(`📦 Row in Inactive Box (User: ${userId}, Seq: ${sequence}, Used: $0.00)`);
+                }
+              });
+
+              initialContainer.remove();
+              updateTotals();
+              updateAllCalculations();
+            }
+
+            // Move to 1st Level Buyers Box
+            function moveToFirstLevel(button) {
+              const row = button.closest('.contributor-row');
+              const userId = button.dataset.userId;
+              const sequence = button.dataset.sequence;
+
+              const checkbox = row.querySelector('.contributor-checkbox');
+              const fixedCheckbox = row.querySelector('.fixed-checkbox');
+              const investInput = row.querySelector('.invest-input');
+              const usingInput = row.querySelector('.using-input');
+              const remainInput = row.querySelector('.remain-input');
+
+              const usedAmount = parseFloat(usingInput.value) || 0;
+
+              if (usedAmount === 0) {
+                alert('❌ No amount used! Purchase property first.');
+                return;
+              }
+
+              const userName = row.querySelector('.font-medium').textContent.trim();
+
+              if (confirm(`${userName} (Sequence #${sequence}) will be moved to 1st Level Buyers Box?\n\n` +
+                `Used Amount: $${usedAmount.toFixed(2)}\n\n` +
+                `If you do this:\n✓ Investment amount = Used amount\n✓ Fixed contribution will be applied\n✓ Will get priority in profit distribution`)) {
+
+                // 🔥 CRITICAL: Set invest amount = used amount
+                investInput.value = usedAmount.toFixed(2);
+                remainInput.value = '0.00';
+
+                // Mark as fixed
+                fixedCheckbox.checked = true;
+                fixedCheckbox.disabled = false;
+                row.dataset.isFixed = 'true';
+                checkbox.checked = true;
+
+                // Make invest input readonly
+                investInput.readOnly = true;
+
+                // Add fixed badge
+                let badge = row.querySelector('.fixed-badge');
+                if (!badge) {
+                  badge = document.createElement('span');
+                  badge.className = 'ml-2 px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full fixed-badge';
+                  badge.textContent = `1ST LEVEL (#${sequence})`;
+                  checkbox.closest('label').appendChild(badge);
+                } else {
+                  badge.textContent = `1ST LEVEL (#${sequence})`;
+                }
+
+                // Hide fixed checkbox label
+                const fixedLabel = fixedCheckbox.closest('label');
+                if (fixedLabel) {
+                  fixedLabel.style.visibility = 'hidden';
+                  fixedLabel.style.position = 'absolute';
+                }
+
+                // Remove empty message if exists
+                const emptyMsg = fixedBox.querySelector('#fixed-box-empty');
+                if (emptyMsg) emptyMsg.remove();
+
+                // Move to Fixed Box
+                fixedBox.appendChild(row);
+                row.classList.add('bg-purple-100', 'border-purple-300');
+                row.classList.remove('bg-green-50', 'bg-yellow-50');
+
+                // Hide move button
+                const moveBtn = row.querySelector('.move-to-first-btn-container');
+                if (moveBtn) moveBtn.style.display = 'none';
+
+                // ✅ FIXED: শুধুমাত্র তখনই নতুন row create করবে যখন inactive box-এ কোনো sequence নেই
+                const existingInactiveRows = availableBox.querySelectorAll(`[data-user-id="${userId}"]`);
+                const balanceSpan = document.querySelector(`.user-balance-${userId}`);
+                const currentBalance = balanceSpan ? parseFloat(balanceSpan.textContent) || 0 : 0;
+                const originalInvest = parseFloat(row.querySelector('.invest-input').getAttribute('data-original-invest')) || parseFloat(investInput.getAttribute('data-original-invest')) || 0;
+                const remainingBalance = originalInvest - usedAmount;
+
+                // শুধুমাত্র তখনই নতুন row create করবে যদি:
+                // 1. Remaining balance > 0
+                // 2. Inactive box-এ এই user-এর কোনো row নেই
+                if (remainingBalance > 0 && existingInactiveRows.length === 0) {
+                  console.log(`✨ Creating new row for user ${userId} (remaining: $${remainingBalance.toFixed(2)})`);
+                  createNewRowForUser(userId, userName, remainingBalance, false);
+                } else if (existingInactiveRows.length > 0) {
+                  console.log(`ℹ️ User ${userId} already has ${existingInactiveRows.length} row(s) in Inactive Box - skipping new row creation`);
+                }
+
+                console.log(`Moved user ${userId} Sequence #${sequence} to 1st Level (Fixed: $${usedAmount.toFixed(2)})`);
+
+                updateTotals();
+                updateAllCalculations();
+              }
+            }
+
+            // Create new row for remaining balance
+            function createNewRowForUser(userId, userName, remainingBalance, moveToActive = false) {
+              const allSequences = Array.from(document.querySelectorAll(`[data-user-id="${userId}"]`))
+                .map(r => parseInt(r.dataset.sequence))
+                .filter(s => !isNaN(s));
+              const nextSequence = Math.max(...allSequences, 0) + 1;
+
+              const defaultDate = document.querySelector('.date-input')?.value || new Date().toISOString().split('T')[0];
+
+              const newRow = document.createElement('div');
+              newRow.className = 'contributor-row border-b pb-3 mb-3 bg-green-50';
+              newRow.setAttribute('data-user-id', userId);
+              newRow.setAttribute('data-sequence', nextSequence);
+              newRow.setAttribute('data-is-fixed', 'false');
+
+              newRow.innerHTML = `
+            <div class="flex items-center justify-between">
+                <label class="flex items-center min-w-[200px]">
+                    <input type="checkbox" 
+                          name="select_user_${userId}_${nextSequence}" 
+                          value="${userId}" 
+                          class="mr-2 contributor-checkbox" 
+                          data-user-id="${userId}" 
+                          data-sequence="${nextSequence}">
+                    <span class="font-medium">${userName}</span>
+                    <span class="ml-2 text-sm text-green-700 font-semibold">(Available: ${remainingBalance.toFixed(2)})</span>
+                    <span class="ml-2 text-xs text-green-600 font-semibold">#${nextSequence}</span>
+                    <span class="ml-2 text-xs text-green-600 italic">✨ New Investment</span>
+                </label>
+                <div class="flex space-x-2 items-center">
+                    <label class="flex items-center text-sm">
+                        <input type="checkbox" name="fixed_${userId}_${nextSequence}" value="1" class="mr-1 fixed-checkbox">
+                        <span class="text-green-700 font-semibold">Fixed</span>
+                    </label>
+                    <input type="number" step="0.01" 
+                          name="invest_${userId}_${nextSequence}" 
+                          placeholder="Invest" value="${remainingBalance.toFixed(2)}"
+                          class="w-24 border rounded px-2 py-1 text-right invest-input"
+                          data-user-id="${userId}" data-sequence="${nextSequence}">
+                    
+                    <input type="number" step="0.000001" 
+                          name="using_${userId}_${nextSequence}" 
+                          placeholder="Used"
+                          class="w-24 border rounded px-2 py-1 text-right using-input" readonly>
+                    
+                    <input type="number" step="0.01" 
+                          name="remain_${userId}_${nextSequence}" 
+                          placeholder="Remain"
+                          class="w-24 border rounded px-2 py-1 text-right remain-input" readonly>
+                    
+                    <input type="text" readonly
+                          class="w-20 border rounded px-2 py-1 text-right ratio-input">
+                    
+                    <button type="button" 
+                            class="remove-row-btn text-red-500 hover:text-red-700 font-bold text-xl px-2" 
+                            data-user-id="${userId}" 
+                            data-sequence="${nextSequence}">×</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-5 gap-3 mt-2 ml-6">
+                <div>
+                    <label class="block text-xs text-gray-600 mb-1">Investment Date</label>
+                    <input type="date" name="date_${userId}_${nextSequence}" 
+                          class="w-full border rounded px-2 py-1 text-sm date-input"
+                          value="${defaultDate}"
+                          data-user-id="${userId}" data-sequence="${nextSequence}">
+                </div>
+                <div><label class="block text-xs text-gray-600 mb-1">Days</label>
+                    <input type="number" class="w-full border rounded px-2 py-1 text-sm text-right days-input bg-gray-50" readonly></div>
+                <div><label class="block text-xs text-gray-600 mb-1">Days Prop</label>
+                    <input type="text" class="w-full border rounded px-2 py-1 text-sm text-right days-proportion-input bg-gray-50" readonly></div>
+                <div><label class="block text-xs text-gray-600 mb-1">Invest Ratio</label>
+                    <input type="text" class="w-full border rounded px-2 py-1 text-sm text-right invest-ratio-input bg-gray-50" readonly></div>
+                <div><label class="block text-xs text-gray-600 mb-1">Profit Weight</label>
+                    <input type="text" class="w-full border rounded px-2 py-1 text-sm text-right profit-weight-input bg-green-50 font-semibold" readonly></div>
+            </div>
+            <div class="mt-2 ml-6 move-to-first-btn-container" style="display: none;">
+                <button type="button" 
+                      class="move-to-first-btn px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg font-semibold shadow-md transition-all"
+                      data-user-id="${userId}" 
+                      data-sequence="${nextSequence}">
+                    ⬆️ Move to 1st Level Buyers Box (#${nextSequence})
+                </button>
+            </div>
+        `;
+
+              if (moveToActive) {
+                selectedBox.appendChild(newRow);
+                // Active Box-এ গেলে checkbox checked করতে হবে
+                const checkbox = newRow.querySelector('.contributor-checkbox');
+                if (checkbox) checkbox.checked = true;
+              } else {
+                availableBox.appendChild(newRow);
+                // Inactive Box-এ গেলে checkbox unchecked রাখতে হবে
+                const checkbox = newRow.querySelector('.contributor-checkbox');
+                if (checkbox) checkbox.checked = false;
+              }
+
+              attachRowEventListeners(newRow);
+              updateTotals();
+
+              // Apply calculation for new row only if in Active Box
+              if (moveToActive) {
+                applyNewCalculation(newRow);
+                updateAllCalculations();
+              }
+
+              console.log(`✨ New row created for user ${userId}, Seq #${nextSequence}, Location: ${moveToActive ? 'Active' : 'Inactive'} Box`);
+            }
+
+            // Move between containers when checkbox changes
+            function moveRowBetweenContainers(checkbox) {
+              const row = checkbox.closest('.contributor-row');
+              const isFixed = row.dataset.isFixed === 'true';
+              const sequence = parseInt(row.dataset.sequence);
+              const userId = row.dataset.userId;
+
+              // Fixed rows - allow unchecking (move back to active)
+              if (isFixed) {
+                if (!checkbox.checked) {
+                  // Move back to active box
+                  const fixedCheckbox = row.querySelector('.fixed-checkbox');
+                  const investInput = row.querySelector('.invest-input');
+                  const usingInput = row.querySelector('.using-input');
+                  const badge = row.querySelector('.fixed-badge');
+
+                  const usedAmount = parseFloat(usingInput?.value) || 0;
+
+                  // 🔥 NEW LOGIC: Keep invest amount = fixed amount, but mark as non-fixed
+                  row.dataset.isFixed = 'false';
+                  fixedCheckbox.checked = false;
+
+                  if (investInput) {
+                    investInput.readOnly = false;
+                    console.log(`🔄 Fixed to Active: User ${userId} Seq #${sequence}, Keeping invest amount = $${investInput.value}`);
+                  }
+
+                  if (badge) badge.remove();
+
+                  const fixedLabel = fixedCheckbox.closest('label');
+                  if (fixedLabel) {
+                    fixedLabel.style.visibility = 'visible';
+                    fixedLabel.style.position = 'static';
+                  }
+
+                  // ✅ Force checkbox to be checked when moving to Active Box
+                  checkbox.checked = true;
+
+                  selectedBox.appendChild(row);
+                  row.classList.remove('bg-purple-100', 'border-purple-300');
+
+                  // Show move button if used amount > 0
+                  const moveBtn = row.querySelector('.move-to-first-btn-container');
+
+                  if (moveBtn && usedAmount > 0) {
+                    moveBtn.style.display = 'block';
+                  }
+
+                  // ✅ Apply NEW CALCULATION for this row
+                  applyNewCalculation(row);
+                  updateAllCalculations();
+
+                  updateTotals();
+                  return;
+                }
+              }
+
+              if (checkbox.checked) {
+                // ✅ AUTO-FILL BALANCE WHEN MOVING TO ACTIVE BOX
+                const investInput = row.querySelector('.invest-input');
+                const balanceSpan = document.querySelector(`.user-balance-${userId}`);
+                const usingInput = row.querySelector('.using-input');
+
+                // 🔥 CRITICAL: If use amount exists, set invest amount = use amount
+                const usedAmount = parseFloat(usingInput?.value) || 0;
+
+                if (usedAmount > 0) {
+                  investInput.value = usedAmount.toFixed(2);
+                  console.log(`💰 Auto-set: User ${userId}, Use amount $${usedAmount.toFixed(2)} -> Invest Amount`);
+                } else if (investInput && balanceSpan) {
+                  const userBalance = parseFloat(balanceSpan.textContent) || 0;
+                  const currentInvest = parseFloat(investInput.value) || 0;
+
+                  if (userBalance > 0 && currentInvest === 0 && !isFixed) {
+                    investInput.value = userBalance.toFixed(2);
+                    console.log(`💰 Auto-filled: User ${userId}, Balance $${userBalance.toFixed(2)} -> Invest Amount`);
+                  }
+                }
+
+                selectedBox.appendChild(row);
+                row.classList.remove('bg-green-50', 'bg-yellow-50');
+
+                // Show move button for ALL sequences if used amount > 0
+                const moveBtn = row.querySelector('.move-to-first-btn-container');
+
+                if (moveBtn && usedAmount > 0 && !isFixed) {
+                  moveBtn.style.display = 'block';
+                }
+
+                // Apply calculation for newly moved active row
+                applyNewCalculation(row);
+                updateAllCalculations();
+
+              } else {
+                // ✅ CLEAR INVEST AMOUNT WHEN MOVING TO INACTIVE BOX
+                const investInput = row.querySelector('.invest-input');
+                if (investInput) {
+                  const usingInput = row.querySelector('.using-input');
+                  const usedAmount = parseFloat(usingInput?.value) || 0;
+
+                  if (usedAmount === 0) {
+                    investInput.value = '0.00';
+                    console.log(`🧹 Cleared invest amount for user ${userId} (moved to inactive)`);
+                  } else {
+                    console.log(`⚠️ Kept invest amount $${investInput.value} (has used amount $${usedAmount})`);
+                  }
+                }
+
+                availableBox.appendChild(row);
+                row.classList.add('bg-green-50');
+
+                const moveBtn = row.querySelector('.move-to-first-btn-container');
+                if (moveBtn) moveBtn.style.display = 'none';
+
+                // Clear calculations for inactive row
+                clearCalculations(row);
+              }
+
+              updateTotals();
+              updateAllCalculations();
+            }
+
+            // Apply NEW CALCULATION for a row (Active Box only)
+            function applyNewCalculation(row) {
+              if (!row.closest('#selected-contributors-container')) return;
+
+              const investInput = row.querySelector('.invest-input');
+              const usingInput = row.querySelector('.using-input');
+              const dateInput = row.querySelector('.date-input');
+              const daysInput = row.querySelector('.days-input');
+              const daysPropInput = row.querySelector('.days-proportion-input');
+              const investRatioInput = row.querySelector('.invest-ratio-input');
+              const profitWeightInput = row.querySelector('.profit-weight-input');
+              const ratioInput = row.querySelector('.ratio-input');
+
+              if (!investInput || !usingInput) return;
+
+              const investAmount = parseFloat(investInput.value) || 0;
+              const usedAmount = parseFloat(usingInput.value) || 0;
+
+              // Calculate days if date is provided
+              let days = 0;
+              if (dateInput && dateInput.value) {
+                const investmentDate = new Date(dateInput.value);
+                const currentDate = new Date();
+
+                if (!isNaN(investmentDate.getTime())) {
+                  const timeDiff = currentDate.getTime() - investmentDate.getTime();
+                  days = Math.floor(timeDiff / (1000 * 3600 * 24));
+                  days = Math.max(0, days);
+                }
+              }
+
+              if (daysInput) daysInput.value = days;
+
+              // Calculate totals for ratios
+              const totalInvest = calculateTotalInvestment();
+              const totalUsed = calculateTotalUsed();
+
+              // Calculate Investment Ratio
+              let investRatio = 0;
+              if (totalInvest > 0 && investAmount > 0) {
+                investRatio = investAmount / totalInvest;
+              }
+              if (investRatioInput) investRatioInput.value = investRatio.toFixed(4);
+
+              // Calculate Days Proportion
+              const allActiveRows = document.querySelectorAll('#selected-contributors-container .contributor-row');
+              let totalDaysValue = 0;
+              allActiveRows.forEach(r => {
+                const dInput = r.querySelector('.days-input');
+                if (dInput) {
+                  totalDaysValue += parseFloat(dInput.value) || 0;
+                }
+              });
+
+              let daysProportion = 0;
+              if (totalDaysValue > 0 && days > 0) {
+                daysProportion = days / totalDaysValue;
+              }
+              if (daysPropInput) daysPropInput.value = daysProportion.toFixed(4);
+
+              let profitWeight = 0;
+              if (investRatio > 0 || daysProportion > 0) {
+                profitWeight = (investRatio * 0.5) + (daysProportion * 0.5);
+              }
+              if (profitWeightInput) profitWeightInput.value = profitWeight.toFixed(6);
+
+              // Calculate Ratio (Used/Invest * 100)
+              let ratio = 0;
+              if (investAmount > 0 && usedAmount > 0) {
+                ratio = (usedAmount / investAmount) * 100;
+              }
+              if (ratioInput) ratioInput.value = ratio.toFixed(2) + '%';
+
+              console.log(`📊 New calculation for row: Invest=$${investAmount}, Used=$${usedAmount}, Days=${days}, Profit Weight=${profitWeight.toFixed(6)}`);
+            }
+
+            // Clear calculations for a row
+            function clearCalculations(row) {
+              const daysInput = row.querySelector('.days-input');
+              const daysPropInput = row.querySelector('.days-proportion-input');
+              const investRatioInput = row.querySelector('.invest-ratio-input');
+              const profitWeightInput = row.querySelector('.profit-weight-input');
+              const ratioInput = row.querySelector('.ratio-input');
+
+              if (daysInput) daysInput.value = '';
+              if (daysPropInput) daysPropInput.value = '';
+              if (investRatioInput) investRatioInput.value = '';
+              if (profitWeightInput) profitWeightInput.value = '';
+              if (ratioInput) ratioInput.value = '';
+            }
+
+            // Update all calculations for active rows
+            function updateAllCalculations() {
+              const activeRows = document.querySelectorAll('#selected-contributors-container .contributor-row');
+              activeRows.forEach(row => {
+                applyNewCalculation(row);
+              });
+            }
+
+            // Calculate total investment
+            function calculateTotalInvestment() {
+              let total = 0;
+
+              // Fixed box investments
+              fixedBox.querySelectorAll('.contributor-row').forEach(row => {
+                const checkbox = row.querySelector('.contributor-checkbox');
+                if (checkbox && checkbox.checked) {
+                  const investVal = parseFloat(row.querySelector('.invest-input')?.value) || 0;
+                  total += investVal;
+                }
+              });
+
+              // Active box investments
+              selectedBox.querySelectorAll('.contributor-row').forEach(row => {
+                const checkbox = row.querySelector('.contributor-checkbox');
+                if (checkbox && checkbox.checked) {
+                  const investVal = parseFloat(row.querySelector('.invest-input')?.value) || 0;
+                  total += investVal;
+                }
+              });
+
+              return total;
+            }
+
+            // Calculate total used amount
+            function calculateTotalUsed() {
+              let total = 0;
+
+              // Fixed box used amounts
+              fixedBox.querySelectorAll('.contributor-row').forEach(row => {
+                const checkbox = row.querySelector('.contributor-checkbox');
+                if (checkbox && checkbox.checked) {
+                  const usedVal = parseFloat(row.querySelector('.using-input')?.value) || 0;
+                  total += usedVal;
+                }
+              });
+
+              // Active box used amounts
+              selectedBox.querySelectorAll('.contributor-row').forEach(row => {
+                const checkbox = row.querySelector('.contributor-checkbox');
+                if (checkbox && checkbox.checked) {
+                  const usedVal = parseFloat(row.querySelector('.using-input')?.value) || 0;
+                  total += usedVal;
+                }
+              });
+
+              return total;
+            }
+
+            // Remove row
+            function removeRow(button) {
+              const row = button.closest('.contributor-row');
+              const userId = button.dataset.userId;
+              const sequence = button.dataset.sequence;
+              const isFixed = row.dataset.isFixed === 'true';
+
+              if (isFixed) {
+                if (!confirm(`⚠️ This is a 1ST LEVEL BUYER (Sequence #${sequence})!\n\nRemoving will lose priority status. Continue?`)) {
+                  return;
+                }
+              }
+
+              if (confirm(`Remove investment #${sequence}?`)) {
+                row.remove();
+
+                if (fixedBox.querySelectorAll('.contributor-row').length === 0) {
+                  fixedBox.innerHTML = '<p class="text-gray-400 text-sm text-center py-2" id="fixed-box-empty">No 1st level buyers yet. Move any sequence from Active Box below.</p>';
+                }
+
+                updateTotals();
+                updateAllCalculations();
+              }
+            }
+
+            // Attach event listeners
+            function attachRowEventListeners(row) {
+              const moveToFirstBtn = row.querySelector('.move-to-first-btn');
+              if (moveToFirstBtn) {
+                moveToFirstBtn.addEventListener('click', function () {
+                  moveToFirstLevel(this);
+                });
+              }
+
+              const removeBtn = row.querySelector('.remove-row-btn');
+              if (removeBtn) {
+                removeBtn.addEventListener('click', function () {
+                  removeRow(this);
+                });
+              }
+
+              const checkbox = row.querySelector('.contributor-checkbox');
+              if (checkbox) {
+                checkbox.addEventListener('change', function () {
+                  moveRowBetweenContainers(this);
+                });
+              }
+
+              const investInput = row.querySelector('.invest-input');
+              if (investInput) {
+                investInput.addEventListener('input', function () {
+                  updateTotals();
+
+                  // Apply calculation for active rows
+                  if (row.dataset.isFixed === 'false' && row.closest('#selected-contributors-container')) {
+                    applyNewCalculation(row);
+                    updateAllCalculations();
+                  }
+
+                  const moveBtn = row.querySelector('.move-to-first-btn-container');
+                  const isFixed = row.dataset.isFixed === 'false';
+                  const investAmt = parseFloat(this.value) || 0;
+
+                  if (moveBtn && isFixed && investAmt > 0) {
+                    moveBtn.style.display = 'block';
+                  }
+                });
+              }
+
+              const fixedCheckbox = row.querySelector('.fixed-checkbox');
+              if (fixedCheckbox) {
+                fixedCheckbox.addEventListener('change', function () {
+                  const row = this.closest('.contributor-row');
+                  const isFixed = this.checked;
+                  row.dataset.isFixed = isFixed.toString();
+
+                  if (isFixed) {
+                    // Stay in Active Box, just mark as fixed
+                    row.classList.add('border-green-500', 'border-2');
+                    this.disabled = false;
+
+                    // Store original invest amount
+                    const investInput = row.querySelector('.invest-input');
+                    if (investInput && !investInput.hasAttribute('data-original-invest')) {
+                      const currentInvest = parseFloat(investInput.value) || 0;
+                      investInput.setAttribute('data-original-invest', currentInvest);
+                    }
+
+                    console.log(`✅ Marked as Fixed in Active Box (User: ${row.dataset.userId}, Sequence: ${row.dataset.sequence})`);
+
+                    // Show move button if used amount > 0
+                    const usingInput = row.querySelector('.using-input');
+                    const usedAmount = parseFloat(usingInput?.value) || 0;
+                    const moveBtn = row.querySelector('.move-to-first-btn-container');
+
+                    if (moveBtn && usedAmount > 0) {
+                      moveBtn.style.display = 'block';
+                    }
+                  } else {
+                    // Remove fixed styling
+                    row.classList.remove('border-green-500', 'border-2');
+                    this.disabled = false;
+
+                    console.log(`↩️ Removed Fixed from Active Box (User: ${row.dataset.userId}, Sequence: ${row.dataset.sequence})`);
+                  }
+
+                  updateTotals();
+                });
+              }
+
+              const usingInput = row.querySelector('.using-input');
+              if (usingInput) {
+                usingInput.addEventListener('input', function () {
+                  const usedAmount = parseFloat(this.value) || 0;
+                  const moveBtn = row.querySelector('.move-to-first-btn-container');
+                  const isFixed = row.dataset.isFixed === 'false';
+
+                  // 🔥 CRITICAL: Auto-set invest amount = use amount for active rows
+                  if (row.dataset.isFixed === 'false' && row.closest('#selected-contributors-container')) {
+                    const investInput = row.querySelector('.invest-input');
+                    if (investInput && usedAmount > 0) {
+                      investInput.value = usedAmount.toFixed(2);
+
+                      // Store original if not already stored
+                      if (!investInput.hasAttribute('data-original-invest')) {
+                        investInput.setAttribute('data-original-invest', usedAmount);
+                      }
+                    }
+                  }
+
+                  if (moveBtn && isFixed && usedAmount > 0) {
+                    moveBtn.style.display = 'block';
+                  } else if (moveBtn && !isFixed) {
+                    moveBtn.style.display = 'none';
+                  }
+
+                  if (row.dataset.isFixed === 'true') {
+                    const investInput = row.querySelector('.invest-input');
+                    if (investInput) {
+                      investInput.value = usedAmount.toFixed(2);
+                    }
+                  }
+
+                  // Update calculation when used amount changes
+                  if (row.dataset.isFixed === 'false' && row.closest('#selected-contributors-container')) {
+                    applyNewCalculation(row);
+                    updateAllCalculations();
+                  }
+
+                  updateTotals();
+                });
+              }
+
+              const dateInput = row.querySelector('.date-input');
+              if (dateInput) {
+                dateInput.addEventListener('change', function () {
+                  if (row.dataset.isFixed === 'false' && row.closest('#selected-contributors-container')) {
+                    applyNewCalculation(row);
+                    updateAllCalculations();
+                  }
+                });
+              }
+            }
+
+            // Update totals
+            function updateTotals() {
+              let totalFixed = 0;
+              let totalActive = 0;
+              let totalInvest = 0;
+              let totalUsed = 0;
+              let totalRemain = 0;
+
+              fixedBox.querySelectorAll('.contributor-row').forEach(row => {
+                const checkbox = row.querySelector('.contributor-checkbox');
+                if (checkbox && checkbox.checked) {
+                  const investVal = parseFloat(row.querySelector('.invest-input')?.value) || 0;
+                  totalFixed += investVal;
+                  totalInvest += investVal;
+                  totalUsed += parseFloat(row.querySelector('.using-input')?.value) || 0;
+                  totalRemain += parseFloat(row.querySelector('.remain-input')?.value) || 0;
+                }
+              });
+
+              selectedBox.querySelectorAll('.contributor-row').forEach(row => {
+                const checkbox = row.querySelector('.contributor-checkbox');
+                if (checkbox && checkbox.checked) {
+                  const investVal = parseFloat(row.querySelector('.invest-input')?.value) || 0;
+                  totalActive += investVal;
+                  totalInvest += investVal;
+                  totalUsed += parseFloat(row.querySelector('.using-input')?.value) || 0;
+                  totalRemain += parseFloat(row.querySelector('.remain-input')?.value) || 0;
+                }
+              });
+
+              document.getElementById('total-fixed').textContent = totalFixed.toFixed(2);
+              document.getElementById('total-active').textContent = totalActive.toFixed(2);
+              document.getElementById('total-invest').textContent = totalInvest.toFixed(2);
+              document.getElementById('total-used').textContent = totalUsed.toFixed(2);
+              document.getElementById('total-remain').textContent = totalRemain.toFixed(2);
+            }
+
+            // Initialize the system
+            initializeContainers();
+
+            console.log('✅ Final Enhanced Three-Tier System initialized!');
+            console.log('Key Features:');
+            console.log('1. Active Box: invest amount = use amount');
+            console.log('2. Fixed checkbox: Stays in Active Box (does not move to Fixed Box)');
+            console.log('3. Move to First Level: Only moves to Fixed Box with confirmation');
+            console.log('4. Multiple sequences per user allowed in Fixed Box');
+            console.log('5. Auto-fill balance when moving from Inactive to Active Box');
+            console.log('6. Dynamic calculation updates for all active rows');
+            console.log('7. ✨ NEW: Prevents duplicate sequence generation in Active Box');
+            console.log('8. ✨ NEW: New investment rows go to Inactive Box when user has existing rows');
+          });
+
+      </script>
+      <!-- Status -->
+      <div>
+        <label class="block font-medium">{{ form.status.label }}</label>
+        {{ form.status|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+      </div>
+
+      <!-- Conditional Groups -->
+      <div class="grid grid-cols-3 gap-4">
+
+        <!-- Wishlist Fields -->
+        <div class="status-group wishlist-fields hidden col-span-3 grid grid-cols-3 gap-4">
+          <div>
+            <label class="block font-medium">{{ form.auction_price.label }}</label>
+            {{ form.auction_price|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+          </div>
+          <div>
+            <label class="block font-medium">{{ form.booking_fee.label }}</label>
+            {{ form.booking_fee|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+          </div>
+          <div>
+            <label class="block font-medium">{{ form.estimated_price.label }}</label>
+            {{ form.estimated_price|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+          </div>
+          <div class="col-span-2">
+            <label class="block font-medium">{{ form.url.label }}</label>
+            {{ form.url|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+          </div>
+          <div>
+            <label class="block font-medium">{{ form.auction_date.label }}</label>
+            {{ form.auction_date|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+          </div>
+        </div>
+
+        <!-- Bought Fields -->
+        <div class="status-group bought-fields hidden col-span-3 grid grid-cols-3 gap-4">
+          <div>
+            <label class="block font-medium">{{ form.buying_price.label }}</label>
+            {{ form.buying_price|add_class:"w-full border border-black rounded-md px-3 py-2 buying-price-input" }}
+          </div>
+          <div>
+            <label class="block font-medium">{{ form.service_cost.label }}</label>
+            {{ form.service_cost|add_class:"w-full border border-black rounded-md px-3 py-2 service-cost-input" }}
+          </div>
+          <div>
+            <label class="block font-medium">{{ form.buying_date.label }}</label>
+            {{ form.buying_date|add_class:"w-full border border-black rounded-md px-3 py-2 buying-date-input" }}
+          </div>
+            <div>
+              <label class="block font-medium">{{ form.acquisition_cost.label }}</label>
+              {{ form.acquisition_cost|add_class:"w-full border border-black rounded-md px-3 py-2 bg-gray-100 acquisition-cost-input" }}
+            </div>
+        </div>
+
+        <!-- Ready to Sell + Sold -->
+        <div class="status-group ready-to-sell-fields hidden col-span-3 grid grid-cols-3 gap-4">
+          <div>
+            <label class="block font-medium">{{ form.asking_price.label }}</label>
+            {{ form.asking_price|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+          </div>
+
+          <div class="sold-fields hidden col-span-2 grid grid-cols-2 gap-4">
+            <div>
+              <label class="block font-medium">{{ form.selling_price.label }}</label>
+              {{ form.selling_price|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+            </div>
+            <div>
+              <label class="block font-medium">{{ form.selling_date.label }}</label>
+              {{ form.selling_date|add_class:"w-full border border-black rounded-md px-3 py-2 selling-date-input" }}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Images -->
+      {{ image_formset.management_form }}
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-6" id="image-formset">
+        {% for image_form in image_formset %}
+          <div class="flex flex-col rounded p-3 image-form" {% if forloop.counter > 3 %}style="display:none"{% endif %}>
+            {{ image_form.id }}
+            <label class="block text-sm font-medium text-gray-700 mb-1">Image {{ forloop.counter }}</label>
+            {{ image_form.image|add_class:"block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 rounded-md cursor-pointer" }}
+
+            <div class="flex items-center mt-2">
+              {{ image_form.is_primary }}
+              <label class="ml-2 text-sm text-gray-700">{{ image_form.is_primary.label }}</label>
+            </div>
+
+            {% if image_form.instance.pk %}
+              <div class="mt-2">
+                {% if image_form.instance.image %}
+                  <img src="{{ image_form.instance.image.url }}" class="h-24 w-auto object-cover rounded" />
+                {% endif %}
+              </div>
+            {% endif %}
+
+            {% if image_form.instance.pk %}
+              <div class="mt-2">
+                {{ image_form.DELETE }}
+                <label class="ml-2 text-sm text-red-600">Delete Image</label>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Add More Image Button -->
+      <div>
+        <button type="button" id="add-more-images" class="bg-orange-100 text-orange-600 px-4 py-2 rounded-md">
+          Add More Image
+        </button>
+      </div>
+
+      <!-- Save Button -->
+      <div class="flex justify-center">
+        <button type="submit" class="bg-[#183665] text-white px-6 py-2 rounded-md">
+          Save Property
+        </button>
+      </div>
+    </form>
+  </div>
+{% endblock content %}
+
+{% block scripts %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const statusField = document.querySelector('select[name="status"]');
+      const groups = {
+        wishlist: document.querySelector('.wishlist-fields'),
+        bought: document.querySelector('.bought-fields'),
+        ready_to_sell: document.querySelector('.ready-to-sell-fields'),
+        sold: document.querySelector('.sold-fields'),
+      };
+
+      const displayOrder = ['wishlist', 'bought', 'ready_to_sell', 'sold'];
+
+      function toggleFields() {
+        const selected = statusField.value;
+
+        groups.wishlist?.classList.remove('hidden');
+
+        ['bought', 'ready_to_sell', 'sold'].forEach(key => {
+          groups[key]?.classList.add('hidden');
+        });
+
+        if (!['failed_to_bought', 'move_to_next_option'].includes(selected)) {
+          const showUpToIndex = displayOrder.indexOf(selected);
+          displayOrder.forEach((key, index) => {
+            if (index <= showUpToIndex && groups[key]) {
+              groups[key].classList.remove('hidden');
+            }
+          });
+        }
+      }
+
+      if (statusField) {
+        statusField.addEventListener('change', toggleFields);
+        toggleFields(); 
+      }
+    });
+  </script>
+  
+  <script>
+    // Main contribution calculation script with date handling
+    document.addEventListener('DOMContentLoaded', function() {
+      const buyingPriceInput = document.querySelector('.buying-price-input');
+      const serviceCostInput = document.querySelector('.service-cost-input');
+      const buyingDateInput = document.querySelector('.buying-date-input');
+      const sellingDateInput = document.querySelector('.selling-date-input');
+      const contributorRows = document.querySelectorAll('.contributor-row');
+      const statusField = document.querySelector('select[name="status"]');
+      
+      // Auto-update investment dates when buying date changes
+      buyingDateInput?.addEventListener('change', function() {
+        const newDate = this.value;
+        if (newDate) {
+          contributorRows.forEach(row => {
+            const dateInput = row.querySelector('.date-input');
+            const checkbox = row.querySelector('.contributor-checkbox');
+            // Only update if checked and date is empty or equals old buying date
+            if (checkbox.checked && dateInput && !dateInput.value) {
+              dateInput.value = newDate;
+            }
+          });
+        }
+        calculateDaysAndProportions();
+      });
+
+      // Calculate days and proportions when dates change
+      sellingDateInput?.addEventListener('change', calculateDaysAndProportions);
+      
+      contributorRows.forEach(row => {
+        const dateInput = row.querySelector('.date-input');
+        dateInput?.addEventListener('change', calculateDaysAndProportions);
+      });
+
+      function calculateDaysAndProportions() {
+        const sellingDate = sellingDateInput?.value;
+        if (!sellingDate) {
+          // Clear all days and proportions
+          contributorRows.forEach(row => {
+            row.querySelector('.days-input').value = '';
+            row.querySelector('.days-proportion-input').value = '';
+            row.querySelector('.invest-ratio-input').value = '';
+            row.querySelector('.profit-weight-input').value = '';
+          });
+          return;
+        }
+
+        const sellDate = new Date(sellingDate);
+        let maxDays = 0;
+        const daysData = [];
+        let totalContribution = 0;
+
+        // Calculate days and total contribution for each contributor
+        contributorRows.forEach(row => {
+          const checkbox = row.querySelector('.contributor-checkbox');
+          if (!checkbox.checked) return;
+
+          const dateInput = row.querySelector('.date-input');
+          const investDate = dateInput?.value;
+          const usingInput = row.querySelector('.using-input');
+          const contribution = parseFloat(usingInput.value) || 0;
+          
+          totalContribution += contribution;
+          
+          if (investDate) {
+            const invDate = new Date(investDate);
+            const diffTime = sellDate - invDate;
+            const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+            
+            daysData.push({
+              row: row,
+              days: diffDays,
+              contribution: contribution
+            });
+            
+            maxDays = Math.max(maxDays, diffDays);
+          }
+        });
+
+        // Calculate proportions and weights
+        daysData.forEach(data => {
+          const daysProportion = maxDays > 0 ? (data.days / maxDays) : 0;
+          const investRatio = totalContribution > 0 ? (data.contribution / totalContribution) : 0;
+          const profitWeight = daysProportion * investRatio;
+          
+          data.row.querySelector('.days-input').value = data.days;
+          data.row.querySelector('.days-proportion-input').value = daysProportion.toFixed(4);
+          data.row.querySelector('.invest-ratio-input').value = investRatio.toFixed(4);
+          data.row.querySelector('.profit-weight-input').value = profitWeight.toFixed(6);
+        });
+
+        // Clear unchecked contributors
+        contributorRows.forEach(row => {
+          const checkbox = row.querySelector('.contributor-checkbox');
+          if (!checkbox.checked) {
+            row.querySelector('.days-input').value = '';
+            row.querySelector('.days-proportion-input').value = '';
+            row.querySelector('.invest-ratio-input').value = '';
+            row.querySelector('.profit-weight-input').value = '';
+          }
+        });
+      }
+      
+      function calculateContributions() {
+        const status = statusField.value;
+        
+        if (status !== 'bought') {
+          return;
+        }
+
+        const buyingPrice = parseFloat(buyingPriceInput.value) || 0;
+        const serviceCost = parseFloat(serviceCostInput.value) || 0;
+        const totalCost = buyingPrice + serviceCost;
+        
+        if (totalCost <= 0) {
+          contributorRows.forEach(row => {
+            const checkbox = row.querySelector('.contributor-checkbox');
+            if (!checkbox.checked) return;
+            
+            row.querySelector('.using-input').value = '';
+            row.querySelector('.remain-input').value = '';
+            row.querySelector('.ratio-input').value = '';
+          });
+          updateTotals();
+          return;
+        }
+
+        const fixedContributors = [];
+        const nonFixedContributors = [];
+        let fixedTotal = 0;
+        let nonFixedTotalInvest = 0;
+        
+        contributorRows.forEach(row => {
+          const checkbox = row.querySelector('.contributor-checkbox');
+          const fixedCheckbox = row.querySelector('.fixed-checkbox');
+          const investInput = row.querySelector('.invest-input');
+          
+          if (checkbox.checked) {
+            const investAmount = parseFloat(investInput.value) || 0;
+            if (investAmount > 0) {
+              if (fixedCheckbox.checked) {
+                fixedContributors.push({
+                  row: row,
+                  investAmount: investAmount
+                });
+                fixedTotal += investAmount;
+              } else {
+                nonFixedContributors.push({
+                  row: row,
+                  investAmount: investAmount
+                });
+                nonFixedTotalInvest += investAmount;
+              }
+            }
+          }
+        });
+
+        const remainingCost = totalCost - fixedTotal;
+        let distributedProportional = 0;
+
+        // Fixed contributors
+        fixedContributors.forEach(contributor => {
+          const row = contributor.row;
+          const investAmount = contributor.investAmount;
+          const usingInput = row.querySelector('.using-input');
+          const remainInput = row.querySelector('.remain-input');
+          const ratioInput = row.querySelector('.ratio-input');
+          
+          const usedAmount = investAmount;
+          const remaining = 0;
+          const ratio = (usedAmount / totalCost * 100);
+          
+          usingInput.value = usedAmount.toFixed(6);
+          remainInput.value = remaining.toFixed(2);
+          ratioInput.value = ratio.toFixed(2) + '%';
+        });
+
+        // Non-fixed contributors (proportional)
+        nonFixedContributors.forEach((contributor, index) => {
+          const row = contributor.row;
+          const investAmount = contributor.investAmount;
+          const usingInput = row.querySelector('.using-input');
+          const remainInput = row.querySelector('.remain-input');
+          const ratioInput = row.querySelector('.ratio-input');
+          
+          let usedAmount = 0;
+          
+          if (nonFixedTotalInvest > 0) {
+            if (index === nonFixedContributors.length - 1) {
+              // Last one gets remaining
+              usedAmount = remainingCost - distributedProportional;
+            } else {
+              const ratio = investAmount / nonFixedTotalInvest;
+              usedAmount = remainingCost * ratio;
+              distributedProportional += usedAmount;
+            }
+          }
+          
+          const remaining = investAmount - usedAmount;
+          const ratioPercent = (usedAmount / totalCost * 100);
+          
+          usingInput.value = usedAmount.toFixed(6);
+          remainInput.value = remaining.toFixed(2);
+          ratioInput.value = ratioPercent.toFixed(2) + '%';
+        });
+        
+        // Clear unchecked contributors
+        contributorRows.forEach(row => {
+          const checkbox = row.querySelector('.contributor-checkbox');
+          if (!checkbox.checked) {
+            row.querySelector('.using-input').value = '';
+            row.querySelector('.remain-input').value = '';
+            row.querySelector('.ratio-input').value = '';
+          }
+        });
+        
+        updateTotals();
+      }
+      
+      function updateTotals() {
+        let totalInvest = 0;
+        let totalUsed = 0;
+        let totalRemain = 0;
+        
+        contributorRows.forEach(row => {
+          const checkbox = row.querySelector('.contributor-checkbox');
+          if (checkbox.checked) {
+            const investInput = row.querySelector('.invest-input');
+            const usingInput = row.querySelector('.using-input');
+            const remainInput = row.querySelector('.remain-input');
+            
+            totalInvest += parseFloat(investInput.value) || 0;
+            totalUsed += parseFloat(usingInput.value) || 0;
+            totalRemain += parseFloat(remainInput.value) || 0;
+          }
+        });
+        
+        document.getElementById('total-invest').textContent = totalInvest.toFixed(2);
+        document.getElementById('total-used').textContent = totalUsed.toFixed(2);
+        document.getElementById('total-remain').textContent = totalRemain.toFixed(2);
+      }
+      
+      // Event listeners
+      buyingPriceInput?.addEventListener('input', calculateContributions);
+      serviceCostInput?.addEventListener('input', calculateContributions);
+      statusField?.addEventListener('change', calculateContributions);
+      
+      contributorRows.forEach(row => {
+        const checkbox = row.querySelector('.contributor-checkbox');
+        const fixedCheckbox = row.querySelector('.fixed-checkbox');
+        const investInput = row.querySelector('.invest-input');
+        
+        checkbox.addEventListener('change', function() {
+          if (!this.checked) {
+            investInput.value = '';
+            fixedCheckbox.checked = false;
+            row.querySelector('.using-input').value = '';
+            row.querySelector('.remain-input').value = '';
+            row.querySelector('.ratio-input').value = '';
+            row.querySelector('.days-input').value = '';
+            row.querySelector('.proportion-input').value = '';
+          } else {
+            if (!investInput.value || parseFloat(investInput.value) <= 0) {
+              const userBalance = parseFloat(row.dataset.userBalance) || 0;
+              investInput.value = userBalance.toFixed(2);
+            }
+            // Auto-set investment date to buying date if empty
+            const dateInput = row.querySelector('.date-input');
+            if (!dateInput.value && buyingDateInput?.value) {
+              dateInput.value = buyingDateInput.value;
+            }
+          }
+          calculateContributions();
+          calculateDaysAndProportions();
+        });
+        
+        fixedCheckbox.addEventListener('change', calculateContributions);
+        investInput.addEventListener('input', calculateContributions);
+      });
+      
+      // Initial calculations
+      calculateContributions();
+      calculateDaysAndProportions();
+    });
+  </script>
+
+  <!-- Primary Image Selection Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const primaryCheckboxes = document.querySelectorAll('input[name$="-is_primary"]');
+      
+      primaryCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+          if (this.checked) {
+            primaryCheckboxes.forEach(cb => {
+              if (cb !== this) {
+                cb.checked = false;
+              }
+            });
+          }
+        });
+      });
+    });
+  </script>
+
+  <!-- Show More Images Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const addMoreButton = document.getElementById('add-more-images');
+      const imageForms = document.querySelectorAll('.image-form');
+      let visibleCount = 3;
+
+      if (addMoreButton) {
+        addMoreButton.addEventListener('click', function () {
+          let shown = 0;
+          for (let i = visibleCount; i < imageForms.length && shown < 3; i++) {
+            imageForms[i].style.display = 'block';
+            shown++;
+          }
+          visibleCount += shown;
+
+          if (visibleCount >= imageForms.length) {
+            addMoreButton.style.display = 'none';
+          }
+        });
+      }
+    });
+  </script>
+
+  <!-- Acquisition Cost Calculator -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const buyingPriceInput = document.querySelector('.buying-price-input');
+      const serviceCostInput = document.querySelector('.service-cost-input');
+      const acquisitionCostInput = document.querySelector('.acquisition-cost-input');
+      
+      function updateAcquisitionCost() {
+        const buyingPrice = parseFloat(buyingPriceInput?.value) || 0;
+        const serviceCost = parseFloat(serviceCostInput?.value) || 0;
+        const acquisitionCost = buyingPrice + serviceCost;
+        
+        if (acquisitionCostInput) {
+          acquisitionCostInput.value = acquisitionCost > 0 ? acquisitionCost.toFixed(6) : '';
+        }
+      }
+      
+      // Update on input changes
+      buyingPriceInput?.addEventListener('input', updateAcquisitionCost);
+      serviceCostInput?.addEventListener('input', updateAcquisitionCost);
+      updateAcquisitionCost();
+    });
+  </script>
+{% endblock scripts %}

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Payment Success</title>
+</head>
+<body>
+  <h2>Payment Successful ✅</h2>
+
+  {% if payment %}
+    <p>Amount: ${{ payment.amount }}</p>
+    <p>Status: {{ payment.get_status_display }}</p>
+    <p>Date: {{ payment.approved_at|date:"d M Y, h:i A" }}</p>
+    <p>Notes: {{ payment.notes }}</p>
+  {% else %}
+    <p>Your payment was successful.</p>
+  {% endif %}
+
+  <a href="{% url 'accounts:payment_banks' %}">Back to Payment Options</a>
+</body>
+</html>

@@ -1,0 +1,69 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6 mt-5 mx-4">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+        <h2 class="text-2xl font-bold">All Members</h2>
+    </div>
+    <hr class="mb-5 px-5 border-gray-200">
+
+    <!-- Table -->
+    <div class="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+        <table class="min-w-[800px] w-full text-left text-sm">
+            <thead class="bg-gray-100 font-semibold">
+                <tr>
+                    <th class="p-2 text-center">Member ID</th>
+                    <th class="p-2 text-center">Full Name</th>
+                    <th class="p-2 text-center">Balance</th>
+                    <th class="p-2 text-center">Invested Balance</th>
+                    <th class="p-2 text-center">Email</th>
+                    <th class="p-2 text-center">Phone</th>
+                    <th class="p-2 text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for member in members %}
+                <tr class="hover:bg-gray-50">
+                    <td class="p-2 border-2 border-gray-100 text-center">{{ member.member_id }}</td>
+                    <td class="p-2 border-2 border-gray-100 text-center">{{ member.get_full_name }}</td>
+                    <td class="p-2 border-2 border-gray-100 text-center">{{ member.balance }}</td>
+                    <td class="p-2 border-2 border-gray-100 text-center">{{ member.total_invest_balance }}</td>
+                    <td class="p-2 border-2 border-gray-100 text-center">{{ member.email }}</td>
+                    <td class="p-2 border-2 border-gray-100 text-center">{{ member.phone_number }}</td>
+                    <td class="p-2 border-2 border-gray-100 text-center">
+                        <a href="{% url 'accounts:member_detail' member.pk %}" class="bg-gray-200 px-4 py-1 rounded">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mt-4 gap-2">
+        <p class="text-sm text-gray-500">Showing {{ page_obj.start_index }} – {{ page_obj.end_index }} of {{ paginator.count }} results</p>
+        <div class="flex gap-2">
+            {% if page_obj.has_previous %}
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}" class="px-2 py-1 border rounded hover:bg-gray-100">← Previous</a>
+            {% else %}
+                <span class="px-2 py-1 border rounded text-gray-400 cursor-not-allowed">← Previous</span>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                    <span class="px-2 py-1 border rounded bg-[#183665] text-white">{{ num }}</span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?{{ request.GET.urlencode }}&page={{ num }}" class="px-2 py-1 border rounded hover:bg-gray-100">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}" class="px-2 py-1 border rounded hover:bg-gray-100">Next →</a>
+            {% else %}
+                <span class="px-2 py-1 border rounded text-gray-400 cursor-not-allowed">Next →</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock content %}

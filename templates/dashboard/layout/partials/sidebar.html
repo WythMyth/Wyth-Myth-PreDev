@@ -1,0 +1,319 @@
+{% load static %}
+<!-- Sidebar -->
+<aside id="sidebar" class="fixed top-0 left-0 w-72 h-screen bg-white shadow-lg z-50 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+  <div class="md:h-full h-[850px] flex flex-col">
+    
+    <!-- Top Section (Logo + Nav) -->
+    <div class="flex-1 flex flex-col min-h-0">
+        <!-- Logo Section -->
+        <div class="flex-shrink-0 mt-4 sm:mt-6 flex justify-center items-center px-4">
+            <a href="{% url "accounts:home" %}">
+                <img src="{% static 'assets/images/logo.png' %}" alt="Logo" class="h-12 sm:h-14" />
+            </a>
+        </div>
+        
+        <!-- Navigation Section - Scrollable -->
+        <div class="flex-1 overflow-y-auto px-4 py-4 min-h-0">
+            <nav class="flex flex-col space-y-2 text-sm">
+                <a href="{% url 'accounts:dashboard' %}"
+                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'dashboard' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                    <i class="fas fa-tachometer-alt mr-3 w-4 flex-shrink-0"></i> 
+                    <span class="truncate">Dashboard</span>
+                </a>
+    
+                <a href="{% url 'accounts:profile' %}"
+                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'profile' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                    <i class="fas fa-user mr-3 w-4 flex-shrink-0"></i> 
+                    <span class="truncate">Profile</span>
+                </a>
+                <a href="{% url 'accounts:member_list_card' %}"
+                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'member_list_card' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                   <i class="fas fa-users mr-3 w-4 flex-shrink-0"></i> 
+                    <span class="truncate">Members Info</span>
+                </a>
+                {% if request.user.is_superuser %}
+                    <a href="{% url 'accounts:member_list' %}"
+                    class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'member_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                        <i class="fas fa-users mr-3 w-4 flex-shrink-0"></i> 
+                        <span class="truncate">All Members Overview</span>
+                    </a>                    
+                {% endif %}
+                {% if not request.user.is_superuser %}
+                    <div class="w-full">
+                        <!-- Dropdown Toggle -->
+                        <button data-toggle="dropdown-100" type="button"
+                            class="w-full flex items-center justify-between px-4 py-2 text-gray-700 bg-white rounded-lg hover:bg-gray-100 transition">
+                            <span class="flex items-center truncate">
+                                <i class="fas fa-handshake mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Finance</span>
+                            </span>
+                            <svg class="w-4 h-4 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+
+                        <!-- Dropdown Content -->
+                        <div id="dropdown-100" class="mt-2 hidden ml-6 space-y-1">
+                            <!-- My Payments -->
+                            <a href="{% url 'accounts:my_payments' %}"
+                                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'my_payments' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-credit-card mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">My Payments</span>
+                            </a>
+                            <a href="{% url 'accounts:pending_payments' %}"
+                                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'pending_payments' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                    <i class="fas fa-clock mr-3 w-4 flex-shrink-0"></i> 
+                                    <span class="truncate">Pending Payments</span>
+                            </a>
+                            {% if request.user.is_finnancial or request.user.is_expense %}
+                            <a href="{% url 'accounts:expense_list' %}"
+                                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'expense_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-money-bill-wave mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Project Expenses</span>
+                            </a>
+                            <a href="{% url 'accounts:management_expense_list' %}"
+                                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'management_expense_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-money-bill-wave mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Management Expenses</span>
+                            </a>
+                            {% endif %}
+
+                            <a href="{% url 'accounts:expenselist' %}"
+                            class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'expenselist' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-money-bill-wave mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">All Expenses</span>
+                            </a>
+
+                         
+
+
+                            <!-- Office Management Payments (Only for Office Manager) -->
+                            {% if request.user.office_management %}
+                            <a href="{% url 'accounts:office_management_payments' %}"
+                                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'office_management_payments' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-user-tie mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Office Management</span>
+                            </a>
+                            {% comment %} <a href="{% url 'accounts:office_expense_list' %}" class="menu-item">
+                                 Office Expenses
+                            </a> {% endcomment %}
+                            <a href="{% url 'accounts:office_expense_list' %}"
+                                class="flex items-center px-4 py-2 rounded-lg transition duration-200
+                                {% if request.resolver_match.url_name == 'office_expense_list' %}
+                                    bg-[#183665] text-white font-semibold
+                                {% else %}
+                                    hover:bg-gray-100 text-gray-700
+                                {% endif %}">
+                                    <i class="fas fa-receipt mr-3 w-4 flex-shrink-0"></i>
+                                    <span class="truncate">Office Expenses</span>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+                <a href="{% url 'accounts:property_list' %}"
+                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'property_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                    <i class="fas fa-home mr-3 w-4 flex-shrink-0"></i> 
+                    <span class="truncate">Manage Properties</span>
+                </a>
+                {% if request.user.is_superuser %}
+                    <div class="w-full">
+                        <!-- Dropdown Toggle -->
+                        <button data-toggle="dropdown-3" type="button"
+                            class="w-full flex items-center justify-between px-4 py-2 text-gray-700 bg-white rounded-lg hover:bg-gray-100 transition">
+                            <span class="flex items-center truncate">
+                                <i class="fas fa-handshake mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Finance</span>
+                            </span>
+                            <svg class="w-4 h-4 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+    
+                        <!-- Dropdown Content -->
+                        <div id="dropdown-3" class="mt-2 hidden ml-6 space-y-1">
+                            
+                            <a href="{% url 'accounts:my_payments' %}"
+                            class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'my_payments' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-credit-card mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">My Payments</span>
+                            </a>
+                            <a href="{% url 'accounts:payment-list' %}"
+                                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'payment-list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                    <i class="fas fa-clock mr-3 w-4 flex-shrink-0"></i> 
+                                    <span class="truncate">All Members payments</span>
+                            </a>
+                            <a href="{% url 'accounts:pending_payments' %}"
+                                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'pending_payments' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                    <i class="fas fa-clock mr-3 w-4 flex-shrink-0"></i> 
+                                    <span class="truncate">Pending Payments</span>
+                            </a>
+                            <a href="{% url 'accounts:expense_list' %}"
+                            class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'expense_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-money-bill-wave mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Project Expenses</span>
+                            </a>
+                            <a href="{% url 'accounts:management_expense_list' %}"
+                                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'management_expense_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-money-bill-wave mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Management Expenses</span>
+                            </a>
+                            <a href="{% url 'accounts:expenselist' %}"
+                            class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'expenselist' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-money-bill-wave mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">All Expenses</span>
+                            </a>
+                            <a href="{% url 'accounts:expense_payment_list' %}"
+                            class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'expense_payment_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-money-bill-wave mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Members Expenses PayBack</span>
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+                <!-- Agreement Dropdown -->
+                {% if request.user.is_superuser %}
+                    <div class="w-full">
+                        <!-- Dropdown Toggle -->
+                        <button data-toggle="dropdown-2" type="button"
+                            class="w-full flex items-center justify-between px-4 py-2 text-gray-700 bg-white rounded-lg hover:bg-gray-100 transition">
+                            <span class="flex items-center truncate">
+                                <i class="fas fa-handshake mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Agreement</span>
+                            </span>
+                            <svg class="w-4 h-4 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+    
+                        <!-- Dropdown Content -->
+                        <div id="dropdown-2" class="mt-2 hidden ml-6 space-y-1">
+                            <a href="{% url 'accounts:upload_agreement' %}"
+                            class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'upload_agreement' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-file-signature mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Upload Agreement</span>
+                            </a>
+                            <a href="{% url 'accounts:user_agreement_list' %}"
+                            class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'user_agreement_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-file-signature mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">User Agreement List</span>
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <!-- Meeting Options Dropdown -->
+                <div class="w-full">
+                    <!-- Dropdown Toggle -->
+                    <button data-toggle="dropdown-1" type="button"
+                        class="w-full flex items-center justify-between px-4 py-2 text-gray-700 bg-white rounded-lg hover:bg-gray-100 transition">
+                        <span class="flex items-center truncate">
+                            <i class="fas fa-handshake mr-3 w-4 flex-shrink-0"></i> 
+                            <span class="truncate">Meeting Options</span>
+                        </span>
+                        <svg class="w-4 h-4 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+    
+                    <!-- Dropdown Content -->
+                    <div id="dropdown-1" class="mt-2 hidden ml-6 space-y-1">
+                        <a href="{% url 'meeting-list' %}"
+                        class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'meeting-list' %}bg-[#183665] text-white font-semibold{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                            <i class="fas fa-handshake mr-3 w-4 flex-shrink-0"></i>
+                            <span class="truncate">Meeting Schedule</span>
+                        </a>
+                        <a href="{% url 'calendar' %}"
+                        class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'calendar' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                            <i class="fas fa-calendar-alt mr-3 w-4 flex-shrink-0"></i> 
+                            <span class="truncate">View Calendar</span>
+                        </a>
+                        <a href="{% url 'recording-list' %}"
+                        class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'recording-list' %}bg-[#183665] text-white font-semibold{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                            <i class="fas fa-video mr-3 w-4 flex-shrink-0"></i> 
+                            <span class="truncate">Meeting Recording</span>
+                        </a>
+                        {% if request.user.is_superuser %}
+                            <a href="{% url 'meeting_upload' %}"
+                            class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'meeting_upload' %}bg-[#183665] text-white font-semibold{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                                <i class="fas fa-upload mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Meeting Upload</span>
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <!-- Admin Only Links -->
+                {% if request.user.is_superuser %}
+                    <a href="{% url 'accounts:create_announcement' %}"
+                    class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'create_announcement' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                        <i class="fas fa-bullhorn mr-3 w-4 flex-shrink-0"></i> 
+                        <span class="truncate">Create Announcement</span>
+                    </a>
+                    
+                    <a href="{% url 'media:contact-list' %}"
+                    class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'contact-list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                        <i class="fas fa-envelope mr-3 w-4 flex-shrink-0"></i> 
+                        <span class="truncate">Contact Us</span>
+                    </a>
+    
+                    <a href="{% url 'media:video-list' %}"
+                    class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'video-list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                        <i class="fas fa-play-circle mr-3 w-4 flex-shrink-0"></i> 
+                        <span class="truncate">Events Video</span>
+                    </a>
+                    <a href="{% url 'accounts:help_create' %}"
+                    class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'help_create' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                        <i class="fas fa-clock mr-3 w-4 flex-shrink-0"></i> 
+                        <span class="truncate">Contact Wyth Myth</span>
+                    </a>
+                {% endif %}
+            </nav>
+        </div>
+    </div>
+
+    <!-- Bottom Section (User Info + Logout) - Always Visible -->
+    <div class="flex-shrink-0 border-t border-gray-200 bg-white">
+        <!-- User Info (Mobile Only) -->
+        <div class="md:hidden px-4 py-3 border-b border-gray-100">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-[#183665] rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-user text-white text-sm"></i>
+                </div>
+                <p class="text-gray-800 font-medium truncate">{{ request.user.get_full_name }}</p>
+            </div>
+        </div>
+        
+        <!-- Logout Button -->
+        <div class="p-4">
+            <form action="{% url 'accounts:logout' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="w-full bg-[#183665] hover:bg-blue-800 text-white py-2.5 px-4 rounded-lg flex items-center justify-center space-x-2 transition duration-200 font-medium">
+                    <span>Logout</span>
+                    <i class="fas fa-arrow-right text-sm"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+  </div>
+</aside>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const toggleButtons = document.querySelectorAll('[data-toggle]');
+
+    toggleButtons.forEach(button => {
+      const dropdownId = button.getAttribute('data-toggle');
+      const dropdown = document.getElementById(dropdownId);
+
+      button.addEventListener('click', function () {
+        dropdown.classList.toggle('hidden');
+      });
+
+      // Show the dropdown if it contains an active link
+      const hasActiveLink = dropdown.querySelector('.bg-\\[\\#183665\\]');
+      if (hasActiveLink) {
+        dropdown.classList.remove('hidden');
+      }
+    });
+  });
+</script>

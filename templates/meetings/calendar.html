@@ -1,0 +1,331 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+{% block css %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet" />
+<!-- Modal styling -->
+<style>
+    .fc-event {
+        background-color: #F79533 !important;
+        border: none !important;
+        color: white !important;
+        font-weight: 500;
+        padding: 2px 6px;
+        border-radius: 6px;
+    }
+  /* Wrap event titles */
+  .fc .fc-event-title {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: break-word;
+    line-height: 1.2;
+    padding: 2px 4px;
+  }
+
+  /* Adjust event height */
+  .fc .fc-event {
+    height: auto !important;
+    min-height: 3em;
+    padding: 2px 4px !important;
+    white-space: normal !important;
+  }
+</style>
+
+{% endblock css %}
+
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Meeting Calendar</h2>
+    <div id="calendar"></div>
+</div>
+<!-- Modal -->
+<div id="meetingModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+        <h3 id="modalTitle" class="text-xl font-semibold text-gray-800 mb-2"></h3><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar Debug Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .debug-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .fc-event {
+            background-color: #F79533 !important;
+            border: none !important;
+            color: white !important;
+            font-weight: 500;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+        .fc .fc-event-title {
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            word-break: break-word;
+            line-height: 1.2;
+            padding: 2px 4px;
+        }
+        .fc .fc-event {
+            height: auto !important;
+            min-height: 3em;
+            padding: 2px 4px !important;
+            white-space: normal !important;
+        }
+        .test-data {
+            background: #e8f4fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-section">
+        <h2>Calendar Debug Tool</h2>
+        <p>This tool will help you debug your Django calendar by testing different event data formats.</p>
+        
+        <h3>Test Event Data</h3>
+        <div class="test-data" id="eventData">
+            Loading test data...
+        </div>
+        
+        <button onclick="testWithSampleData()" style="padding: 10px 20px; background: #007cba; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 10px 5px;">
+            Test with Sample Data
+        </button>
+        
+        <button onclick="testWithYourFormat()" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 10px 5px;">
+            Test Your Django Format
+        </button>
+        
+        <button onclick="clearCalendar()" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 10px 5px;">
+            Clear Calendar
+        </button>
+        
+        <div id="debugInfo" style="margin-top: 20px;"></div>
+    </div>
+
+    <div class="debug-section">
+        <h3>Calendar</h3>
+        <div id="calendar"></div>
+    </div>
+
+    <!-- Modal -->
+    <div id="meetingModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000;">
+        <div style="background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%;">
+            <h3 id="modalTitle" style="margin-top: 0;"></h3>
+            <p id="modalStart"></p>
+            <p id="modalEnd"></p>
+            <button onclick="closeModal()" style="padding: 8px 16px; background: #183665; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script>
+        let calendar;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const calendarEl = document.getElementById('calendar');
+            
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                height: 700,
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                events: [],
+                eventClick: function(info) {
+                    info.jsEvent.preventDefault();
+                    
+                    const modal = document.getElementById('meetingModal');
+                    const modalTitle = document.getElementById('modalTitle');
+                    const modalStart = document.getElementById('modalStart');
+                    const modalEnd = document.getElementById('modalEnd');
+                    
+                    modalTitle.textContent = info.event.title;
+                    modalStart.textContent = "Start: " + new Date(info.event.start).toLocaleString();
+                    modalEnd.textContent = "End: " + new Date(info.event.end).toLocaleString();
+                    
+                    modal.style.display = 'flex';
+                },
+                eventDidMount: function(info) {
+                    console.log('Event mounted:', info.event.title, info.event.start, info.event.end);
+                },
+                eventContent: function(arg) {
+                    return { html: '<div>' + arg.event.title + '</div>' };
+                }
+            });
+
+            calendar.render();
+            
+            // Show initial empty state
+            updateDebugInfo("Calendar initialized. No events loaded yet.");
+        });
+
+        function testWithSampleData() {
+            const now = new Date();
+            const sampleEvents = [
+                {
+                    id: 1,
+                    title: "Test Meeting 1",
+                    start: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
+                    end: new Date(now.getTime() + 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString() // +1 hour
+                },
+                {
+                    id: 2,
+                    title: "Test Meeting 2",
+                    start: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString(), // Day after tomorrow
+                    end: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000).toISOString() // +2 hours
+                },
+                {
+                    id: 3,
+                    title: "Today's Meeting",
+                    start: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 0).toISOString(), // Today 2 PM
+                    end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 30).toISOString() // Today 3:30 PM
+                }
+            ];
+            
+            document.getElementById('eventData').innerHTML = JSON.stringify(sampleEvents, null, 2);
+            calendar.removeAllEvents();
+            calendar.addEventSource(sampleEvents);
+            updateDebugInfo("✅ Sample events loaded successfully!", "success");
+        }
+
+        function testWithYourFormat() {
+            // Simulate your Django format
+            const now = new Date();
+            const testDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Tomorrow
+            
+            const djangoFormatEvents = [
+                {
+                    id: 1,
+                    title: "Django Meeting Test",
+                    start: testDate.toISOString(),
+                    end: new Date(testDate.getTime() + 60 * 60 * 1000).toISOString()
+                }
+            ];
+            
+            document.getElementById('eventData').innerHTML = JSON.stringify(djangoFormatEvents, null, 2);
+            calendar.removeAllEvents();
+            calendar.addEventSource(djangoFormatEvents);
+            updateDebugInfo("✅ Django format events loaded!", "success");
+        }
+
+        function clearCalendar() {
+            calendar.removeAllEvents();
+            document.getElementById('eventData').innerHTML = "No events loaded";
+            updateDebugInfo("Calendar cleared");
+        }
+
+        function updateDebugInfo(message, type = "info") {
+            const debugDiv = document.getElementById('debugInfo');
+            const className = type === "success" ? "success" : type === "error" ? "error" : "";
+            debugDiv.innerHTML = `<div class="${className}">${message}</div>`;
+        }
+
+        function closeModal() {
+            document.getElementById('meetingModal').style.display = 'none';
+        }
+
+        // Debug function to check if events are being processed
+        function debugEventProcessing() {
+            console.log("Current calendar events:", calendar.getEvents());
+            const events = calendar.getEvents();
+            if (events.length === 0) {
+                updateDebugInfo("❌ No events found in calendar", "error");
+            } else {
+                updateDebugInfo(`✅ Found ${events.length} events in calendar`, "success");
+                events.forEach((event, index) => {
+                    console.log(`Event ${index + 1}:`, {
+                        title: event.title,
+                        start: event.start,
+                        end: event.end
+                    });
+                });
+            }
+        }
+
+        // Auto-run debug check after 2 seconds
+        setTimeout(debugEventProcessing, 2000);
+    </script>
+</body>
+</html>
+        <p id="modalStart" class="text-gray-600 mb-1"></p>
+        <p id="modalEnd" class="text-gray-600 mb-4"></p>
+        <button onclick="closeModal()" class="px-4 py-2 bg-[#183665] text-white rounded hover:bg-blue-800">Close</button>
+    </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const calendarEl = document.getElementById('calendar');
+    const modal = document.getElementById('meetingModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalStart = document.getElementById('modalStart');
+    const modalEnd = document.getElementById('modalEnd');
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        height: 700,
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        events: {{ event_data|safe }},
+        eventClick: function (info) {
+            info.jsEvent.preventDefault(); // Prevent default behavior
+
+            // Fill modal content
+            modalTitle.textContent = info.event.title;
+            modalStart.textContent = "Start: " + new Date(info.event.start).toLocaleString();
+            modalEnd.textContent = "End: " + new Date(info.event.end).toLocaleString();
+
+            // Show modal
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        },
+        eventContent: function(arg) {
+            return { html: '<li>' + arg.event.title + '</li>' };
+        }
+    });
+
+    calendar.render();
+});
+
+// Close modal function
+function closeModal() {
+    const modal = document.getElementById('meetingModal');
+    modal.classList.remove("flex");
+    modal.classList.add("hidden");
+}
+</script>
+{% endblock scripts %}

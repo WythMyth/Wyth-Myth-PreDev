@@ -1,0 +1,98 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+
+{% block title %}Upload Meetings{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6 mt-5 mx-4">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+        <h2 class="text-2xl font-bold">Upload Meetings from Excel</h2>
+    </div>
+    <hr class="mb-5 px-5 border-gray-200">
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="rounded-md px-4 py-3 text-sm font-medium mb-4
+                        {% if message.tags == 'success' %}
+                          bg-green-100 text-green-800
+                        {% elif message.tags == 'error' %}
+                          bg-red-100 text-red-800
+                        {% else %}
+                          bg-gray-100 text-gray-800
+                        {% endif %}">
+              {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Upload Box -->
+    <div class="p-6 bg-white rounded-lg shadow-md mx-auto">
+        <form method="post" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- File Upload -->
+            <div>
+                <label for="file" class="block text-gray-700 font-medium mb-3">Select Excel File</label>
+                <input type="file" id="file" name="file" accept=".xlsx" required
+                       class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 
+                              file:rounded-md file:border-0 
+                              file:text-sm file:font-medium
+                              file:bg-gray-100 file:text-gray-700
+                              hover:file:bg-gray-200 cursor-pointer" />
+                <p class="mt-1 text-xs text-gray-500">Upload a .xlsx file with the correct format.</p>
+            </div>
+
+            <!-- Required Format Table -->
+            <div>
+                <div class="flex justify-start space-x-4 mb-3">
+                    <p class="text-base font-semibold">Required Format</p>
+                </div>
+                <div class="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+                    <table class="min-w-[800px] w-full text-left text-sm">
+                        <thead class="bg-gray-100 font-semibold">
+                            <tr>
+                                <th class="p-2 text-center">Title</th>
+                                <th class="p-2 text-center">Description</th>
+                                <th class="p-2 text-center">Date (YYYY-MM-DD)</th>
+                                <th class="p-2 text-center">Start Time</th>
+                                <th class="p-2 text-center">End Time</th>
+                                <th class="p-2 text-center">Meeting URL</th>
+                                <th class="p-2 text-center">Password</th>
+                                <th class="p-2 text-center">Send SMS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="p-2 border border-gray-100 text-center">Weekly Meeting</td>
+                                <td class="p-2 border border-gray-100 text-center">Team discussion</td>
+                                <td class="p-2 border border-gray-100 text-center">2025-05-27</td>
+                                <td class="p-2 border border-gray-100 text-center">10:00</td>
+                                <td class="p-2 border border-gray-100 text-center">11:00</td>
+                                <td class="p-2 border border-gray-100 text-center">https://meet.example.com</td>
+                                <td class="p-2 border border-gray-100 text-center">pass123</td>
+                                <td class="p-2 border border-gray-100 text-center">True/False</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                <div class="flex flex-row gap-2 my-4">
+                    <button type="submit"
+                        class="bg-[#183665] w-56 font-bold text-white py-2 px-4 rounded hover:bg-blue-900 transition">
+                        <i class="fas fa-upload mr-2"></i> Upload
+                    </button>
+                    <a href="{% url 'download-meeting-template' %}"
+                       class="bg-[#E6EAEF] w-56 text-[#183665] font-bold py-2 px-4 rounded transition hover:bg-[#dce0e6]">
+                        <i class="fas fa-download mr-2"></i> Download Template
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

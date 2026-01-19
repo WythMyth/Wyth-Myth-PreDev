@@ -1,0 +1,179 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="csrf-token" content="{{ csrf_token }}" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="{% static 'assets/images/favicon.png' %}" type="image/x-icon">
+    <title>
+      {% block title %}{{ title|default:"Hfall | Dashboard" }}{% endblock %}
+    </title>
+    <script src="https://cdn.tailwindcss.com "></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+    <!-- DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+      integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <script src="https://unpkg.com/alpinejs" defer></script>
+    {% block css %} 
+        <link rel="stylesheet" href="{% static "css/style.css" %}">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+       <style>
+        /* Basic table setup */
+        table.dataTable thead th {
+            position: relative;
+            padding-right: 2rem !important;
+        }
+        
+
+        /* Tailwind-like styling */
+        div.dataTables_wrapper div.dataTables_length,
+        div.dataTables_wrapper div.dataTables_filter {
+            margin-bottom: 1rem;
+        }
+
+        div.dataTables_wrapper .dataTables_length select {
+            @apply px-2 py-1 border border-gray-300 rounded-md;
+        }
+
+        div.dataTables_wrapper .dataTables_filter input {
+            @apply px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-500;
+        }
+
+        div.dataTables_wrapper .dataTables_length,
+        div.dataTables_wrapper .dataTables_filter {
+            display: flex;
+            align-items: center;
+        }
+
+        div.dataTables_wrapper .dataTables_filter {
+            justify-content: flex-end;
+        }
+
+        div.dataTables_wrapper .dataTables_wrapper {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+    </style>
+
+    {% endblock css %}
+
+  </head>
+  <body class="bg-gray-100 font-sans min-h-screen overflow-hidden">
+    {% include "dashboard/layout/partials/sidebar.html" %}
+    <!-- Overlay for mobile -->
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-30 z-20 hidden md:hidden"></div>
+    <!-- Main Area -->
+    <div class="md:ml-64 h-screen flex flex-col">
+        {% include "dashboard/layout/partials/header.html" %}
+        <!-- Scrollable Content -->
+        <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
+            <!-- Add lots of content here to test scroll -->
+            <div class="space-y-6">
+            <div class="md:p-6">
+                {% block content %}{% endblock content %}
+            </div>
+            </div>
+        </main>
+
+        {% include "dashboard/layout/partials/footer.html" %}
+    </div>
+    <script>
+    $(document).ready(function () {
+        $('#dataTable').DataTable({
+            responsive: true,
+            paging: true,
+            searching: true,
+            ordering: true,
+            info: true,
+            lengthChange: true,
+            language: {
+                search: "_INPUT_",
+                searchPlaceholder: "Search ...",
+                lengthMenu: "Show _MENU_ entries",
+                paginate: {
+                    previous: "← Previous",
+                    next: "Next →"
+                }
+            },
+            drawCallback: function () {
+                let $paginate = $('.dataTables_paginate');
+
+                // wrapper flexbox
+                $paginate.addClass('flex items-center gap-2 mt-4');
+
+                // reset DataTable’s default
+                $paginate.find('a').removeClass().addClass(
+                    'px-2 py-1 border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-100 transition'
+                );
+
+                // active page
+                $paginate.find('.current').removeClass().addClass(
+                    'px-2 py-1 rounded border border-[#1d3b66] bg-[#1d3b66] text-white hover:bg-[#163254]'
+                );
+
+                // disabled prev/next
+                $paginate.find('.disabled').removeClass().addClass(
+                    'px-2 py-1 rounded border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                );
+            }
+        });
+    });
+</script>
+
+  
+    {% comment %} <script>
+        $(document).ready(function () {
+            $('#dataTable').DataTable({
+                responsive: true,
+                paging: true,
+                searching: true,
+                ordering: true,
+                order: [[0, 'desc']],  // ✅ Sort by hidden column (most recent first)
+                columnDefs: [
+                    { targets: 0, visible: false }  // Hide the SortDate column
+                ],
+                language: {
+                    search: "_INPUT_",
+                    searchPlaceholder: "Search ...",
+                    lengthMenu: "Show _MENU_ entries",
+                    paginate: {
+                        previous: "Prev",
+                        next: "Next"
+                    }
+                }
+            });
+        });
+    </script> {% endcomment %}
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        const toggle = document.getElementById('menuToggle');
+
+        toggle.addEventListener('click', () => {
+        sidebar.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+        });
+
+        overlay.addEventListener('click', () => {
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+           {% block extra_js %}{% endblock %}
+ });
+    </script>
+    {% block scripts %} {% endblock %}
+  </body>
+</html>

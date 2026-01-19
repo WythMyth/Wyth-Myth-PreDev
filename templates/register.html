@@ -1,0 +1,1149 @@
+{% extends "layout/homeLayout.html" %}
+{% load static %}
+{% block content %}
+<div class="container mx-auto max-w-4xl md:py-10">
+    <div class="bg-white rounded-lg shadow-lg">
+        <div class="relative text-center mb-4">
+            <img src="{% static 'assets/images/header.png' %}" alt="" class="">
+            <div class="absolute inset-0 flex items-center justify-center z-10">
+                <p class="text-white text-lg md:text-2xl font-semibold px-4 py-2 rounded">
+                    Be a proud member of this exclusive Journey
+                </p>
+            </div>
+        </div>
+        <div class="text-center mb-8 mt-5 p-2">
+            <h2 class="text-3xl font-bold text-gray-800">Please enter your personal and contact information.</h2>
+            <p class="text-gray-600 mt-2">All fields marked with <span class="text-red-500 text-2xl font-bold">*</span> are required.</p>
+        </div>
+        <form method="post" enctype="multipart/form-data" id="registration_form" class="p-8">
+            {% csrf_token %}
+            {% if form.errors %}
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+                <p class="font-medium">Please correct the following errors:</p>
+                <ul class="list-disc ml-5 mt-2">
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li>{{ field.label }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            <!-- Form Fields -->
+            <!-- First Name, Middle Name, Last Name -->
+            <div class="mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="mb-6">
+                        <label for="id_first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+                        <input type="text" name="first_name" id="id_first_name" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <span class="error-message" id="f_name_error" style="color: red; font-size: 14px;"></span>
+                    </div>
+                    <div class="mb-6">
+                        <label for="id_middle_name" class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                        <input type="text" name="middle_name" id="id_middle_name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <span class="error-message" id="m_name_error" style="color: red; font-size: 14px;"></span>
+                    </div>
+                    <div class="mb-6">
+                        <label for="id_last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                        <input type="text" name="last_name" id="id_last_name" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <span class="error-message" id="l_name_error" style="color: red; font-size: 14px;"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Email, Password, Phone Number -->
+            <div class="mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="mb-6">
+                        <label for="id_email" class="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
+                        <input type="email" name="email" id="id_email" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <span class="error-message" id="email_error" style="color: red; font-size: 14px;"></span>
+                    </div>
+                    <div class="mb-6">
+                        <label for="id_password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+
+                        <div id="password-container" class="relative flex items-center">
+                            <input 
+                                type="password" 
+                                name="password" 
+                                id="id_password" 
+                                required 
+                                maxlength="74"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 pr-10"
+                                placeholder="Password"
+                            >
+                            <!-- Eye Icon -->
+                            <i id="password-icon" 
+                            class="fas fa-eye-slash absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-500">
+                            </i>
+
+                            <!-- Password Requirements Tooltip -->
+                            <div id="password-requirements"
+                                class="hidden absolute bottom-full mb-2 sm:left-full sm:ml-2 sm:top-0 sm:bottom-auto w-full sm:w-[300px] z-50 bg-gray-100 border border-gray-300 p-3 rounded-md shadow text-sm text-gray-700">
+                                <p class="font-semibold mb-2">Password Requirements:</p>
+                                <ul class="list-disc list-inside space-y-1">
+                                    <li>Password must be a minimum of 8 characters.</li>
+                                    <li>Password must contain: 1 upper case and 1 lower case letter, 1 number, and 1 special character.</li>
+                                    <li>The following special characters may not be used: ? &lt; &gt; ( ) ' " / \ &amp; (space).</li>
+                                    <li>Password cannot contain: First Name, Last Name, common passwords, or parts of email.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Error Message -->
+                        <span class="text-red-500 text-sm mt-1 block" id="password_error"></span>
+                        <span id="required_field" style="color: red; display: none;"></span>
+                    </div>
+                    <div class="mb-6">
+                        <label for="id_phone_number" class="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                        <input type="text" name="phone_number" id="id_phone_number" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <span class="error-message" id="phone_error" style="color: red; font-size: 14px;"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Birth Year, Month, Date -->
+            <div class="mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="mb-6">
+                        <label for="id_birth_year" class="block text-sm font-medium text-gray-700 mb-1">Birth Year *</label>
+                        <select name="birth_year" id="id_birth_year" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            {% for val, label in form.fields.birth_year.choices %}
+                                <option value="{{ val }}" {% if form.data.birth_year == val|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="error-message" id="birthYearError" style="color: red; font-size: 14px;"></span>
+                    </div>
+                    <div class="mb-6">
+                        <label for="id_birth_month" class="block text-sm font-medium text-gray-700 mb-1">Birth Month *</label>
+                        <select name="birth_month" id="id_birth_month" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            {% for val, label in form.fields.birth_month.choices %}
+                                <option value="{{ val }}" {% if form.data.birth_month == val|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="error-message" id="birthMonthError" style="color: red; font-size: 14px;"></span>
+                    </div>
+                    <div class="mb-6">
+                        <label for="id_birth_date" class="block text-sm font-medium text-gray-700 mb-1">Birth Date *</label>
+                        <select name="birth_date" id="id_birth_date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            {% for val, label in form.fields.birth_date.choices %}
+                                <option value="{{ val }}" {% if form.data.birth_date == val|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="error-message" id="birthDateError" style="color: red; font-size: 14px;"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Home Address -->
+            <div class="mb-6">
+                <div class="mb-6">
+                    <label for="id_home_address_line_1" class="block text-sm font-medium text-gray-700 mb-1">Home Address Line 1 *</label>
+                    <input type="text" name="home_address_line_1" id="id_home_address_line_1" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <span class="error-message" id="home_address_error" style="color: red; font-size: 14px;"></span>
+                </div>
+                <div class="mb-6">
+                    <label for="id_home_address_line_2" class="block text-sm font-medium text-gray-700 mb-1">Home Address Line 2</label>
+                    <input type="text" name="home_address_line_2" id="id_home_address_line_2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <span class="error-message" id="home_address_line_2_error" style="color: red; font-size: 14px;"></span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="mb-6">
+                        <label for="id_city" class="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                        <input type="text" name="city" id="id_city" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <span class="error-message" id="city_error" style="color: red; font-size: 14px;"></span>
+                    </div>
+                    <div class="mb-6">
+                        <label for="id_state" class="block text-sm font-medium text-gray-700 mb-1">State *</label>
+                        <select name="state" id="id_state" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            <option value="">Select State</option>
+                            {% for val, label in form.fields.state.choices %}
+                                <option value="{{ val }}" {% if form.data.state == val|stringformat:"s" %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <span class="error-message" id="stateerror" style="color: red; font-size: 14px;"></span>
+                    </div>
+                    <div class="mb-6">
+                        <label for="id_zip_code" class="block text-sm font-medium text-gray-700 mb-1">ZIP Code *</label>
+                        <input type="text" name="zip_code" id="id_zip_code" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <span class="error-message" id="zip_code_error" style="color: red; font-size: 14px;"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-6">
+                <!-- Emergency Contact -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="mb-6">
+                        <label for="id_emergency_contact" class="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Name</label>
+                        <input type="text" name="emergency_contact" id="id_emergency_contact" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label for="id_emergency_contact_number" class="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Number *</label>
+                        <input type="text" name="emergency_contact_number" id="id_emergency_contact_number" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <span class="error-message" id="emergency_contact_number_error" style="color: red; font-size: 14px;"></span>
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <label for="id_how_did_you_know" class="block text-sm font-medium text-gray-700 mb-1">How Did You Know About Us</label>
+                    <textarea name="how_did_you_know" id="id_how_did_you_know" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"></textarea>
+                </div>
+            </div>
+            <!-- Files -->
+            <div class="mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="mb-6">
+                        <label class="block mb-1 text-sm font-medium text-gray-700">Personal Image *</label>
+                        <input type="file" name="personal_image" id="id_personal_image" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"/>
+                        <span class="error-message" id="image_error" style="color: red; font-size: 14px;"></span>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block mb-1 text-sm font-medium text-gray-700">Photo ID *</label>
+                        <input type="file" name="photo_id" id="id_photo_id" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"/>
+                        <span class="error-message" id="photo_id_error" style="color: red; font-size: 14px;"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agreement -->
+            {% if agreement %}
+            <div class="mb-6">
+                <div class="bg-gray-50 p-6 rounded-lg border">
+                    <h3 class="font-semibold text-lg text-gray-800 mb-3">Agreement: {{ agreement.title }} (v{{ agreement.version }})</h3>
+                    <div class="text-sm text-gray-600 mt-2 max-h-48 overflow-y-auto mb-4 p-4 bg-white rounded border">
+                        <p class="whitespace-pre-line">{{ agreement.content }}</p>
+                    </div>
+                    <div class="mt-8 mb-6">
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" name="is_agree" id="id_is_agree" required class="rounded border-orange-300 text-[#F79533] shadow-sm focus:border-orange-300 focus:ring focus:ring-orange-200 focus:ring-opacity-50">
+                            <span class="ml-2 text-gray-700">I agree to the <span class="text-[#F79533] font-bold underline">terms and conditions *</span></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Sign By Name -->
+            <div class="mb-6">
+                <label for="id_sign_by_name" class="block text-sm font-medium text-gray-700 mb-1">Sign By Name *</label>
+                <input type="text" name="sign_by_name" id="id_sign_by_name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                <span class="error-message" id="signature_error" style="color: red; font-size: 14px;"></span>
+            </div>
+
+            <!-- Captcha -->
+            <div class="mb-6">
+                <label for="id_captcha" class="block text-sm font-medium text-gray-700 mb-1">
+                    Enter the digits shown <span class="text-red-500">*</span>
+                </label>
+                <div class="">
+                    {{ form.captcha }}
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex justify-center">
+                <button type="submit" id="submit_button" class="px-8 py-3 bg-[#F79533] w-full mt-10 text-white font-medium rounded-lg hover:bg-[#E0852E] focus:outline-none focus:ring-4 focus:ring-orange-300 transition-all">
+                    Create Account
+                </button>
+            </div>
+            <div class="text-center mt-4">
+                <p class="text-gray-600 font-bold">Already have an account? <a href="{% url 'accounts:login' %}" class="text-[#F79533] underline">Login here</a></p>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock content %}
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+    // Password toggle functionality
+    const passwordInput = document.getElementById('id_password');
+    const passwordIcon = document.getElementById('password-icon');
+
+    passwordIcon.addEventListener('click', function() {
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            passwordIcon.classList.remove('fa-eye-slash');
+            passwordIcon.classList.add('fa-eye');
+        } else {
+            passwordInput.type = 'password';
+            passwordIcon.classList.remove('fa-eye');
+            passwordIcon.classList.add('fa-eye-slash');
+        }
+    });
+
+    // Password requirements tooltip
+    document.getElementById("id_password").addEventListener("focus", function() {
+        document.getElementById("password-requirements").style.display = "block";
+    });
+
+    document.getElementById("id_password").addEventListener("blur", function() {
+        document.getElementById("password-requirements").style.display = "none";
+        check_password(this, 'password_error');
+    });
+
+    
+
+});
+</script>
+<script>
+    // Helper: Days in Month
+    function daysInMonth(month, year) {
+        return new Date(year, month, 0).getDate();
+    }
+
+    function updateDays() {
+        var birthYear = document.getElementById("id_birth_year");
+        var birthMonth = document.getElementById("id_birth_month");
+        var birthDate = document.getElementById("id_birth_date");
+
+        birthDate.innerHTML = '<option value="">Select Birth Date</option>';
+
+        if (birthYear.value && birthMonth.value) {
+            const days = daysInMonth(parseInt(birthMonth.value), parseInt(birthYear.value));
+            for (let i = 1; i <= days; i++) {
+                const opt = document.createElement("option");
+                opt.value = i;
+                opt.textContent = i;
+                birthDate.appendChild(opt);
+            }
+        }
+    }
+
+    // Validation Functions returning true/false
+    function validateBirthYear(field) {
+        const error = document.getElementById("birthYearError");
+        if (!field.value) {
+            error.textContent = "Birth Year is required.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            error.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function validateBirthMonth(field) {
+        const error = document.getElementById("birthMonthError");
+        if (!field.value) {
+            error.textContent = "Birth Month is required.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            error.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function validateBirthDate(field) {
+        const error = document.getElementById("birthDateError");
+        if (!field.value) {
+            error.textContent = "Birth Date is required.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            error.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function check_first_name(field) {
+        const errorMessage = document.getElementById("f_name_error");
+        const regex = /^[a-zA-Z 'â.]*$/;
+        const value = field.value.trim();
+
+        if (!value) {
+            errorMessage.textContent = "First Name is required.";
+            field.classList.add("error-border");
+            return false;
+        } else if (value.length > 20 || !regex.test(value)) {
+            errorMessage.textContent = "Invalid First Name.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function check_last_name(field) {
+        const errorMessage = document.getElementById("l_name_error");
+        const regex = /^[a-zA-Z 'â.]*$/;
+        const value = field.value.trim();
+
+        if (!value) {
+            errorMessage.textContent = "Last Name is required.";
+            field.classList.add("error-border");
+            return false;
+        } else if (value.length > 25 || !regex.test(value)) {
+            errorMessage.textContent = "Invalid Last Name.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function check_middle_name(field) {
+        const errorMessage = document.getElementById("m_name_error");
+        const regex = /^[a-zA-Z 'â.]*$/;
+        const value = field.value.trim();
+
+        if (value.length > 20 || (!regex.test(value) && value !== "")) {
+            errorMessage.textContent = "Invalid Middle Name.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function validatePhoneNumber(field) {
+        const errorMessage = document.getElementById("phone_error");
+        const regex = /^[0-9]{10}$/;
+        const value = field.value.trim();
+
+        if (!value) {
+            errorMessage.textContent = "Phone Number is required.";
+            field.classList.add("error-border");
+            return false;
+        } else if (!regex.test(value)) {
+            errorMessage.textContent = "Must be a valid 10-digit number.";
+            field.classList.add("error-border");
+            return false;
+        } else if (value.startsWith("0") || value.startsWith("1")) {
+            errorMessage.textContent = "Cannot start with 0 or 1.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function check_email(field) {
+        const errorMessage = document.getElementById("email_error");
+        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const value = field.value.trim();
+
+        if (!value) {
+            errorMessage.textContent = "Email Address is required.";
+            field.classList.add("error-border");
+            return false;
+        } else if (value.length > 74 || !regex.test(value)) {
+            errorMessage.textContent = "Invalid Email Address.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function check_home_address(field) {
+        const errorMessage = document.getElementById("home_address_error");
+        const regex = /^[a-zA-Z0-9 ',.\-_â.]*$/;
+        const value = field.value.trim();
+
+        if (!value) {
+            errorMessage.textContent = "Home Address Line 1 is required.";
+            field.classList.add("error-border");
+            return false;
+        } else if (value.length > 60 || !regex.test(value)) {
+            errorMessage.textContent = "Invalid Home Address.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function check_city(field) {
+        const errorMessage = document.getElementById("city_error");
+        const regex = /^[a-zA-Z\s'.-]*$/;
+        const value = field.value.trim();
+
+        if (!value) {
+            errorMessage.textContent = "City is required.";
+            field.classList.add("error-border");
+            return false;
+        } else if (value.length > 30 || !regex.test(value)) {
+            errorMessage.textContent = "Invalid City name.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function validateZipCode(field) {
+        const errorMessage = document.getElementById("zip_code_error");
+        const regex = /^\d{5}$/;
+        const value = field.value.trim();
+
+        if (!value) {
+            errorMessage.textContent = "ZIP Code is required.";
+            field.classList.add("error-border");
+            return false;
+        } else if (!regex.test(value)) {
+            errorMessage.textContent = "Must be a 5-digit ZIP code.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function check_state(field) {
+        const errorMessage = document.getElementById("stateerror");
+        const value = field.value.trim();
+
+        if (!value) {
+            errorMessage.textContent = "State is required.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function check_sign_by_name(field) {
+        const errorMessage = document.getElementById("signature_error");
+        const value = field.value.trim();
+
+        if (!value) {
+            errorMessage.textContent = "Signature is required.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function check_personal_image(field) {
+        const errorMessage = document.getElementById("image_error");
+        const file = field.files[0];
+
+        if (!file) {
+            errorMessage.textContent = "Personal Image is required.";
+            field.classList.add("error-border");
+            return false;
+        } else if (file.size > 20 * 1024 * 1024) {
+            errorMessage.textContent = "File size must not exceed 20 MB.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function check_photo_id(field) {
+        const errorMessage = document.getElementById("photo_id_error");
+        const file = field.files[0];
+
+        if (!file) {
+            errorMessage.textContent = "Photo ID is required.";
+            field.classList.add("error-border");
+            return false;
+        } else if (file.size > 20 * 1024 * 1024) {
+            errorMessage.textContent = "File size must not exceed 20 MB.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function check_password(field) {
+        const errorMessage = document.getElementById("password_error");
+        const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@â.,._%*:;=^!#$+\[\]`{}|~]).{8,74}$/;
+        const disallowedCharsRegex = /['"()<>\/\\&?\s]/;
+
+        const firstName = document.getElementById("id_first_name").value.trim();
+        const lastName = document.getElementById("id_last_name").value.trim();
+        const email = document.getElementById("id_email").value.trim();
+        const value = field.value.trim();
+
+        if (!value) {
+            errorMessage.textContent = "Password is required.";
+            field.classList.add("error-border");
+            return false;
+        } else if (value.length < 8) {
+            errorMessage.textContent = "Minimum 8 characters required.";
+            field.classList.add("error-border");
+            return false;
+        } else if (value.length > 74) {
+            errorMessage.textContent = "Cannot exceed 74 characters.";
+            field.classList.add("error-border");
+            return false;
+        } else if (disallowedCharsRegex.test(value)) {
+            errorMessage.textContent = "Disallowed special character used.";
+            field.classList.add("error-border");
+            return false;
+        } else if (!regex.test(value)) {
+            errorMessage.textContent = "Check password requirements.";
+            field.classList.add("error-border");
+            return false;
+        } else if (
+            (firstName && value.toLowerCase().includes(firstName.toLowerCase())) ||
+            (lastName && value.toLowerCase().includes(lastName.toLowerCase())) ||
+            (email && value.toLowerCase().includes(email.split("@")[0]))
+        ) {
+            errorMessage.textContent = "Password cannot include personal info.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    function validateEmergencyContactNumber(field) {
+        const errorMessage = document.getElementById("emergency_contact_number_error");
+        const regex = /^[0-9]{10}$/;
+        const value = field.value.trim();
+
+        if (!value) {
+            errorMessage.textContent = "Emergency Contact Number is required.";
+            field.classList.add("error-border");
+            return false;
+        } else if (!regex.test(value)) {
+            errorMessage.textContent = "Must be a valid 10-digit number.";
+            field.classList.add("error-border");
+            return false;
+        } else if (value.startsWith("0") || value.startsWith("1")) {
+            errorMessage.textContent = "Cannot start with 0 or 1.";
+            field.classList.add("error-border");
+            return false;
+        } else {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        // Event Listeners for blur validation
+        document.getElementById("id_birth_year").addEventListener("change", updateDays);
+        document.getElementById("id_birth_month").addEventListener("change", updateDays);
+        document.getElementById("id_birth_year").addEventListener("blur", function () { validateBirthYear(this); });
+        document.getElementById("id_birth_month").addEventListener("blur", function () { validateBirthMonth(this); });
+        document.getElementById("id_birth_date").addEventListener("blur", function () { validateBirthDate(this); });
+        document.getElementById("id_first_name").addEventListener("blur", function () { check_first_name(this); });
+        document.getElementById("id_last_name").addEventListener("blur", function () { check_last_name(this); });
+        document.getElementById("id_middle_name").addEventListener("blur", function () { check_middle_name(this); });
+        document.getElementById("id_phone_number").addEventListener("blur", function () { validatePhoneNumber(this); });
+        document.getElementById("id_email").addEventListener("blur", function () { check_email(this); });
+        document.getElementById("id_home_address_line_1").addEventListener("blur", function () { check_home_address(this); });
+        document.getElementById("id_city").addEventListener("blur", function () { check_city(this); });
+        document.getElementById("id_zip_code").addEventListener("blur", function () { validateZipCode(this); });
+        document.getElementById("id_state").addEventListener("blur", function () { check_state(this); });
+        document.getElementById("id_sign_by_name").addEventListener("blur", function () { check_sign_by_name(this); });
+        document.getElementById("id_personal_image").addEventListener("blur", function () { check_personal_image(this); });
+        document.getElementById("id_photo_id").addEventListener("blur", function () { check_photo_id(this); });
+        document.getElementById("id_password").addEventListener("focus", function () { document.getElementById("password-requirements").style.display = "block"; });
+        document.getElementById("id_password").addEventListener("blur", function () { document.getElementById("password-requirements").style.display = "none"; check_password(this); });
+        document.getElementById("id_emergency_contact_number").addEventListener("blur", function () { validateEmergencyContactNumber(this); });
+
+        // Submit Button Logic
+        document.getElementById("submit_button").addEventListener("click", function (event) {
+            const fieldsToCheck = [
+                { field: document.getElementById("id_first_name"), validator: check_first_name },
+                { field: document.getElementById("id_last_name"), validator: check_last_name },
+                { field: document.getElementById("id_email"), validator: check_email },
+                { field: document.getElementById("id_phone_number"), validator: validatePhoneNumber },
+                { field: document.getElementById("id_home_address_line_1"), validator: check_home_address },
+                { field: document.getElementById("id_city"), validator: check_city },
+                { field: document.getElementById("id_zip_code"), validator: validateZipCode },
+                { field: document.getElementById("id_birth_year"), validator: validateBirthYear },
+                { field: document.getElementById("id_birth_month"), validator: validateBirthMonth },
+                { field: document.getElementById("id_birth_date"), validator: validateBirthDate },
+                { field: document.getElementById("id_state"), validator: check_state },
+                { field: document.getElementById("id_sign_by_name"), validator: check_sign_by_name },
+                { field: document.getElementById("id_personal_image"), validator: check_personal_image },
+                { field: document.getElementById("id_photo_id"), validator: check_photo_id },
+                { field: document.getElementById("id_password"), validator: check_password },
+                { field: document.getElementById("id_emergency_contact_number"), validator: validateEmergencyContactNumber }
+            ];
+
+            let firstErrorField = null;
+
+            fieldsToCheck.forEach(item => {
+                const isValid = item.validator(item.field);
+                if (!isValid && !firstErrorField) {
+                    firstErrorField = item.field;
+                }
+            });
+
+            if (firstErrorField) {
+                event.preventDefault(); // Prevent form submission
+                firstErrorField.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+        });
+    });
+</script>
+
+<style>
+    .error-border {
+        border: 2px solid red !important;
+    }
+</style>
+{% endblock scripts %}
+
+
+
+
+
+
+
+
+{% comment %} #previous code {% endcomment %}
+{% comment %} {% extends "layout/homeLayout.html" %}
+{% load static %}
+{% block content %}
+<div class="container mx-auto max-w-4xl md:py-10 ">
+    <div class="bg-white rounded-lg shadow-lg ">
+        <div class="relative text-center mb-4">
+            <!-- Image -->
+            <img src="{% static 'assets/images/header.png' %}" alt="" class="">
+
+            <!-- Centered Text -->
+            <div class="absolute inset-0 flex items-center justify-center z-10">
+                <p class="text-white text-lg md:text-2xl font-semibold  px-4 py-2 rounded">
+                    Be a proud member of this exclusive Journey
+                </p>
+            </div>
+        </div>
+
+        <div class="text-center mb-8 mt-5 p-2">
+            <h2 class="text-3xl font-bold text-gray-800">Please enter your personal and contact information.</h2>
+            <p class="text-gray-600 mt-2">All fields with <span class="text-red-500 text-2xl font-bold">*</span> marked are required to be filled out.</p>
+        </div>
+        <!-- Error Messages -->
+        <form method="post" enctype="multipart/form-data" class="p-8">
+            {% csrf_token %}
+            {% if form.errors %}
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+                <p class="font-medium">Please correct the following errors:</p>
+                <ul class="list-disc ml-5 mt-2">
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li>{{ field.label }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Personal Information Section -->
+            <div class="mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- First Name -->
+                    <div class="mb-6">
+                        <label for="id_first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+                        <input type="text" name="first_name" id="id_first_name" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    
+                    <!-- Middle Name -->
+                    <div class="mb-6">
+                        <label for="id_middle_name" class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                        <input type="text" name="middle_name" id="id_middle_name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    
+                    <!-- Last Name -->
+                    <div class="mb-6">
+                        <label for="id_last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                        <input type="text" name="last_name" id="id_last_name" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Information Section -->
+            <div class="mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Email -->
+                    <div class="mb-6">
+                        <label for="id_email" class="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
+                        <input type="email" name="email" id="id_email" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    
+                    <!-- Password Field with Tooltip -->
+                    <div class="mb-6">
+                        <label for="id_password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+
+                        <div id="password-container" class="relative flex items-center">
+                            <input 
+                                type="password" 
+                                name="password" 
+                                id="id_password" 
+                                required 
+                                maxlength="74"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 pr-10"
+                                placeholder="Password"
+                            >
+                            <!-- Eye Icon -->
+                            <i id="password-icon" 
+                            class="fas fa-eye-slash absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-500">
+                            </i>
+
+                            <!-- Password Requirements Tooltip -->
+                            <div id="password-requirements"
+                                class="hidden absolute bottom-full mb-2 sm:left-full sm:ml-2 sm:top-0 sm:bottom-auto w-full sm:w-[300px] z-50 bg-gray-100 border border-gray-300 p-3 rounded-md shadow text-sm text-gray-700">
+                                <p class="font-semibold mb-2">Password Requirements:</p>
+                                <ul class="list-disc list-inside space-y-1">
+                                    <li>Password must be a minimum of 8 characters.</li>
+                                    <li>Password must contain: 1 upper case and 1 lower case letter, 1 number, and 1 special character.</li>
+                                    <li>The following special characters may not be used: ? &lt; &gt; ( ) ' " / \ &amp; (space).</li>
+                                    <li>Password cannot contain: First Name, Last Name, common passwords, or parts of email.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Error Message -->
+                        <span class="text-red-500 text-sm mt-1 block" id="password_error"></span>
+                        <span id="required_field" style="color: red; display: none;"></span>
+                    </div>
+
+                    <!-- Phone Number Section -->
+                    <div class="mb-6">
+                        <label for="id_phone_number" class="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                        <input type="text" name="phone_number" id="id_phone_number" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Birth Information Section -->
+            <div class="mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Birth Year -->
+                    <div class="mb-6">
+                        <label for="id_birth_year" class="block text-sm font-medium text-gray-700 mb-1">Birth Year *</label>
+                        <select name="birth_year" id="id_birth_year" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            {% for val, label in form.fields.birth_year.choices %}
+                                <option value="{{ val }}" {% if form.data.birth_year == val|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Birth Month -->
+                    <div class="mb-6">
+                        <label for="id_birth_month" class="block text-sm font-medium text-gray-700 mb-1">Birth Month *</label>
+                        <select name="birth_month" id="id_birth_month" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            {% for val, label in form.fields.birth_month.choices %}
+                                <option value="{{ val }}" {% if form.data.birth_month == val|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Birth Date -->
+                    <div class="mb-6">
+                        <label for="id_birth_date" class="block text-sm font-medium text-gray-700 mb-1">Birth Date *</label>
+                        <select name="birth_date" id="id_birth_date" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            {% for val, label in form.fields.birth_date.choices %}
+                                <option value="{{ val }}" {% if form.data.birth_date == val|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Address Information Section -->
+            <div class="mb-6">
+                <!-- Home Address Line 1 -->
+                <div class="mb-6">
+                    <label for="id_home_address_line_1" class="block text-sm font-medium text-gray-700 mb-1">Home Address Line 1 *</label>
+                    <input type="text" name="home_address_line_1" id="id_home_address_line_1" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                
+                <!-- Home Address Line 2 -->
+                <div class="mb-6">
+                    <label for="id_home_address_line_2" class="block text-sm font-medium text-gray-700 mb-1">Home Address Line 2</label>
+                    <input type="text" name="home_address_line_2" id="id_home_address_line_2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- City -->
+                    <div class="mb-6">
+                        <label for="id_city" class="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                        <input type="text" name="city" id="id_city" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    
+                    <!-- State -->
+                    <div class="mb-6">
+                        <label for="id_state" class="block text-sm font-medium text-gray-700 mb-1">State *</label>
+                        <input type="text" name="state" id="id_state" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    
+                    <!-- ZIP Code -->
+                    <div class="mb-6">
+                        <label for="id_zip_code" class="block text-sm font-medium text-gray-700 mb-1">ZIP Code *</label>
+                        <input type="text" name="zip_code" id="id_zip_code" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Information Section -->
+            <div class="mb-6">
+                <!-- Emergency Contact -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="mb-6">
+                        <label for="id_emergency_contact" class="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Name</label>
+                        <input type="text" name="emergency_contact" id="id_emergency_contact" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div class="mb-6">
+                        <label for="id_emergency_contact_number" class="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Number</label>
+                        <input type="text" name="emergency_contact_number" id="id_emergency_contact_number" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <label for="id_how_did_you_know" class="block text-sm font-medium text-gray-700 mb-1">How Did You Know About Us</label>
+                    <textarea name="how_did_you_know" id="id_how_did_you_know" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"></textarea>
+                </div>
+            </div>
+
+            <!-- Documents Upload Section -->
+            <div class="mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Personal Image -->
+                    <div class="mb-6">
+                        <label class="block mb-1 text-sm font-medium text-gray-700">Personal Image</label>
+                        <input type="file" name="personal_image" accept="image/*"
+                            class="block w-full text-sm text-gray-500
+                                    file:mr-4 file:py-2 file:px-4
+                                    file:rounded-sm file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-orange-50 file:text-orange-700
+                                    hover:file:bg-orange-100"/>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block mb-1 text-sm font-medium text-gray-700">Photo ID</label>
+                        <input type="file" name="photo_id" accept="image/*" class="block w-full text-sm text-gray-500
+                                    file:mr-4 file:py-2 file:px-4
+                                    file:rounded-sm file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-orange-50 file:text-orange-700
+                                    hover:file:bg-orange-100" />
+                    </div>
+                </div>
+            </div>
+
+            {% if agreement %}
+            <div class="mb-6">
+                <div class="bg-gray-50 p-6 rounded-lg border">
+                    <h3 class="font-semibold text-lg text-gray-800 mb-3">Agreement: {{ agreement.title }} (v{{ agreement.version }})</h3>
+                    <div class="text-sm text-gray-600 mt-2 max-h-48 overflow-y-auto mb-4 p-4 bg-white rounded border">
+                        <p class="whitespace-pre-line">{{ agreement.content }}</p>
+                    </div>
+                    <div class="mt-8 mb-6">
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" name="is_agree" id="id_is_agree" required class="rounded border-orange-300 text-[#F79533] shadow-sm focus:border-orange-300 focus:ring focus:ring-orange-200 focus:ring-opacity-50">
+                            <span class="ml-2 text-gray-700">I agree to the <span class="text-[#F79533] font-bold underline">terms and conditions *</span></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="mb-6">
+                <label for="id_sign_by_name" class="block text-sm font-medium text-gray-700 mb-1">Sign By Name</label>
+                <input type="text" name="sign_by_name" id="id_sign_by_name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+            </div>
+            
+            <div class="mb-6">
+                <label for="id_captcha" class="block text-sm font-medium text-gray-700 mb-1">
+                    Enter the digits shown <span class="text-red-500">*</span>
+                </label>
+
+                <div class="">
+                    <!-- Captcha Image and Input -->
+                    {{ form.captcha }}
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex justify-center">
+                <button type="submit" class="px-8 py-3 bg-[#F79533] w-full mt-10 text-white font-medium rounded-lg hover:bg-[#E0852E] focus:outline-none focus:ring-4 focus:ring-orange-300 transition-all">
+                    Create Account
+                </button>
+            </div>
+            
+            <!-- Login Link -->
+            <div class="text-center mt-4">
+                <p class="text-gray-600 font-bold">Already have an account? <a href="{% url 'accounts:login' %}" class="text-[#F79533] underline">Login here</a></p>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+    // Password toggle functionality
+    const passwordInput = document.getElementById('id_password');
+    const passwordIcon = document.getElementById('password-icon');
+
+    passwordIcon.addEventListener('click', function() {
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            passwordIcon.classList.remove('fa-eye-slash');
+            passwordIcon.classList.add('fa-eye');
+        } else {
+            passwordInput.type = 'password';
+            passwordIcon.classList.remove('fa-eye');
+            passwordIcon.classList.add('fa-eye-slash');
+        }
+    });
+
+    // Password requirements tooltip
+    document.getElementById("id_password").addEventListener("focus", function() {
+        document.getElementById("password-requirements").style.display = "block";
+    });
+
+    document.getElementById("id_password").addEventListener("blur", function() {
+        document.getElementById("password-requirements").style.display = "none";
+        check_password(this, 'password_error');
+    });
+
+    // Dynamic birth date update functionality
+    const birthYear = document.getElementById('id_birth_year');
+    const birthMonth = document.getElementById('id_birth_month');
+    const birthDate = document.getElementById('id_birth_date');
+
+    function updateBirthDates() {
+        const year = birthYear.value;
+        const month = birthMonth.value;
+        
+        // Clear existing date options except the first one
+        birthDate.innerHTML = '<option value="">Select Birth Date</option>';
+        
+        if (year && month) {
+            // Calculate days in the selected month and year
+            const daysInMonth = new Date(year, month, 0).getDate();
+            
+            // Add options for each day
+            for (let day = 1; day <= daysInMonth; day++) {
+                const option = document.createElement('option');
+                option.value = day;
+                option.textContent = day;
+                birthDate.appendChild(option);
+            }
+        }
+    }
+
+    // Add event listeners to year and month dropdowns
+    if (birthYear) birthYear.addEventListener('change', updateBirthDates);
+    if (birthMonth) birthMonth.addEventListener('change', updateBirthDates);
+
+    // Enhanced password validation function
+    function check_password(field, error_id) {
+        var passwords = field.value.trim();
+        var errorMessage = document.getElementById(error_id);
+        var requiredField = document.getElementById("required_field");
+
+        // Updated regex to include allowed special characters and exclude disallowed ones
+        var regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@‐,._%*:;=^!#$+\[\]`{}|~]).{8,74}$/;
+        var disallowedCharsRegex = /['"()<>\/\\&?\s]/; // Disallowed characters
+
+        var firstName = document.getElementById("id_first_name").value.trim();
+        var lastName = document.getElementById("id_last_name").value.trim();
+        var email = document.getElementById("id_email").value.trim();
+
+        if (passwords === "") {
+            errorMessage.textContent = "Password is a required field.";
+            errorMessage.style.color = "red";
+            requiredField.style.display = "inline";
+            field.style.border = "2px solid red";
+        } else if (passwords.length < 8) {
+            errorMessage.textContent = "Must contain a minimum of 8 characters.";
+            errorMessage.style.color = "red";
+            requiredField.style.display = "none";
+            field.style.border = "2px solid red";
+        } else if (passwords.length > 74) {
+            errorMessage.textContent = "Password cannot exceed 74 characters.";
+            errorMessage.style.color = "red";
+            requiredField.style.display = "none";
+            field.style.border = "2px solid red";
+        } else if (!regex.test(passwords)) {
+            errorMessage.textContent = "Please refer to Password requirements.";
+            errorMessage.style.color = "red";
+            requiredField.style.display = "none";
+            field.style.border = "2px solid red";
+        } else if (disallowedCharsRegex.test(passwords)) {
+            errorMessage.textContent = "Please refer to Password requirements.";
+            errorMessage.style.color = "red";
+            requiredField.style.display = "none";
+            field.style.border = "2px solid red";
+        } else if (
+            (firstName && passwords.toLowerCase().includes(firstName.toLowerCase())) ||
+            (lastName && passwords.toLowerCase().includes(lastName.toLowerCase())) ||
+            (email && passwords.toLowerCase().includes(email.toLowerCase()))
+        ) {
+            errorMessage.textContent = "Password cannot contain First Name, Last Name, or email.";
+            errorMessage.style.color = "red";
+            requiredField.style.display = "none";
+            field.style.border = "2px solid red";
+        } else {
+            errorMessage.textContent = "";
+            requiredField.style.display = "none";
+            field.style.border = "";
+        }
+    }
+
+    // Form submission validation
+    document.getElementById("submit_button").addEventListener("click", function(event) {
+        var passwordField = document.getElementById("id_password");
+        var fieldsToCheck = [
+            {field: passwordField, validator: check_password, errorId: "password_error"},  
+        ];
+        var firstErrorField = null;
+        
+        fieldsToCheck.forEach(function(item) {
+            item.validator(item.field, item.errorId);
+            if (!firstErrorField && item.field.style.border === "2px solid red") {
+                firstErrorField = item.field;
+            }
+        });
+        
+        if (firstErrorField) {
+            event.preventDefault(); // Prevent form submission
+            firstErrorField.scrollIntoView({behavior: "smooth", block: "center"});
+        }
+    });
+});
+</script>
+
+{% endblock scripts %} {% endcomment %}

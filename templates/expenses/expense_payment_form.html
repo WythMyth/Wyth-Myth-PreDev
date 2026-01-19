@@ -1,0 +1,125 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load form_tags %}
+
+{% block content %}
+<div class="bg-white m-5 rounded-lg p-4">
+    <h1 class="text-2xl font-bold">Pay Expense</h1>
+    <hr class="my-4 border-gray-300">
+
+    <div class="max-w-full mx-auto space-y-6">
+        <div class="p-6 bg-white rounded-lg shadow-md mx-auto">
+            {% if form.non_field_errors %}
+                <ul class="text-red-500 text-sm italic mb-4">
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <!-- Expense (readonly display) & User -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block font-medium mb-3">Expense</label>
+                        <input type="text" value="{{ form.instance.expense.purpose }}" readonly
+                               class="w-full border rounded-md px-3 py-2 bg-gray-100 cursor-not-allowed" />
+                    </div>
+
+                    <div>
+                        <label class="block font-medium mb-3">{{ form.user.label }}</label>
+                        {{ form.user|add_class:"w-full border rounded-md px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400" }}
+                        {% if form.user.errors %}
+                            <ul class="text-red-500 text-xs italic mt-1">
+                                {% for error in form.user.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Amount, Receive Type, Receipt -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Amount -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Amount <span class="text-xs">($)</span></label>
+                        <input type="text"
+                            name="{{ form.amount.name }}"
+                            value="{{ form.amount.value|floatformat:2 }}"
+                            readonly
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-gray-100 cursor-not-allowed">
+                        {% if form.amount.errors %}
+                            <ul class="text-red-500 text-xs italic mt-1">
+                                {% for error in form.amount.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+
+                    <!-- Receive Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.receive_type.label }}</label>
+                        {{ form.receive_type|add_class:"w-full border rounded-md px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400" }}
+                        {% if form.receive_type.errors %}
+                            <ul class="text-red-500 text-xs italic mt-1">
+                                {% for error in form.receive_type.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+
+                    <!-- Receipt Upload -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-3">{{ form.receipt.label }} <span class="text-xs">(Optional)</span></label>
+                        <input type="file" name="{{ form.receipt.name }}" id="{{ form.receipt.id_for_label }}"
+                               class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 
+                               file:rounded-md file:border-0 
+                               file:text-sm file:font-medium
+                               file:bg-gray-100 file:text-gray-700
+                               hover:file:bg-gray-200 cursor-pointer" />
+                        <div id="file-name" class="mt-2 text-sm text-gray-500">
+                            {% if form.instance.receipt %}
+                                Current: {{ form.instance.receipt.url|default:"None" }}
+                            {% else %}
+                                No file chosen
+                            {% endif %}
+                        </div>
+                        {% if form.receipt.errors %}
+                            <ul class="text-red-500 text-xs italic mt-1">
+                                {% for error in form.receipt.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex justify-center space-x-4 mt-6">
+                    <button type="submit"
+                        class="px-6 py-2 bg-[#183665] text-white rounded-md transition">
+                        Pay Now
+                    </button>
+                    <a href="{% url 'accounts:expense_payment_list' %}"
+                       class="px-6 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    // Display file name when selected
+    document.getElementById('{{ form.receipt.id_for_label }}').addEventListener('change', function(e) {
+        const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+        document.getElementById('file-name').textContent = fileName;
+    });
+</script>
+{% endblock scripts %}

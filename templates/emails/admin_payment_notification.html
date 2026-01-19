@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>New Payment Submitted - HFall Realty</title>
+  </head>
+
+  <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f0f0f0;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f0f0f0; padding: 20px;">
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid #e0e0e0;">
+            
+            <!-- Header -->
+            <tr>
+              <td style="padding: 25px 30px; background-color: #ffffff;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td>
+                      <img
+                        src="https://hfallrealty.com/static/assets/images/logo.png"
+                        style="width: 100px;"
+                        alt="HFall Realty Logo"
+                      />
+                    </td>
+                    <td align="right">
+                      <span style="font-size: 13px; color: #666666;">{{ date }}</span>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Main Content -->
+            <tr>
+              <td style="padding: 40px 30px; color: #333333; font-size: 14px; line-height: 1.6;">
+                
+                <p style="margin: 0 0 12px 0;">
+                  Dear <strong>{{ user.get_full_name }}</strong>,
+                </p>
+
+                <p style="margin: 0 0 16px 0;">
+                  Your payment has been successfully submitted and is currently <strong>pending review</strong>.
+                </p>
+
+                <!-- Payment Summary Card -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border: 1px solid #e9ecef; background: #fafafa;">
+                  <tr>
+                    <td style="padding: 18px;">
+                      <p style="margin: 0 0 10px 0; font-size: 15px;">
+                        <strong>Payment Summary</strong>
+                      </p>
+
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size: 14px;">
+                        <tr>
+                          <td style="padding: 6px 0; color: #666;">Payment ID</td>
+                          <td style="padding: 6px 0; text-align: right;"><strong>#{{ payment.id }}</strong></td>
+                        </tr>
+
+                        <tr>
+                          <td style="padding: 6px 0; color: #666;">Payment Method</td>
+                          <td style="padding: 6px 0; text-align: right;">
+                            <strong>
+                              {% if bank %}
+                                {{ bank.name }}
+                              {% else %}
+                                {{ payment.bank.name }}
+                              {% endif %}
+                            </strong>
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td style="padding: 6px 0; color: #666;">Amount (Original)</td>
+                          <td style="padding: 6px 0; text-align: right;"><strong>${{ payment.amount }}</strong></td>
+                        </tr>
+
+                        <tr>
+                          <td style="padding: 6px 0; color: #666;">Total Paid (With Fee)</td>
+                          <td style="padding: 6px 0; text-align: right;">
+                            <strong>
+                              {% if payment.paid_amount %}
+                                ${{ payment.paid_amount }}
+                              {% else %}
+                                ${{ payment.amount }}
+                              {% endif %}
+                            </strong>
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td style="padding: 6px 0; color: #666;">Status</td>
+                          <td style="padding: 6px 0; text-align: right;">
+                            <strong style="text-transform: capitalize;">{{ payment.status }}</strong>
+                          </td>
+                        </tr>
+
+                        {% if payment.card_last_four %}
+                        <tr>
+                          <td style="padding: 6px 0; color: #666;">Card (Last 4)</td>
+                          <td style="padding: 6px 0; text-align: right;"><strong>** {{ payment.card_last_four }}</strong></td>
+                        </tr>
+                        {% endif %}
+
+                        {% if payment.notes %}
+                        <tr>
+                          <td style="padding: 6px 0; color: #666; vertical-align: top;">Notes</td>
+                          <td style="padding: 6px 0; text-align: right;">{{ payment.notes }}</td>
+                        </tr>
+                        {% endif %}
+                      </table>
+
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin: 18px 0 0 0;">
+                  Once approved, the amount will be added to your account balance.
+                </p>
+
+                <p style="margin: 18px 0 0 0;">
+                  Best regards,<br />
+                  <strong>Finance Department</strong><br />
+                  HFall Realty
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="padding: 30px; background-color: #ffffff; text-align: center; border-top: 1px solid #e0e0e0;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center" style="color: #333333; font-size: 14px; line-height: 1.6;">
+                      <div style="margin-bottom: 8px;">
+                        <a href="https://hfallrealty.com" style="color: #333333; text-decoration: none;">https://hfallrealty.com</a>
+                        <span style="margin: 0 8px;"><img src="https://hfallrealty.com/static/assets/images/favicon.png" width="14" height="14" alt="|" /></span>
+                        <a href="mailto:info@hfallrealty.com" style="color: #333333; text-decoration: none;">info@hfallrealty.com</a>
+                        <span style="margin: 0 8px;"><img src="https://hfallrealty.com/static/assets/images/favicon.png" width="14" height="14" alt="|" /></span>
+                        <span>929-301-6028</span>
+                      </div>
+                      <div>625W 57th St, New York, NY 10019</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Clarification Needed - HFall Realty</title>
+  </head>
+  <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f0f0f0;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f0f0f0; padding: 20px;">
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border: 1px solid #e0e0e0;">
+            <!-- Header -->
+            <tr>
+              <td style="padding: 25px 30px; background-color: #ffffff;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td>
+                      <img src="https://hfallrealty.com/static/assets/images/logo.png" style="width: 100px;" alt="HFAll Realty Logo" />
+                    </td>
+                    <td align="right">
+                      <span style="font-size: 13px; color: #666666;">{{ date }}</span>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Main Content -->
+            <tr>
+              <td style="padding: 40px 30px; color: #333333; font-size: 14px; line-height: 1.6;">
+                <p>
+                  Dear <strong>{{ user_full_name }}</strong>,
+                </p>
+
+                <p>
+                  We have reviewed your submitted expense (ID: <strong>{{ expense_id }}</strong>), and it requires further clarification or correction.
+                </p>
+
+                <p>Please review the details and update the expense with proper documentation or explanation as soon as possible.</p>
+
+                <p>You can access your dashboard using your existing login credentials.</p>
+
+                <p>Thank you for your attention to this matter.</p>
+
+                <p>Best regards,</p>
+                <p>
+                  <strong>Finance Department</strong><br />HFall Realty
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="padding: 30px; background-color: #ffffff; text-align: center; border-top: 1px solid #e0e0e0;">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center" style="color: #333333; font-size: 14px; line-height: 1.6;">
+                      <div style="margin-bottom: 8px;">
+                        <a href="https://hfallrealty.com" style="color: #333333; text-decoration: none;">https://hfallrealty.com</a>
+                        <span style="margin: 0 8px;"><img src="https://hfallrealty.com/static/assets/images/favicon.png" width="14" height="14" alt="|" /></span>
+                        <a href="mailto:info@hfallrealty.com" style="color: #333333; text-decoration: none;">info@hfallrealty.com</a>
+                        <span style="margin: 0 8px;"><img src="https://hfallrealty.com/static/assets/images/favicon.png" width="14" height="14" alt="|" /></span>
+                        <span>929-301-6028</span>
+                      </div>
+                      <div>625W 57th St, New York, NY 10019</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html> {% endcomment %}

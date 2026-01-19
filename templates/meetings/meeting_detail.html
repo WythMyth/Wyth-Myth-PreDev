@@ -1,0 +1,116 @@
+{% extends "dashboard//layout/dashboardLayout.html" %}
+
+{% block title %}Meeting Details{% endblock %}
+
+{% block content %}
+<div class="bg-white p-6 rounded shadow">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">{{ meeting.title }}</h1>
+        <div class="flex space-x-2">
+            <a href="{% url 'meeting-update' meeting.pk %}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded">Edit</a>
+            <a href="{% url 'meeting-delete' meeting.pk %}" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">Delete</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+            <h2 class="text-xl font-semibold mb-3">Meeting Information</h2>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="mb-4">
+                    <span class="block text-gray-500 text-sm">Date</span>
+                    <span class="font-semibold">{{ meeting.date }}</span>
+                </div>
+                <div class="mb-4">
+                    <span class="block text-gray-500 text-sm">Time</span>
+                    <span class="font-semibold">{{ meeting.start_time }} - {{ meeting.end_time }}</span>
+                </div>
+                <div class="mb-4">
+                    <span class="block text-gray-500 text-sm">Status</span>
+                    <span class="font-semibold">
+                        {% if meeting.is_expired %}
+                            <span class="bg-gray-200 text-gray-800 px-2 py-1 rounded text-xs">Expired</span>
+                        {% else %}
+                            <span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">Active</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="mb-4">
+                    <span class="block text-gray-500 text-sm">Description</span>
+                    <p class="mt-1">{{ meeting.description }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <h2 class="text-xl font-semibold mb-3">Meeting Link</h2>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="mb-4">
+                    <span class="block text-gray-500 text-sm">Meeting URL</span>
+                    <a href="{{ meeting.meeting_url }}" target="_blank" class="text-blue-600 hover:underline break-all">{{ meeting.meeting_url }}</a>
+                </div>
+                {% if meeting.password %}
+                <div class="mb-4">
+                    <span class="block text-gray-500 text-sm">Password</span>
+                    <span class="font-mono bg-gray-100 px-2 py-1 rounded">{{ meeting.password }}</span>
+                </div>
+                {% endif %}
+                <div class="mb-4">
+                    <span class="block text-gray-500 text-sm">SMS Notification</span>
+                    <span>{{ meeting.is_sms|yesno:"Enabled,Disabled" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-8">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">Recordings</h2>
+            {% if not meeting.is_expired %}
+                <a href="{% url 'recording-create' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+                    Add Recording
+                </a>
+            {% endif %}
+        </div>
+
+        {% if recordings %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="py-2 px-4 border-b text-left">Description</th>
+                            <th class="py-2 px-4 border-b text-left">Created</th>
+                            <th class="py-2 px-4 border-b text-left">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for recording in recordings %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-2 px-4 border-b">
+                                    <a href="{% url 'recording-detail' recording.pk %}" class="text-blue-600 hover:underline">
+                                        {{ recording.description|default:"Recording #"|add:recording.id|stringformat:"d" }}
+                                    </a>
+                                </td>
+                                <td class="py-2 px-4 border-b">{{ recording.create_at|date:"M d, Y" }}</td>
+                                <td class="py-2 px-4 border-b">
+                                    <div class="flex space-x-2">
+                                        <a href="{{ recording.recording_url }}" target="_blank" class="text-blue-600 hover:text-blue-800">View</a>
+                                        <a href="{% url 'recording-update' recording.pk %}" class="text-yellow-600 hover:text-yellow-800">Edit</a>
+                                        <a href="{% url 'recording-delete' recording.pk %}" class="text-red-600 hover:text-red-800">Delete</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-8 text-gray-600">
+                <p>No recordings available for this meeting.</p>
+                {% if not meeting.is_expired %}
+                    <a href="{% url 'recording-create' %}" class="text-blue-600 hover:underline mt-2 inline-block">Add a recording</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

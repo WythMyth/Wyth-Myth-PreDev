@@ -1,0 +1,219 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+{% block title %}Meetings{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6 mt-5 mx-4">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+        <h1 class="text-2xl font-bold text-gray-800">My Meetings</h1>
+        {% if request.user.is_superuser %}
+            <a href="{% url 'meeting-create' %}" 
+               class="bg-[#183665] hover:bg-blue-700 text-white px-4 py-2 rounded font-bold">
+               Create New Meeting
+            </a>
+        {% endif %}
+    </div>
+    <hr class="mb-5 px-5 border-gray-200">
+
+    <!-- Filter -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-4 bg-white p-4 rounded shadow">
+        <form method="get" class="contents">
+            <!-- Title -->
+            <div>
+                <label for="title" class="block font-medium mb-1">Title</label>
+                <input type="text" id="title" name="title" value="{{ title_filter }}"
+                       placeholder="Search title"
+                       class="border border-black px-3 py-2 rounded w-full">
+            </div>
+
+            <!-- From Date -->
+            <div>
+                <label for="from_date" class="block font-medium mb-1">From Date</label>
+                <input type="date" id="from_date" name="from_date" value="{{ from_date }}"
+                       class="border px-3 py-2 border-black rounded w-full">
+            </div>
+
+            <!-- To Date -->
+            <div>
+                <label for="to_date" class="block font-medium mb-1">To Date</label>
+                <input type="date" id="to_date" name="to_date" value="{{ to_date }}"
+                       class="border px-3 py-2 border-black rounded w-full">
+            </div>
+
+            <!-- Status -->
+            <div>
+                <label for="status" class="block font-medium mb-1">Status</label>
+                <select id="status" name="status" class="border  border-black px-3 py-2 rounded w-full">
+                    <option value="" {% if not status_filter %}selected{% endif %}>All</option>
+                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                    <option value="expired" {% if status_filter == 'expired' %}selected{% endif %}>Expired</option>
+                </select>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex items-end gap-2">
+                <button type="submit" class="bg-[#183665] text-white py-2 px-4 rounded w-full mb-1">
+                    Apply
+                </button>
+                {% if title_filter or from_date or to_date or status_filter %}
+                    <a href="{% url 'meeting-list' %}" 
+                       class="bg-red-50 text-red-600 hover:text-red-900 font-medium py-2 px-4 rounded w-full text-center">
+                        Clear
+                    </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Table -->
+    {% if meetings %}
+        <div class="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+            <table class="min-w-[800px] w-full text-left text-sm">
+                <thead class="bg-gray-100 font-semibold">
+                    <tr>
+                        <th class="p-2 text-center">Title</th>
+                        <th class="p-2 text-center">Date</th>
+                        <th class="p-2 text-center">Time</th>
+                        <th class="p-2 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for meeting in meetings %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-2 border-2 border-gray-100 text-center">{{ meeting.title }}</td>
+                            <td class="p-2 border-2 border-gray-100 text-center">{{ meeting.date }}</td>
+                            <td class="p-2 border-2 border-gray-100 text-center">
+                                {{ meeting.start_time|time:"g:i A" }} - {{ meeting.end_time|time:"g:i A" }}
+                            </td>
+                           <td class="p-2 border-2 border-gray-100 text-center">
+                                <div class="flex justify-center gap-2 items-center">
+                                    {% if not meeting.is_expired %}
+                                        {% if meeting.can_join %}
+                                            <a href="{{ meeting.meeting_url }}" target="_blank" title="Join Meeting">
+                                                <img class="w-5" src="{% static 'images/video.png' %}" alt="Join">
+                                            </a>
+                                        {% else %}
+                                            <span title="Upcoming Meeting">
+                                                <img class="w-5 opacity-60" src="{% static 'images/video.png' %}" alt="Upcoming">
+                                            </span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-sm px-2 py-1 rounded bg-gray-200 text-gray-800">Expired</span>
+                                    {% endif %}
+
+                                    {% if request.user.is_superuser %}
+                                        <!-- Copy -->
+                                        <button type="button" class="copy-meeting-btn" title="Copy Meeting" data-copy-url="{% url 'meeting-copy' meeting.id %}">
+                                            <img class="w-5" src="{% static 'images/copy.png' %}" alt="Copy">
+                                        </button>
+
+                                        <!-- Edit -->
+                                        <a href="{% url 'meeting-update' meeting.pk %}" title="Edit Meeting">
+                                            <img class="w-5" src="{% static 'images/edit.png' %}" alt="Edit">
+                                        </a>
+
+                                        <!-- Delete -->
+                                        <a href="{% url 'meeting-delete' meeting.pk %}" title="Delete Meeting">
+                                            <img class="w-5" src="{% static 'images/delete.png' %}" alt="Delete">
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="text-center py-8 text-gray-600">
+            <p>You haven't created any meetings yet.</p>
+            <a href="{% url 'meeting-create' %}" class="text-blue-600 hover:underline mt-2 inline-block">
+                Create your first meeting
+            </a>
+        </div>
+    {% endif %}
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+        <div class="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mt-4 gap-2">
+            <p class="text-sm text-gray-500">
+                Showing {{ page_obj.start_index }} – {{ page_obj.end_index }} of {{ paginator.count }} results
+            </p>
+            <div class="flex gap-2">
+                {% if page_obj.has_previous %}
+                    <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}"
+                       class="px-2 py-1 border rounded hover:bg-gray-100">
+                        ← Previous
+                    </a>
+                {% else %}
+                    <span class="px-2 py-1 border rounded text-gray-400 cursor-not-allowed">
+                        ← Previous
+                    </span>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                        <span class="px-2 py-1 border rounded bg-[#183665] text-white">{{ num }}</span>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <a href="?{{ request.GET.urlencode }}&page={{ num }}" 
+                           class="px-2 py-1 border rounded hover:bg-gray-100">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}"
+                       class="px-2 py-1 border rounded hover:bg-gray-100">
+                        Next →
+                    </a>
+                {% else %}
+                    <span class="px-2 py-1 border rounded text-gray-400 cursor-not-allowed">
+                        Next →
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.slice(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+$(document).ready(function () {
+    $('.copy-meeting-btn').click(function (e) {
+        e.preventDefault();
+        const url = $(this).data('copy-url');
+        const csrftoken = getCookie('csrftoken');
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            headers: { 'X-CSRFToken': csrftoken },
+            success: function () {
+                alert("Meeting copied successfully!");
+                location.reload();
+            },
+            error: function (xhr) {
+                alert("Failed to copy meeting. Error: " + xhr.statusText);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends "dashboard//layout/dashboardLayout.html" %}
+{% block content %}
+  <div class="container px-6 mx-auto grid">
+    <!-- Card Wrapper -->
+    <div class="bg-white m-5 rounded-lg p-6 shadow-md">
+      <h1 class="text-2xl font-bold">Create New Video</h1>
+      <hr class="my-4 border-gray-300">
+
+      <!-- Form Structure -->
+      <form method="POST" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Title -->
+          <div>
+            <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-3">
+              {{ form.title.label }}
+            </label>
+            <input
+              type="text"
+              id="{{ form.title.id_for_label }}"
+              name="{{ form.title.html_name }}"
+              value="{{ form.title.value|default_if_none:'' }}"
+              placeholder="Enter video title"
+              class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              required
+            />
+            {% if form.title.errors %}
+            <p class="text-red-600 text-sm mt-1">
+              {{ form.title.errors.0 }}
+            </p>
+            {% endif %}
+          </div>
+
+          <!-- Video File -->
+          <div>
+            <label for="{{ form.video.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-3">
+              {{ form.video.label }}
+            </label>
+
+            <!-- Display Existing Video if Available -->
+            {% if form.instance.video %}
+            <div class="mb-4">
+              <p class="text-sm text-gray-600">Current Video:</p>
+              <video controls class="w-full max-w-md rounded-lg border border-gray-300">
+                <source src="{{ form.instance.video.url }}" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            {% endif %}
+
+            <input
+              type="file"
+              id="{{ form.video.id_for_label }}"
+              name="{{ form.video.html_name }}"
+              accept="video/*"
+              class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 
+                     file:rounded-md file:border-0 file:text-sm file:font-medium
+                     file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
+            />
+            {% if form.video.errors %}
+            <p class="text-red-600 text-sm mt-1">
+              {{ form.video.errors.0 }}
+            </p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Video URL -->
+        <div>
+          <label for="{{ form.video_url.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-3">
+            {{ form.video_url.label }}
+          </label>
+          <input
+            type="url"
+            id="{{ form.video_url.id_for_label }}"
+            name="{{ form.video_url.html_name }}"
+            value="{{ form.video_url.value|default_if_none:'' }}"
+            placeholder="Enter video URL (optional)"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400"
+          />
+          {% if form.video_url.errors %}
+          <p class="text-red-600 text-sm mt-1">
+            {{ form.video_url.errors.0 }}
+          </p>
+          {% endif %}
+          <p class="text-gray-500 text-sm mt-1">
+            {{ form.video_url.help_text }}
+          </p>
+        </div>
+
+        <!-- Buttons Center Aligned -->
+        <div class="flex justify-center space-x-4 mt-6">
+          <button
+            type="submit"
+            class="px-6 py-2 bg-[#183665] text-white rounded-md transition"
+          >
+            Save Video
+          </button>
+          <a
+            href="{{ request.META.HTTP_REFERER }}"
+            class="px-6 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition"
+          >
+            Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock content %}

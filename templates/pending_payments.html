@@ -1,0 +1,321 @@
+{% extends "dashboard//layout/dashboardLayout.html" %}
+{% load static %}
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6">
+    <div class="flex flex-col sm:flex-row justify-center sm:items-center gap-3 mb-4">
+        <h2 class="text-2xl font-bold">Payments Awaiting Approval</h2>
+    </div>
+    <hr class="mb-5 px-5 border-gray-200">
+
+    <!-- Filter -->
+    {% comment %} <form method="get" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+        <div>
+            <label class="block font-medium mb-1">User</label>
+            <select name="user" class="border border-black px-3 py-2 rounded w-full">
+                <option value="">All</option>
+                {% for u in users %}
+                    <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"s" %}selected{% endif %}>
+                        {{ u.short_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="block font-medium mb-1">Bank</label>
+            <select name="bank" class="border border-black px-3 py-2 rounded w-full">
+                <option value="">All</option>
+                {% for b in banks %}
+                    <option value="{{ b.id }}" {% if selected_bank == b.id|stringformat:"s" %}selected{% endif %}>
+                        {{ b.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="block font-medium mb-1">From Date</label>
+            <input type="date" name="from_date" value="{{ from_date }}" class="border border-black px-3 py-2 rounded w-full">
+        </div>
+
+        <div>
+            <label class="block font-medium mb-1">To Date</label>
+            <input type="date" name="to_date" value="{{ to_date }}" class="border border-black px-3 py-2 rounded w-full">
+        </div>
+
+        <div class="flex items-end">
+            <button type="submit" class="bg-[#183665] text-white py-2 px-4 rounded w-full">
+                Filter
+            </button>
+        </div>
+    </form> {% endcomment %}
+
+    <form method="get" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+        
+        <!-- User Filter -->
+        <div>
+            <label class="block font-medium mb-1">User</label>
+            <select name="user" class="border border-black px-3 py-2 rounded w-full">
+                {% if request.user.is_superuser %}
+                    <option value="">All</option>
+                {% endif %}
+
+                {% for u in users %}
+                    <option value="{{ u.id }}"
+                        {% if selected_user == u.id|stringformat:"s" %}selected{% endif %}>
+                        {{ u.short_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Bank -->
+        <div>
+            <label class="block font-medium mb-1">Bank</label>
+            <select name="bank" class="border border-black px-3 py-2 rounded w-full">
+                <option value="">All</option>
+                {% for b in banks %}
+                    <option value="{{ b.id }}"
+                        {% if selected_bank == b.id|stringformat:"s" %}selected{% endif %}>
+                        {{ b.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- From Date -->
+        <div>
+            <label class="block font-medium mb-1">From Date</label>
+            <input type="date" name="from_date" value="{{ from_date }}"
+                class="border border-black px-3 py-2 rounded w-full">
+        </div>
+
+        <!-- To Date -->
+        <div>
+            <label class="block font-medium mb-1">To Date</label>
+            <input type="date" name="to_date" value="{{ to_date }}"
+                class="border border-black px-3 py-2 rounded w-full">
+        </div>
+
+        <!-- Submit -->
+        <div class="flex items-end">
+            <button type="submit"
+                    class="bg-[#183665] text-white py-2 px-4 rounded w-full">
+                Filter
+            </button>
+        </div>
+    </form>
+
+
+    <!-- Table -->
+    <div class="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+        <table class="min-w-[800px] w-full text-left text-sm">
+            <thead class="bg-gray-100 font-semibold">
+                <tr>
+                    <th class="p-2 text-center">Created at</th>
+                    <th class="p-2 text-center">User</th>
+                    <th class="p-2 text-center">Bank</th>
+                    <th class="p-2 text-center">Amount Deposited</th>
+                    <th class="p-2 text-center">Amount Paid</th>
+                    <th class="p-2 text-center">Notes</th>
+                    <th class="p-2 text-center">Receipt</th>
+                    <th class="p-2 text-center">Status</th>
+                    {% if request.user.is_superuser %}
+                    <th class="p-2 text-center">Action</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payments %}
+                <tr>
+                    <td class="p-2 border border-gray-100 text-center">{{ payment.created_at|date:"m/d/Y \\a\\t H:i:s" }}</td>
+                    <td class="p-2 border border-gray-100 text-center">{{ payment.user.short_name }}</td>
+                    {% comment %} <td class="p-2 border border-gray-100 text-center">{{ payment.bank.name }}</td> {% endcomment %}
+                    <td class="p-2 border border-gray-100 text-center">
+                        {% if payment.bank.icon %}
+                            <img src="{{ payment.bank.icon.url }}"
+                                alt="{{ payment.bank.name }}"
+                                class="h-8 w-auto mx-auto object-contain">
+                        {% else %}
+                             —
+                        {% endif %}
+                    </td>                
+                    <td class="p-2 border border-gray-100 text-center">${{ payment.amount }}</td>
+                    <td class="p-2 border border-gray-100 text-center">${{ payment.paid_amount }}</td>
+                    <td class="p-2 border border-gray-100 text-center">
+                        <button class="info-btn text-blue-900 hover:text-blue-700 mr-2 focus:outline-none"
+                                data-id="{{ payment.id }}"
+                                data-notes="{{ payment.notes|default:'No notes available' }}">
+                                <img src="{% static 'images/note.jpeg' %}" 
+                                    alt="Info" 
+                                    class="w-6 h-6 inline-block hover:opacity-80">
+                        </button>
+
+                    </td>
+                    <td class="p-2 border border-gray-100 text-center">
+                        {% if payment.receipt %}
+                            <a href="{{ payment.receipt.url }}" target="_blank">
+                                <img src="{% static 'images/recept.jpeg' %}"
+                                    alt="Receipt"
+                                    class="w-6 h-6 mx-auto cursor-pointer hover:opacity-80"
+                                    title="View Receipt">
+                            </a>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                   
+                    {% comment %} <td class="p-2 border border-gray-100 text-center">
+                        {% if payment.status == 'pending' %}
+                            <span class="text-yellow-600 font-medium">Pending</span>
+                        {% elif payment.status == 'approved' %}
+                            <span class="text-green-600 font-medium">Approved</span>
+                        {% elif payment.status == 'rejected' %}
+                            <span class="text-red-600 font-medium">Rejected</span>
+                        {% endif %}
+                    </td> {% endcomment %}
+                    <td class="p-2 border border-gray-100 text-center">
+                        {% if payment.status == 'approved' %}
+                            <img src="{% static 'images/approve.jpeg' %}" alt="Approved" class="w-8 h-8 mx-auto">
+                        {% elif payment.status == 'rejected' %}
+                            <img src="{% static 'images/reject.jpeg' %}" alt="Rejected" class="w-8 h-8 mx-auto">
+                        {% elif payment.status == 'pending' %}
+                            <img src="{% static 'images/pending.jpeg' %}" alt="Pending" class="w-8 h-8 mx-auto">
+                        {% endif %}
+                    </td>
+
+                    {% comment %} <td class="p-2 border border-gray-100 text-center">
+                        {% if payment.receipt %}
+                            <a href="{{ payment.receipt.url }}" target="_blank"
+                                class="bg-gray-200 justify-center px-4 py-1 rounded">Receipt</a>
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>                     {% endcomment %}
+
+                    {% comment %} <td class="p-2 border border-gray-100 text-center">
+                        
+                        <a href="{% url 'accounts:payment_detail' payment.id %}" target="_blank" class="bg-gray-200 justify-center px-4 py-1 rounded">
+                            Review
+                        </a>
+                    </td> {% endcomment %}
+                    {% if request.user.is_superuser %}
+                    <td class="p-2 border border-gray-100 text-center">
+                        {% if request.user.is_superuser %}
+                            <a href="{% url 'accounts:payment_detail' payment.id %}" target="_blank"
+                            class="bg-gray-200 justify-center px-4 py-1 rounded">
+                                Review
+                            </a>
+                        {% else %}
+                            <span class="text-gray-400">—</span>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="p-4 text-center text-gray-500 border border-gray-100">
+                        No pending payments to review.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mt-4 gap-2">
+        <!-- Page Info -->
+        <p class="text-sm text-gray-500">
+            Showing {{ page_obj.start_index }} – {{ page_obj.end_index }} of {{ paginator.count }} results
+        </p>
+
+        <!-- Pagination Controls -->
+        <div class="flex gap-2">
+            <!-- Previous -->
+            {% if page_obj.has_previous %}
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}"
+                class="px-2 py-1 border rounded hover:bg-gray-100">
+                    ← Previous
+                </a>
+            {% else %}
+                <span class="px-2 py-1 border rounded text-gray-400 cursor-not-allowed">
+                    ← Previous
+                </span>
+            {% endif %}
+
+            <!-- Page Numbers -->
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                    <span class="px-2 py-1 border rounded bg-[#183665] text-white">
+                        {{ num }}
+                    </span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?{{ request.GET.urlencode }}&page={{ num }}"
+                    class="px-2 py-1 border rounded hover:bg-gray-100">
+                        {{ num }}
+                    </a>
+                {% endif %}
+            {% endfor %}
+
+            <!-- Next -->
+            {% if page_obj.has_next %}
+                <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}"
+                class="px-2 py-1 border rounded hover:bg-gray-100">
+                    Next →
+                </a>
+            {% else %}
+                <span class="px-2 py-1 border rounded text-gray-400 cursor-not-allowed">
+                    Next →
+                </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+   <!-- Notes Modal -->
+<div id="notes-modal" 
+     class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white w-full max-w-md rounded-lg shadow-lg p-5 relative">
+        <!-- Close button -->
+        <button id="close-modal" 
+                class="absolute top-3 right-3 text-gray-500 hover:text-red-500">
+            <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+
+        <h2 class="text-lg font-semibold text-gray-900 mb-3">Notes</h2>
+
+        <!-- content box -->
+        <div id="modal-content" 
+             class="text-gray-700 max-h-60 overflow-y-auto whitespace-pre-wrap break-words">
+            <!-- Notes will be injected here -->
+        </div>
+    </div>
+</div>
+
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+    const modal = document.getElementById("notes-modal");
+    const modalContent = document.getElementById("modal-content");
+    const closeModal = document.getElementById("close-modal");
+
+    // Info buttons
+    document.querySelectorAll(".info-btn").forEach(btn => {
+        btn.addEventListener("click", function() {
+            const notes = btn.dataset.notes || "No notes available";
+            modalContent.textContent = notes;
+            modal.classList.remove("hidden");
+        });
+    });
+
+    // Close modal
+    closeModal.addEventListener("click", () => modal.classList.add("hidden"));
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) modal.classList.add("hidden");
+    });
+});
+</script>
+{% endblock content %}

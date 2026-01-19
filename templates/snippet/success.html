@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Help Submitted</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-500 mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800">Help Request Submitted!</h2>
+            <p class="text-gray-600 mt-2">Help entry created and email sent successfully.</p>
+        </div>
+
+        {% comment %} <div class="bg-gray-50 p-4 rounded-md mb-6 text-sm text-gray-700 text-center">
+            আপনার সাহায্যের অনুরোধ সফলভাবে জমা দেওয়া হয়েছে এবং একটি ইমেইল পাঠানো হয়েছে।
+        </div> {% endcomment %}
+
+        <div class="flex flex-col space-y-3">
+            <a href="{% url 'accounts:dashboard' %}" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md text-center">
+                Return to Dashboard
+            </a>
+        </div>
+    </div>
+</body>
+</html>

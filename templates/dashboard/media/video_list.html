@@ -1,0 +1,144 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6 mt-5 mx-4">
+
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+        <h2 class="text-2xl font-bold">Events Video</h2>
+
+        <div class="flex flex-row gap-2">
+            <a
+                href="{% url 'media:video-create' %}"
+                class="bg-[#183665] font-bold text-white py-2 px-4 rounded flex items-center"
+            >
+                <svg class="w-5 h-5 mr-2" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"></path>
+                </svg>
+                Create New Video
+            </a>
+        </div>
+    </div>
+
+    <hr class="mb-5 px-5 border-gray-200">
+
+    <!-- Table -->
+    <div class="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+        <table class="min-w-[800px] w-full text-left text-sm">
+            <thead class="bg-gray-100 font-semibold">
+                <tr>
+                    <th class="p-2 text-center">No.</th>
+                    <th class="p-2 text-center">Title</th>
+                    <th class="p-2 text-center">Video</th>
+                    <th class="p-2 text-center">Video URL</th>
+                    <th class="p-2 text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for video in videos %}
+                <tr>
+                    <td class="p-2 border-2  border-gray-100 text-center">{{ forloop.counter }}</td>
+                    <td class="p-2 border-2 border-gray-100 text-center">{{ video.title }}</td>
+                    <td class="p-2 border-2  border-gray-100 text-center">
+                        {% if video.video %}
+                        <video controls class="w-24 h-24 object-cover rounded">
+                            <source src="{{ video.video.url }}" type="video/mp4" />
+                            Your browser does not support the video tag.
+                        </video>
+                        {% else %} No Video {% endif %}
+                    </td>
+                    <td class="p-2 border-2 border-gray-100 text-center">
+                        {% if video.video_url %}
+                        <a href="{{ video.video_url }}" target="_blank" class="underline text-black">View Video URL</a>
+                        {% else %} No URL {% endif %}
+                    </td>
+                    <td class="p-2 border-2 border-gray-100 text-center space-x-2">
+                        <a href="{% url 'media:video-update' video.id %}" class="bg-gray-200 px-4 py-1 rounded">View</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-gray-500 py-4">No videos available.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% comment %} <div class="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mt-4 gap-2">
+        <p class="text-sm text-gray-500">Showing 01 of 20 Result</p>
+        <div class="flex gap-2">
+            <button class="px-2 py-1 border rounded">← Previous </button>
+            <button class="px-2 py-1 border rounded">1</button>
+            <button class="px-2 py-1 border rounded">2</button>
+            <button class="px-2 py-1 border rounded">3</button>
+            <button class="px-2 py-1 border rounded">Next →</button>
+        </div>
+    </div> {% endcomment %}
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    // Namespace for Video functionality
+    const Video = {
+        modal: document.getElementById("delete-video-modal"),
+        currentVideoId: null,
+
+        init: function () {
+            this.bindEvents();
+        },
+
+        bindEvents: function () {
+            document.querySelectorAll(".video-delete-btn").forEach((btn) => {
+                btn.addEventListener("click", this.handleDeleteClick.bind(this));
+            });
+            document.getElementById("cancel-video-delete").addEventListener("click", this.closeModal.bind(this));
+            document.getElementById("confirm-video-delete").addEventListener("click", this.confirmDelete.bind(this));
+        },
+
+        handleDeleteClick: function (e) {
+            this.currentVideoId = e.target.closest(".video-delete-btn").dataset.id;
+            this.modal.classList.remove("hidden");
+        },
+
+        closeModal: function () {
+            this.modal.classList.add("hidden");
+            this.currentVideoId = null;
+        },
+
+        confirmDelete: function () {
+            if (!this.currentVideoId) return;
+
+            fetch(`/dashboard/video/${this.currentVideoId}/delete/`, {
+                method: "DELETE",
+                headers: {
+                    "X-CSRFToken": this.getCSRFToken(),
+                    "Content-Type": "application/json",
+                },
+            })
+            .then((response) => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert("Failed to delete the video.");
+                }
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+                alert("An error occurred while deleting the video.");
+            });
+
+            this.closeModal();
+        },
+
+        getCSRFToken: function () {
+            const cookieValue = document.cookie.split("; ").find((row) => row.startsWith("csrftoken="))?.split("=")[1];
+            return cookieValue || null;
+        },
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+        Video.init();
+    });
+</script>
+{% endblock scripts %}

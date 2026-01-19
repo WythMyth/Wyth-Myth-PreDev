@@ -1,0 +1,418 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Member Profile</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Header Styles */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            text-align: left;
+            padding: 10px 0;
+            background: white;
+            z-index: 100;
+            height: 70px;
+        }
+        
+        .header-logo {
+            height: 80px;
+            margin-bottom: 5px;
+        }
+        
+        /* Content Styles */
+        .content {
+            padding: 20px;
+            margin-top: 160px; 
+            margin-bottom: 160px;
+            min-height: calc(100vh - 200px); /* Viewport height minus header and footer */
+        }
+        
+        /* Footer Styles */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            padding: 10px 0;
+            background: white;
+            z-index: 100;
+            height: 70px;
+        }
+        
+        .footer-logo {
+            width: 100%;
+            max-width: 720px;
+        }
+    
+        @media print {
+            body {
+                padding: 0;
+                margin: 0;
+                background: white;
+                font-size: 12pt;
+            }
+
+            .header {
+                position: fixed;
+                top: 0;
+                height: 70px;
+            }
+
+            .footer {
+                position: fixed;
+                bottom: 0;
+                height: 70px;
+            }
+
+            .content {
+                margin-top: 90px;  /* Space for header */
+                margin-bottom: 90px; /* Space for footer */
+            }
+
+            /* Ensure content starts on a new page */
+            @page {
+                margin-top: 10px;
+                margin-bottom: 10px;
+            }
+        }
+        
+        /* Rest of your existing styles... */
+        .profile-container {
+            display: flex;
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+        
+        .profile-info {
+            flex: 3;
+        }
+        
+        .profile-sidebar {
+            flex: 1;
+            padding-left: 20px;
+            text-align: center;
+        }
+        
+        .member-id {
+            background-color: #f0c14b;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        
+        .profile-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .profile-table th, .profile-table td {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        
+        .profile-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            width: 30%;
+        }
+        
+        .user-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 0 auto;
+            display: block;
+            background-color: #eee;
+        }
+        
+        .user-id {
+            width: 160px;
+            height: auto;
+            margin: 0 auto;
+            display: block;
+            background-color: #eee;
+        }
+        
+        .user-tags {
+            margin-top: 15px;
+        }
+        
+        .tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .tag-investor { background-color: #e3f2fd; color: #0d47a1; }
+        .tag-owner { background-color: #e8f5e9; color: #1b5e20; }
+        .tag-staff { background-color: #f3e5f5; color: #4a148c; }
+        .tag-semi { background-color: #fff8e1; color: #ff6f00; }
+        .tag-super { background-color: #ffebee; color: #b71c1c; }
+        
+        .section-title {
+            margin-top: 30px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+            color: #444;
+        }
+        
+        .payment-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .payment-table th, .payment-table td {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+            page-break-inside: avoid;
+        }
+        
+        .payment-table th {
+            background-color: #f5f5f5;
+        }
+        
+        .agreement-info {
+            padding: 12px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        
+        .footer-text {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        {% comment %} .bar {
+        height: 1px;
+        background-color: #ccc;
+        width: 100%;
+        border: none;
+        border-top: 1px  #999;
+    } {% endcomment %}
+    </style>
+</head>
+<body>
+    <!-- Header that will repeat on every page -->
+    <div class="header">
+        {% if logo_data %}
+            <img src="{{ logo_data }}" class="header-logo" alt="Company Logo">
+        {% else %}
+            <img src="{% static 'assets/images/logo.png' %}" class="header-logo" alt="Company Logo">
+        {% endif %}
+        <div class="bar">
+
+        </div>
+    </div>
+
+    <!-- Main content area -->
+    <div class="content">
+                <div class="profile-container">
+            <div class="profile-info">
+                <h2>Profile Information</h2>
+                <table class="profile-table">
+                    <tr>
+                        <th>Full Name</th>
+                        <td>{{ member.get_full_name }}</td>
+                    </tr>
+                    <tr>
+                        <th>Member ID</th>
+                        <td>{{ member.member_id }}</td>
+                    </tr>
+                    <tr>
+                        <th>Email</th>
+                        <td>{{ member.email }}</td>
+                    </tr>
+                    <tr>
+                        <th>Phone</th>
+                        <td>{{ member.phone_number }}</td>
+                    </tr>
+                    <tr>
+                        <th>Address</th>
+                        <td>{{ member.home_address_line_1 }}{% if member.home_address_line_2 %}, {{ member.home_address_line_2 }}{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <th>Date of Birth</th>
+                        <td>
+                            {% if member.birth_month and member.birth_date and member.birth_year %}
+                                {{ member.birth_month }}/{{ member.birth_date }}/{{ member.birth_year }}
+                            {% else %}
+                                Not provided
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Emergency Contact</th>
+                        <td>{{ member.emergency_contact|default:"Not provided" }}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="profile-sidebar">
+               {% if user_image_data %} 
+                    <img src="{{ user_image_data }}" alt="Profile Photo" class="user-image">
+                {% else %}
+                    <div class="user-image" style="display: flex; align-items: center; justify-content: center; background-color: #e0e0e0;">
+                        <span style="font-size: 40px; color: #757575;">?</span>
+                    </div>
+                {% endif %}
+                
+                <div class="member-id">{{ member.member_id }}</div>
+                
+                <div class="user-tags">
+                    {% if member.investor %}
+                        <span class="tag tag-investor">Investor</span>
+                    {% endif %}
+                    {% if member.owner %}
+                        <span class="tag tag-owner">Owner</span>
+                    {% endif %}
+                    {% if member.staff %}
+                        <span class="tag tag-staff">Staff</span>
+                    {% endif %}
+                    {% if member.semi_superuser %}
+                        <span class="tag tag-semi">Semi-Superuser</span>
+                    {% endif %}
+                    {% if member.is_superuser %}
+                        <span class="tag tag-super">Superuser</span>
+                    {% endif %}
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <p>
+                        <strong>Status:</strong> 
+                        {% if member.is_active %}
+                            <span style="color: #2e7d32;">Active</span>
+                        {% else %}
+                            <span style="color: #c62828;">Inactive</span>
+                        {% endif %}
+                        {% if not member.is_continue %}
+                            <span style="color: #ef6c00;">(Frozen)</span>
+                        {% endif %}
+                    </p>
+                    {% if request.user.is_superuser %}
+                        <div class="alert alert-info">
+                            <strong>Total Investment:</strong> ${{ total_investment }}
+                        </div>
+                    {% endif %}
+                </div>
+                {% if photo_id_data %}
+                    <p>Photo ID</p>
+                    <img src="{{ photo_id_data }}" alt="Photo ID" class="user-id">
+                {% else %}
+                    <p>Photo ID</p>
+                    <div class="user-id" style="display: flex; align-items: center; justify-content: center; background-color: #e0e0e0;">
+                        <span style="font-size: 40px; color: #757575;">?</span>
+                    </div>
+                {% endif %}
+            </div>
+            </div>
+        </div>
+        
+        <h3 class="section-title">Agreement Information</h3>
+        <div class="agreement-info">
+             {% if member.is_agree %}
+                {% with user_agreements=member.useragreement_set.all %}
+                    {% if user_agreements %}
+                        {% for user_agreement in user_agreements %}
+                            <div class="agreement-content">
+                                <div class="agreement-header">
+                                    {{ user_agreement.agreement.title }} (Version {{ user_agreement.agreement.version }})
+                                </div>
+                                
+                                <div class="agreement-text">{{ user_agreement.agreement.content|default:"Agreement content not available" }}</div>
+                                
+                                <div class="agreement-meta">
+                                    <div><strong>Agreed on:</strong> {{ user_agreement.agreed_at|date:"F d, Y, g:i a" }}</div>
+                                    <div><strong>IP Address:</strong> {{ user_agreement.ip_address|default:"Not recorded" }}</div>
+                                    {% if user_agreement.uploaded_file %}
+                                        <div><strong>Uploaded File:</strong> Yes ({{ user_agreement.uploaded_file.name }})</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="font-style: italic;">No specific agreement records found, but user has confirmed agreement.</p>
+                    {% endif %}
+                {% endwith %}
+            {% else %}
+                <p style="color: #c62828; font-weight: bold;">✗ User has not agreed to the Terms & Conditions</p>
+            {% endif %}
+        </div>
+        
+        <h3 class="section-title">Payment History</h3>
+        {% if approved_payments %}
+            <table class="payment-table">
+               <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Bank</th>
+                        <th>Amount</th>
+                        <th>Approved By</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in approved_payments %}
+                        <tr>
+                            <td>{{ payment.approved_at|date:"M d, Y" }}</td>
+                            <td>{{ payment.bank.name }}</td>
+                            <td style="font-weight: bold; color: #2e7d32;">${{ payment.amount }}</td>
+                            <td>{{ payment.approved_by.get_full_name }}</td>
+                            <td>
+                                {% if payment.notes %}
+                                    {{ payment.notes|truncatechars:50 }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="text-align: center; padding: 20px; background-color: #f5f5f5; border-radius: 4px;">
+                No approved payments found in this account
+            </p>
+        {% endif %}
+        
+        <div class="footer-text">
+            <p>This report was generated on {% now "F d, Y" %} at {% now "H:i" %}</p>
+            <p>For any questions, please contact support.</p>
+        </div>
+    </div>
+
+    <!-- Footer that will repeat on every page -->
+    <div class="footer">
+        {% if footer_data %}
+            <img src="{{ footer_data }}" class="footer-logo" alt="Footer Logo">
+        {% else %}
+            <img src="{% static 'assets/images/pdf_footer.png' %}" class="footer-logo" alt="Footer Logo">
+        {% endif %}
+    </div>
+</body>
+</html>

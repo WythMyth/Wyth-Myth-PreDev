@@ -1,0 +1,73 @@
+{% extends "dashboard//layout/dashboardLayout.html" %}
+
+{% block title %}Recording Details{% endblock %}
+
+{% block content %}
+<div class="bg-white p-6 rounded shadow">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">
+            Recording Details
+        </h1>
+        <div class="flex space-x-2">
+            <a href="{% url 'recording-update' recording.pk %}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded">Edit</a>
+            <a href="{% url 'recording-delete' recording.pk %}" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">Delete</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+            <h2 class="text-xl font-semibold mb-3">Recording Information</h2>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="mb-4">
+                    <span class="block text-gray-500 text-sm">Description</span>
+                    <p class="font-semibold">{{ recording.description }}</p>
+                </div>
+                <div class="mb-4">
+                    <span class="block text-gray-500 text-sm">Created</span>
+                    <span class="font-semibold">{{ recording.create_at }}</span>
+                </div>
+                <div class="mb-4">
+                    <span class="block text-gray-500 text-sm">Last Updated</span>
+                    <span class="font-semibold">{{ recording.update_at }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <h2 class="text-xl font-semibold mb-3">Related Meeting</h2>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="mb-4">
+                    <span class="block text-gray-500 text-sm">Meeting Title</span>
+                    <a href="{% url 'meeting-detail' recording.meeting.pk %}" class="text-blue-600 hover:underline font-semibold">{{ recording.meeting.title }}</a>
+                </div>
+                <div class="mb-4">
+                    <span class="block text-gray-500 text-sm">Meeting Date</span>
+                    <span class="font-semibold">{{ recording.meeting.date }}</span>
+                </div>
+                <div class="mb-4">
+                    <span class="block text-gray-500 text-sm">Meeting Time</span>
+                    <span class="font-semibold">{{ recording.meeting.start_time }} - {{ recording.meeting.end_time }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-8">
+        <h2 class="text-xl font-semibold mb-3">Recording Link</h2>
+        <div class="bg-gray-50 p-4 rounded">
+            <a href="{{ recording.recording_url }}" target="_blank" class="text-blue-600 hover:underline break-all">{{ recording.recording_url }}</a>
+            <div class="mt-4">
+                <a href="{{ recording.recording_url }}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded inline-block">
+                    Watch Recording
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-8 flex justify-between">
+        <a href="{% url 'recording-list' %}" class="text-blue-600 hover:underline">
+            &larr; Back to all recordings
+        </a>
+    </div>
+</div>
+{% endblock %}

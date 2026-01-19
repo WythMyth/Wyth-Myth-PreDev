@@ -1,0 +1,188 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load form_tags %}
+
+{% block content %}
+<div class="bg-white m-5 rounded-lg p-4">
+    <h1 class="text-2xl font-bold">Pay Office Expense</h1>
+    <hr class="my-4 border-gray-300">
+
+    <div class="max-w-full mx-auto space-y-6">
+        <!-- Office Manager Balance Alert -->
+        {% if office_manager %}
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+            <div class="flex items-center">
+                <svg class="w-6 h-6 text-blue-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+                <div>
+                    <p class="text-sm font-medium text-blue-800">Office Manager: {{ office_manager.first_name }} {{ office_manager.last_name }}</p>
+                    <p class="text-lg font-bold text-blue-900">Current Balance: ${{ office_manager.balance|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Warning if insufficient balance -->
+        {% if office_manager and expense %}
+            {% if office_manager.balance < expense.amount %}
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg mt-4">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-red-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                    </svg>
+                    <div>
+                        <p class="text-sm font-bold text-red-800">⚠️ Insufficient Balance!</p>
+                        <p class="text-sm text-red-700 mt-1">
+                            Office Manager's balance is <span class="font-bold">${{ office_manager.balance|floatformat:2 }}</span>, 
+                            but the expense amount is <span class="font-bold">${{ expense.amount|floatformat:2 }}</span>
+                        </p>
+                        <p class="text-xs text-red-600 mt-1">
+                            Additional required: <span class="font-bold">${{ expense.amount|floatformat:2|add:office_manager.balance|floatformat:2|slice:"1:" }}</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        {% endif %}
+
+        <div class="p-6 bg-white rounded-lg shadow-md mx-auto">
+            {% if form.non_field_errors %}
+                <ul class="text-red-500 text-sm italic mb-4">
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <!-- Expense (readonly display) & User -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block font-medium mb-3">Expense</label>
+                        <input type="text" value="{{ expense.purpose }}" readonly
+                               class="w-full border rounded-md px-3 py-2 bg-gray-100 cursor-not-allowed" />
+                    </div>
+
+                    <div>
+                        <label class="block font-medium mb-3">{{ form.user.label }} <span class="text-red-500">*</span></label>
+                        {{ form.user }}
+                        {% if form.user.errors %}
+                            <ul class="text-red-500 text-xs italic mt-1">
+                                {% for error in form.user.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                        <p class="text-xs text-gray-500 mt-1">💡 Payment will be made to this user</p>
+                    </div>
+                </div>
+
+                <!-- Amount, Receive Type, Receipt -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Amount -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Amount <span class="text-xs">($)</span></label>
+                        <input type="text"
+                            value="{{ expense.amount|floatformat:2 }}"
+                            readonly
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-gray-100 cursor-not-allowed font-bold text-lg">
+                    </div>
+
+                    <!-- Receive Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.receive_type.label }} <span class="text-red-500">*</span></label>
+                        {{ form.receive_type }}
+                        {% if form.receive_type.errors %}
+                            <ul class="text-red-500 text-xs italic mt-1">
+                                {% for error in form.receive_type.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                        <p class="text-xs text-gray-500 mt-1">
+                            💵 Cash: Deducted only from the expense<br>
+                            💳 Account: Added to the user's balance
+                        </p>
+                    </div>
+
+                    <!-- Receipt Upload -->
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-3">{{ form.receipt.label }} <span class="text-xs">(Optional)</span></label>
+                        <input type="file" name="{{ form.receipt.name }}" id="{{ form.receipt.id_for_label }}"
+                               class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 
+                               file:rounded-md file:border-0 
+                               file:text-sm file:font-medium
+                               file:bg-gray-100 file:text-gray-700
+                               hover:file:bg-gray-200 cursor-pointer" />
+                        <div id="file-name" class="mt-2 text-sm text-gray-500">
+                            {% if form.instance.receipt %}
+                                Current: {{ form.instance.receipt.url|default:"None" }}
+                            {% else %}
+                                No file chosen
+                            {% endif %}
+                        </div>
+                        {% if form.receipt.errors %}
+                            <ul class="text-red-500 text-xs italic mt-1">
+                                {% for error in form.receipt.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Important Note -->
+                {% if office_manager %}
+                <div class="mt-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
+                    <div class="flex">
+                        <svg class="w-5 h-5 text-yellow-400 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                        <div>
+                            <p class="text-sm font-medium text-yellow-800">Important Information:</p>
+                            <p class="text-sm text-yellow-700 mt-1">
+                                💰 Payment will be deducted from <span class="font-semibold">{{ office_manager.first_name }} {{ office_manager.last_name }}</span> (Office Manager)'s balance<br>
+                                👤 Payment will be made to the selected user
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Buttons -->
+                <div class="flex justify-center space-x-4 mt-6">
+                    <button type="submit"
+                        {% if office_manager.balance < expense.amount %}
+                        disabled
+                        class="px-6 py-2 bg-gray-400 text-white rounded-md cursor-not-allowed opacity-60"
+                        {% else %}
+                        class="px-6 py-2 bg-[#183665] text-white rounded-md hover:bg-[#234a7a] transition"
+                        {% endif %}>
+                        {% if office_manager.balance < expense.amount %}
+                        Insufficient Balance
+                        {% else %}
+                        Pay Now
+                        {% endif %}
+                    </button>
+                    <a href="{% url 'accounts:office_expense_list' %}"
+                       class="px-6 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+    // Display file name when selected
+    document.getElementById('{{ form.receipt.id_for_label }}').addEventListener('change', function(e) {
+        const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
+        document.getElementById('file-name').textContent = fileName;
+    });
+</script>
+{% endblock scripts %}

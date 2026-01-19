@@ -1,0 +1,382 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6 mt-5 mx-4">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+        <h2 class="text-2xl font-bold">Payment Details</h2>
+        <a href="{% url 'accounts:pending_payments' %}" class="text-blue-600 hover:underline">
+            &larr; Back to Pending Payments
+        </a>
+    </div>
+    <hr class="mb-5 px-5 border-gray-200">
+    
+    <div class="max-w-full mx-auto space-y-6">
+        <!-- Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- User Information -->
+            <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                <h2 class="font-semibold text-lg mb-3">User Information</h2>
+                <div class="space-y-3">
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Name:</span> {{ payment.user.first_name }} {{ payment.user.last_name }}
+                    </div>
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Email:</span> {{ payment.user.email }}
+                    </div>
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Member ID:</span> {{ payment.user.member_id }}
+                    </div>
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Current Balance:</span> ${{ payment.user.balance }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Information -->
+            <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                <h2 class="font-semibold text-lg mb-3">Payment Information</h2>
+                <div class="space-y-3">
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Bank:</span> {{ payment.bank.name }}
+                    </div>
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Amount:</span> ${{ payment.amount }}
+                    </div>
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Date Submitted:</span> {{ payment.created_at|date:"F d, Y H:i" }}
+                    </div>
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Status:</span>
+                        {% if payment.status == 'pending' %}
+                            <span class="text-red-500">Pending</span>
+                        {% elif payment.status == 'approved' %}
+                            <span class="text-green-600">Approved</span>
+                        {% elif payment.status == 'rejected' %}
+                            <span class="text-red-600">Rejected</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Review Payment -->
+            <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                <h2 class="font-semibold text-lg mb-3">Review Payment</h2>
+                <form method="post" id="approval-form" class="space-y-4" action="{% url 'accounts:payment_detail' payment.id %}">
+                    {% csrf_token %}
+
+                    <div>
+                        <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <p class="text-sm text-gray-500 mb-2">Provide reason for approval/rejection (visible to user)</p>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                            <p class="text-red-500 text-sm mt-1">{{ form.notes.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Hidden inputs -->
+                    <input type="hidden" name="action" id="action-input" />
+                    <input type="hidden" name="clarification_message" id="hidden-clarification-message" />
+
+                    <!-- Action buttons -->
+                    <div class="flex flex-wrap gap-3">
+                        <button type="button" onclick="openModal('approve')" class="px-6 py-2 bg-[#183665] text-white rounded-md hover:bg-[#122847]">
+                            Approve Payment
+                        </button>
+                        
+                        {% if office_manager %}
+                        <button type="button" onclick="openModal('approve_office')" class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                            HFall Management
+                        </button>
+                        {% endif %}
+                        
+                        <button type="button" onclick="openModal('reject')" class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
+                            Reject Payment
+                        </button>
+                        <button type="button" onclick="openModal('clarification')" class="px-6 py-2 bg-orange-100 text-orange-600 rounded-md hover:bg-orange-200">
+                            More Clarification
+                        </button>
+                    </div>
+
+                    {% comment %} <p class="text-sm mt-2">
+                        <span class="font-semibold">Note:</span> Approving this payment will add <span class="font-bold">${{ payment.amount }}</span> to the user's balance.
+                        {% if office_manager %}
+                        <br><span class="font-semibold">Office Management:</span> Will add to office manager's balance ({{ office_manager.get_full_name }}).
+                        {% endif %}
+                    </p> {% endcomment %}
+                    <p class="text-sm mt-2">
+                        <span class="font-semibold">Note:</span> When a payment is approved, <span class="font-bold">${{ payment.amount }}</span> is added to the user’s balance. HFall Management is responsible for moving the approved funds to the HFall Manager balance.
+                    </p>
+
+                    <!-- Confirmation Modal -->
+                    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+                            <h2 class="text-lg font-semibold mb-4" id="modal-title">Confirm Action</h2>
+                            <p class="text-gray-700 mb-4" id="modal-message">Are you sure you want to proceed?</p>
+
+                            <!-- Clarification textarea -->
+                            <textarea id="clarification-message" placeholder="Enter clarification message" class="w-full p-2 border border-gray-300 rounded mb-4 hidden"></textarea>
+
+                            <div class="flex justify-end space-x-4">
+                                <button type="button" onclick="closeModal()" class="px-4 py-2 rounded border border-red-300 text-red-700 hover:bg-red-100">Cancel</button>
+                                <button type="button" onclick="submitForm()" class="px-4 py-2 rounded bg-blue-900 text-white hover:bg-blue-800">Yes, Confirm</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Receipt -->
+            <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                <h2 class="font-semibold text-lg mb-3">Receipt</h2>
+                {% if payment.receipt %}
+                    {% if payment.receipt.url|lower|slice:"-3:" == "pdf" %}
+                        <a href="{{ payment.receipt.url }}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded inline-block">
+                            View PDF Receipt
+                        </a>
+                    {% else %}
+                        <div class="mt-2">
+                            <img src="{{ payment.receipt.url }}" alt="Payment Receipt" class="max-w-full h-auto rounded border">
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        No receipt uploaded
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let actionToPerform = "";
+
+function openModal(action) {
+    actionToPerform = action;
+    const modalTitle = document.getElementById("modal-title");
+    const modalMessage = document.getElementById("modal-message");
+    const clarificationTextarea = document.getElementById("clarification-message");
+
+    if (action === "approve") {
+        modalTitle.textContent = "Approve Payment";
+        modalMessage.textContent = "Are you sure you want to approve this payment? The amount will be added to the user's balance.";
+        clarificationTextarea.classList.add("hidden");
+    } else if (action === "approve_office") {
+        modalTitle.textContent = "Approve for Office Management";
+        modalMessage.textContent = "Are you sure you want to approve this payment for office management? The amount will be added to the office manager's balance instead of the user's balance.";
+        clarificationTextarea.classList.add("hidden");
+    } else if (action === "reject") {
+        modalTitle.textContent = "Reject Payment";
+        modalMessage.textContent = "Are you sure you want to reject this payment?";
+        clarificationTextarea.classList.add("hidden");
+    } else if (action === "clarification") {
+        modalTitle.textContent = "Request Clarification";
+        modalMessage.textContent = "Are you sure you want to request clarification from the user about this payment?";
+        clarificationTextarea.classList.remove("hidden");
+    }
+
+    document.getElementById("confirm-modal").classList.remove("hidden");
+}
+
+function closeModal() {
+    document.getElementById("confirm-modal").classList.add("hidden");
+    actionToPerform = "";
+}
+
+function submitForm() {
+    const clarificationTextarea = document.getElementById("clarification-message");
+
+    if (actionToPerform === "clarification" && clarificationTextarea.value.trim() === "") {
+        alert("Please enter a clarification message before submitting.");
+        return;
+    }
+
+    document.getElementById("action-input").value = actionToPerform;
+    document.getElementById("hidden-clarification-message").value = clarificationTextarea.value;
+
+    document.getElementById("approval-form").submit();
+}
+</script>
+{% endblock content %}
+{% comment %} {% extends "dashboard/layout/dashboardLayout.html" %}
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6 mt-5 mx-4">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+        <h2 class="text-2xl font-bold">Payment Details</h2>
+        <a href="{% url 'accounts:pending_payments' %}" class="text-blue-600 hover:underline">
+            &larr; Back to Pending Payments
+        </a>
+    </div>
+    <hr class="mb-5 px-5 border-gray-200">
+
+    <div class="max-w-full mx-auto space-y-6">
+        <!-- Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- User Information -->
+            <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                <h2 class="font-semibold text-lg mb-3">User Information</h2>
+                <div class="space-y-3">
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Name:</span> {{ payment.user.first_name }} {{ payment.user.last_name }}
+                    </div>
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Email:</span> {{ payment.user.email }}
+                    </div>
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Member ID:</span> {{ payment.user.member_id }}
+                    </div>
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Current Balance:</span> ${{ payment.user.balance }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Information -->
+            <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                <h2 class="font-semibold text-lg mb-3">Payment Information</h2>
+                <div class="space-y-3">
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Bank:</span> {{ payment.bank.name }}
+                    </div>
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Amount:</span> ${{ payment.amount }}
+                    </div>
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Date Submitted:</span> {{ payment.created_at|date:"F d, Y H:i" }}
+                    </div>
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        <span class="font-semibold">Status:</span>
+                        {% if payment.status == 'pending' %}
+                            <span class="text-red-500">Pending</span>
+                        {% elif payment.status == 'approved' %}
+                            <span class="text-green-600">Approved</span>
+                        {% elif payment.status == 'rejected' %}
+                            <span class="text-red-600">Rejected</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Review Payment -->
+            <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                <h2 class="font-semibold text-lg mb-3">Review Payment</h2>
+                <form method="post" id="approval-form" class="space-y-4" action="{% url 'accounts:payment_detail' payment.id %}">
+                    {% csrf_token %}
+
+                    <div>
+                        <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <p class="text-sm text-gray-500 mb-2">Provide reason for approval/rejection (visible to user)</p>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                            <p class="text-red-500 text-sm mt-1">{{ form.notes.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Hidden inputs -->
+                    <input type="hidden" name="action" id="action-input" />
+                    <input type="hidden" name="clarification_message" id="hidden-clarification-message" />
+
+                    <!-- Action buttons -->
+                    <div class="flex flex-wrap gap-3">
+                        <button type="button" onclick="openModal('approve')" class="px-6 py-2 bg-[#183665] text-white rounded-md">
+                            Approve Payment
+                        </button>
+                        <button type="button" onclick="openModal('reject')" class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
+                            Reject Payment
+                        </button>
+                        <button type="button" onclick="openModal('clarification')" class="px-6 py-2 bg-orange-100 text-orange-600 rounded-md hover:bg-orange-200">
+                            More Clarification
+                        </button>
+                    </div>
+
+                    <p class="text-sm mt-2">
+                        <span class="font-semibold">Note:</span> Approving this payment will add <span class="font-bold">${{ payment.amount }}</span> to the user’s balance.
+                    </p>
+
+                    <!-- Confirmation Modal -->
+                    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+                            <h2 class="text-lg font-semibold mb-4" id="modal-title">Confirm Action</h2>
+                            <p class="text-gray-700 mb-4" id="modal-message">Are you sure you want to proceed?</p>
+
+                            <!-- Clarification textarea -->
+                            <textarea id="clarification-message" placeholder="Enter clarification message" class="w-full p-2 border border-gray-300 rounded mb-4 hidden"></textarea>
+
+                            <div class="flex justify-end space-x-4">
+                                <button type="button" onclick="closeModal()" class="px-4 py-2 rounded border border-red-300 text-red-700 hover:bg-red-100">Cancel</button>
+                                <button type="button" onclick="submitForm()" class="px-4 py-2 rounded bg-blue-900 text-white hover:bg-blue-800">Yes, Confirm</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Receipt -->
+            <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                <h2 class="font-semibold text-lg mb-3">Receipt</h2>
+                {% if payment.receipt %}
+                    {% if payment.receipt.url|lower|slice:"-3:" == "pdf" %}
+                        <a href="{{ payment.receipt.url }}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded inline-block">
+                            View PDF Receipt
+                        </a>
+                    {% else %}
+                        <div class="mt-2">
+                            <img src="{{ payment.receipt.url }}" alt="Payment Receipt" class="max-w-full h-auto rounded border">
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="border border-gray-200 rounded-md px-3 py-2 bg-gray-50">
+                        No receipt uploaded
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let actionToPerform = "";
+
+function openModal(action) {
+    actionToPerform = action;
+
+    const modalTitle = document.getElementById("modal-title");
+    const modalMessage = document.getElementById("modal-message");
+    const clarificationTextarea = document.getElementById("clarification-message");
+
+    if (action === "approve") {
+        modalTitle.textContent = "Approve Payment";
+        modalMessage.textContent = "Are you sure you want to approve this payment?";
+        clarificationTextarea.classList.add("hidden");
+    } else if (action === "reject") {
+        modalTitle.textContent = "Reject Payment";
+        modalMessage.textContent = "Are you sure you want to reject this payment?";
+        clarificationTextarea.classList.add("hidden");
+    } else if (action === "clarification") {
+        modalTitle.textContent = "Request Clarification";
+        modalMessage.textContent = "Are you sure you want to request clarification from the user about this payment?";
+        clarificationTextarea.classList.remove("hidden");
+    }
+
+    document.getElementById("confirm-modal").classList.remove("hidden");
+}
+
+function closeModal() {
+    document.getElementById("confirm-modal").classList.add("hidden");
+    actionToPerform = "";
+}
+
+function submitForm() {
+    const clarificationTextarea = document.getElementById("clarification-message");
+
+    if (actionToPerform === "clarification" && clarificationTextarea.value.trim() === "") {
+        alert("Please enter a clarification message before submitting.");
+        return;
+    }
+
+    document.getElementById("action-input").value = actionToPerform;
+    document.getElementById("hidden-clarification-message").value = clarificationTextarea.value;
+
+    document.getElementById("approval-form").submit();
+}
+</script>
+{% endblock content %} {% endcomment %}

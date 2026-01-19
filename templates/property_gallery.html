@@ -1,0 +1,41 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ object.title }} - Photo Gallery</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-900 min-h-screen">
+  <!-- Navigation header -->
+  <div class="bg-black bg-opacity-70 text-white p-4 fixed w-full z-10">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <a href="{% url 'accounts:property_detail' object.pk %}" class="flex items-center text-white hover:text-gray-200">
+        <i class="fas fa-arrow-left mr-2"></i> Back to Property
+      </a>
+      <h1 class="text-xl font-bold">{{ object.title }} - Photos</h1>
+      <span class="text-sm">{{ property_images.count }} photos</span>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto pt-20 p-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for image in property_images %}
+      <div class="relative overflow-hidden group cursor-pointer bg-gray-800 rounded">
+        <img src="{{ image.image.url }}" alt="{{ object.title }}" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105">
+        {% if image.is_primary %}
+          <div class="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+            Primary Photo
+          </div>
+        {% endif %}
+      </div>
+      {% empty %}
+      <div class="col-span-3 py-20 text-center text-white">
+        <p>No photos have been uploaded for this property.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</body>
+</html>

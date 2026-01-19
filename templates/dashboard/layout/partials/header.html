@@ -1,0 +1,20 @@
+<!-- Topbar -->
+<header class="flex items-center justify-between px-4 py-4 shadow-md z-10 bg-white  md:px-10">
+    <div class="flex items-center space-x-4">
+        <!-- Mobile menu button -->
+        <button id="menuToggle" class="md:hidden text-xl">
+        <i class="fas fa-bars"></i>
+        </button>
+        <div class="hidden md:flex items-center space-x-1 text-lg text-gray-500">
+            <p><span>Welcome,</span> <br>
+            <span class="font-semibold text-black">{{ request.user.get_full_name }}</span></p>
+        </div>
+    </div>
+    <div class="text-md font-semibold text-gray-700">
+        {% if user.is_superuser %}
+            Total Investment : <span class="bg-[#183665] text-white px-3 text-md py-2 rounded">$ {{ total_balance|default:"0.00"|floatformat:2 }}</span>
+        {% else %}
+            Balance: <span class="bg-[#183665] text-white px-3 text-md py-2 rounded">$ {{ total_balance|default:"0.00"|floatformat:2 }}</span>
+        {% endif %}   
+    </div>
+</header>

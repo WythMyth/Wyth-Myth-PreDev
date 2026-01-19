@@ -1,0 +1,500 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% block content %}
+<div class="max-w-full px-4 mx-auto">
+    <!-- Profile Content -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Profile Details Card (2/3 width on md+) -->
+        <div class="order-2 md:order-1 col-span-2 bg-white shadow rounded-lg overflow-hidden">
+            <!-- Header -->
+            <div class="bg-[#183665] text-white px-4 py-2 flex items-center justify-between">
+                <h2 class="text-lg font-bold">Profile details</h2>
+                <div class="flex space-x-3">
+                     {% comment %} <a href="{% url 'accounts:add_beneficiary' %}" class="hover:text-gray-200">
+                        <i class="fa-solid fa-plus"></i>
+                    </a> {% endcomment %}
+                    <a href="?preview=pdf" class="hover:text-gray-200">
+                        <i class="fa-solid fa-download"></i>
+                    </a>
+                    <a href="{% url "accounts:profile-update" %}" class="hover:text-gray-200">
+                        <i class="fa-solid fa-pen"></i>
+                    </a>
+                    <a href="{% url 'accounts:download_stock_certificate' %}" target="_blank" class="hover:text-gray-200">
+                        <i class="fa-solid fa-user"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Table Content -->
+            <div class="p-4 overflow-x-auto">
+                <table class="w-full text-lg border-collapse">
+                    <tbody class="divide-y divide-gray-300">
+                        <tr>
+                            <td class="py-2 font-semibold text-gray-600 text-left">Full Name</td>
+                            <td class="py-2 text-right">{{ user.get_full_name }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 font-semibold text-gray-600 text-left">Member ID</td>
+                            <td class="py-2 text-right">{{ user.member_id }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 font-semibold text-gray-600 text-left">Email</td>
+                            <td class="py-2 text-right">{{ user.email }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 font-semibold text-gray-600 text-left">Phone Number</td>
+                            <td class="py-2 text-right">{{ user.phone_number }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 font-semibold text-gray-600 text-left">Address</td>
+                            <td class="py-2 text-right">
+                                {{ user.home_address_line_1 }} {% if user.home_address_line_2 %}, {{ user.home_address_line_2|default_if_none:" " }} {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 font-semibold text-gray-600 text-left">Date Of Birth</td>
+                            <td class="py-2 text-right">
+                                {% if user.birth_month and user.birth_date and user.birth_year %}
+                                    {{ user.birth_month }}/{{ user.birth_date }}/{{ user.birth_year }}
+                                {% else %}
+                                    Not provided
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% if user.beneficiaries %}
+                            {% for beneficiary in user.beneficiaries %}
+                            <tr>
+                                <td class="py-2 font-semibold text-gray-600 text-left">
+                                    Beneficiary {{ forloop.counter|stringformat:"02d" }}
+                                </td>
+                                <td class="py-2 text-right">
+                                    {{ beneficiary.name }}({{ beneficiary.percentage }}%)
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td class="py-2 font-semibold text-gray-600 text-left">Beneficiary</td>
+                            <td class="py-2 text-right">Not added yet</td>
+                        </tr>
+                        {% endif %}
+
+
+                        <tr>
+                            <td class="py-2 font-semibold text-gray-600 text-left">Emergency Contact</td>
+                            <td class="py-2 text-right">{{ user.emergency_contact|default:"Not provided" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 font-semibold text-gray-600 text-left">Know Us</td>
+                            <td class="py-2 text-right">{{ user.how_did_you_know|default:"Not provided" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 font-semibold text-gray-600 text-left">Signature</td>
+                            <td class="py-2 text-right">{{ user.sign_by_name|default:"Not provided" }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- Profile Image & Balance -->
+        <div class="order-1 md:order-2 bg-white shadow rounded-lg p-6 flex flex-col items-center">
+            <!-- Profile Image -->
+            {% if user.personal_image %}
+                <img src="{{ user.personal_image.url }}" alt="Profile" class="w-40 h-40 rounded-full my-8">
+            {% else %}
+                <div class="w-28 h-28 bg-gray-300 rounded-full flex items-center justify-center text-gray-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                </div>
+            {% endif %}
+
+            <!-- Balance + Status -->
+            <div class="w-full flex items-center justify-between mb-3">
+                <div>
+                    <p class="text-sm font-semibold">Total Balance: ${{ total_balance|floatformat:2|default:"0.00" }}</p>
+                    <p class="text-sm font-semibold">Total Investment: ${{ user.total_invest_balance|floatformat:2|default:"0.00" }}</p>
+                </div>
+                <span class="bg-green-100 text-green-700 text-sm px-2 py-1 rounded">Status:
+                    {% if user.is_active %}
+                        Active
+                    {% else %}
+                        Inactive
+                    {% endif %}
+                    {% if not user.is_continue %}
+                        (Frozen)
+                    {% endif %}
+                </span>
+            </div>
+
+            <!-- Member ID -->
+            <div class="w-full">
+                <p class="bg-[#183665] text-white text-center rounded-md py-2 font-semibold">
+                    {{ user.member_id }}
+                </p>
+            </div>
+
+            <!-- Roles -->
+            <div class="flex flex-wrap gap-1 mt-4 justify-center">
+                {% if user.owner %}
+                    <span class="bg-gray-200 px-2 py-1 rounded text-sm font-semibold">Owner</span>
+                {% endif %}
+                {% if user.staff %}
+                    <span class="bg-gray-200 px-2 py-1 rounded text-sm font-semibold">Staff</span>
+                {% endif %}
+                {% if user.semi_superuser %}
+                    <span class="bg-gray-200 px-2 py-1 rounded text-sm font-semibold">Semi-Superuser</span>
+                {% endif %}
+                {% if user.is_superuser %}
+                    <span class="bg-gray-200 px-2 py-1 rounded text-sm font-semibold">Superuser</span>
+                {% endif %}
+                {% if user.investor %}
+                    <span class="bg-gray-200 px-2 py-1 rounded text-sm font-semibold">Investor</span>
+                {% endif %}
+                {% if user.is_property %}
+                    <span class="bg-gray-200 px-2 py-1 rounded text-sm font-semibold">Property</span>
+                {% endif %}
+                {% if user.is_finnancial %}
+                    <span class="bg-gray-200 px-2 py-1 rounded text-sm font-semibold">Financial</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards Section -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+
+        <!-- System Agreements Card -->
+        <div>
+            <h3 class="text-md font-bold mb-2">System Agreements</h3>
+            {% if user.is_agree %}
+                {% with user_agreements=user.useragreement_set.all %}
+                    <div class="space-y-4 mt-14">
+                        {% for user_agreement in user_agreements %}
+                            {% if not user_agreement.uploaded_file %}
+                                <div class="bg-white shadow rounded-lg p-6 flex flex-col items-center text-center">
+                                    <h2 class="text-base font-bold mb-4">{{ user_agreement.agreement.title }} (v{{ user_agreement.agreement.version }})</h2>
+                                    <p class="bg-gray-100 px-2 py-1 rounded">
+                                        Agreement Document
+                                    </p>
+                                    <p class="text-sm text-gray-500 mt-2">Agreed: {{ user_agreement.agreed_at|date:"M d, Y" }}</p>
+                                    <button
+                                        class="bg-[#183665] text-white mt-3 px-4 py-2 w-full rounded hover:bg-[#152c52]"
+                                        onclick="openAgreementModal('{{ user_agreement.id }}', '{{ user_agreement.agreement.title }}', '{{ user_agreement.agreement.content|escapejs }}', 'v{{ user_agreement.agreement.version }}')">
+                                        Open Document
+                                    </button>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% endwith %}
+            {% endif %}
+        </div>
+
+        <div class="col-span-2">
+
+            <!-- Custom Buttons (outside swiper) -->
+            <div class="flex justify-end my-5 gap-4 ">
+                <button
+                    class="custom-prev flex items-center justify-center w-10 h-10 bg-white shadow text-black px-4 py-2 rounded-full">
+                    <i class="text-xl fa-solid fa-arrow-left"></i>
+                </button>
+                <button
+                    class="custom-next flex items-center justify-center w-10 h-10 bg-white shadow text-black px-4 py-2 rounded-full">
+                    <i class="text-xl fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <!-- Example Slider 1 -->
+            <div class="swiper mySwiper" data-slides="2">
+                <div class="swiper-wrapper">
+                    {% if all_uploaded_agreements %}
+                        {% for uploaded_agreement in all_uploaded_agreements %}
+                            <div class="swiper-slide">
+                                <div
+                                    class="bg-white shadow rounded-lg p-6 flex flex-col items-center text-center">
+                                    <h2 class="text-base font-bold mb-4">
+                                        {% if uploaded_agreement.agreement %}
+                                            {{ uploaded_agreement.agreement.title }}
+                                        {% else %}
+                                            Upload Document
+                                        {% endif %}
+                                    </h2>
+
+                                    <p class="bg-gray-100 px-2 py-1 rounded">
+                                        Upload File
+                                    </p>
+                                    <p class="text-sm text-gray-500 mt-2">Uploaded: {{ uploaded_agreement.created_at|date:"M d, Y" }}</p>
+                                    <button
+                                        class="bg-[#183665] text-white mt-3 px-4 py-2 w-full rounded hover:bg-[#152c52]"
+                                        onclick="openDocumentModal('{{ uploaded_agreement.uploaded_file.url }}', '{% if uploaded_agreement.agreement %}{{ uploaded_agreement.agreement.title }}{% else %}Uploaded Document{% endif %}')">
+                                        Open Document
+                                    </button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Payment History Table -->
+    <div class="bg-white shadow rounded-lg p-6 mt-6">
+        <h3 class="text-md font-bold mb-4">Payment History</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-center border-collapse">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="p-2">Date</th>
+                        <th class="p-2">Bank</th>
+                        <th class="p-2">Amount</th>
+                        <th class="p-2">Paid Amount</th>
+                        <th class="p-2">Approved By</th>
+                        <th class="p-2">Receipt</th>
+                        <th class="p-2">Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if approved_payments %}
+                        {% for payment in approved_payments %}
+                            <tr>
+                                <td class="p-2 border border-gray-100">{{ payment.approved_at|date:"M d, Y" }}</td>
+                                <td class="p-2 border border-gray-100">{{ payment.bank.name }}</td>
+                                <td class="p-2 border border-gray-100">${{ payment.amount }}</td>
+                                <td class="p-2 border border-gray-100">${{ payment.amount }}</td>
+                                <td class="p-2 border border-gray-100">{{ payment.approved_by.get_full_name }}</td>
+                                <td class="p-2 border border-gray-100">
+                                    {% if payment.receipt %}
+                                        <span class="bg-gray-200 px-3 py-1 rounded text-sm">Receipt</span>
+                                    {% else %}
+                                        <span class="bg-gray-200 px-3 py-1 rounded text-sm">Receipt</span>
+                                    {% endif %}
+                                </td>
+                                <td class="p-2 border border-gray-100">
+                                    {% if payment.notes %}
+                                        {{ payment.notes|truncatechars:20 }}
+                                    {% else %}
+                                        Payment processed
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal for Agreement Content -->
+<div id="agreementModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl transform transition-all duration-200 modal-content">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <div class="flex items-center">
+                    <div class="bg-[#183665] rounded-full p-2 mr-3">
+                        <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <div class="flex flex-col">
+                        <h3 class="text-xl font-semibold text-gray-900" id="agreementModalTitle">Agreement Content</h3>
+                        <span id="agreementModalVersion" class="text-xs text-blue-600 mt-1"></span>
+                    </div>
+                </div>
+            <button onclick="closeModal('agreementModal')" class="w-10 h-10 flex items-center justify-center text-gray-400 bg-blue-100 rounded-full hover:text-[#183665] transition-colors">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+            <div class="prose prose-sm max-w-none text-gray-700" id="agreementModalContent">
+                <!-- Agreement content will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Document Viewer -->
+<div id="documentModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg max-w-6xl w-full max-h-[95vh] overflow-hidden shadow-2xl transform transition-all duration-200 modal-content">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between p-6 border-b border-gray-200">
+            <div class="flex items-center">
+                <div class="bg-[#183665] rounded-full p-2 mr-3">
+                    <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900" id="documentModalTitle">Document Viewer</h3>
+            </div>
+            <div class="flex items-center space-x-2">
+                <a id="documentDownloadLink" href="#" target="_blank" class="px-3 py-1 bg-[#183665] text-white text-sm rounded hover:bg-blue-900 transition-colors">
+                    <svg class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                    </svg>
+                    Download
+                </a>
+                <button onclick="closeModal('documentModal')" class="w-10 h-10 flex items-center justify-center text-gray-400 bg-blue-100 rounded-full hover:text-[#183665] transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-6 overflow-y-auto max-h-[calc(95vh-140px)]">
+            <div id="documentViewer" class="w-full h-full">
+                <!-- Document content will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+{% block scripts %}
+    <script>
+    // Function to open agreement content modal
+    function openAgreementModal(agreementId, title, content, version) {
+        document.getElementById('agreementModalTitle').textContent = title;
+        document.getElementById('agreementModalVersion').textContent = version;
+        document.getElementById('agreementModalContent').innerHTML = '<p class="whitespace-pre-line">' + content + '</p>';
+        document.getElementById('agreementModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Function to open document modal
+    function openDocumentModal(documentUrl, title) {
+        document.getElementById('documentModalTitle').textContent = title;
+        document.getElementById('documentDownloadLink').href = documentUrl;
+        
+        const documentViewer = document.getElementById('documentViewer');
+        const fileExtension = documentUrl.split('.').pop().toLowerCase();
+        
+        if (fileExtension === 'pdf') {
+            // For PDF files
+            documentViewer.innerHTML = `
+                <iframe src="${documentUrl}" 
+                        class="w-full h-[70vh] border rounded-lg" 
+                        frameborder="0">
+                    <p>Your browser does not support PDFs. 
+                       <a href="${documentUrl}" class="text-blue-600 hover:underline">Download the PDF</a>
+                    </p>
+                </iframe>
+            `;
+        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
+            // For image files
+            documentViewer.innerHTML = `
+                <div class="flex justify-center">
+                    <img src="${documentUrl}" 
+                         alt="${title}" 
+                         class="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg">
+                </div>
+            `;
+        } else if (['doc', 'docx'].includes(fileExtension)) {
+            // For Word documents - use Google Docs viewer
+            documentViewer.innerHTML = `
+                <iframe src="https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true" 
+                        class="w-full h-[70vh] border rounded-lg" 
+                        frameborder="0">
+                    <p>Document preview not available. 
+                       <a href="${documentUrl}" class="text-blue-600 hover:underline">Download the document</a>
+                    </p>
+                </iframe>
+            `;
+        } else {
+            // For other file types
+            documentViewer.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-[70vh] bg-gray-50 rounded-lg">
+                    <svg class="h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <h3 class="text-lg font-medium text-gray-800 mb-2">Preview Not Available</h3>
+                    <p class="text-gray-600 mb-4">This file type cannot be previewed in the browser.</p>
+                    <a href="${documentUrl}" target="_blank" class="px-4 py-2 bg-[#183665] text-white rounded-lg hover:bg-blue-900 transition-colors">
+                        Download File
+                    </a>
+                </div>
+            `;
+        }
+        
+        document.getElementById('documentModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Function to close modal
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    // Close modal when clicking outside
+    document.addEventListener('click', function(event) {
+        const agreementModal = document.getElementById('agreementModal');
+        const documentModal = document.getElementById('documentModal');
+        
+        if (event.target === agreementModal) {
+            closeModal('agreementModal');
+        }
+        if (event.target === documentModal) {
+            closeModal('documentModal');
+        }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeModal('agreementModal');
+            closeModal('documentModal');
+        }
+    });
+</script>
+
+    <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll(".mySwiper").forEach((swiperEl, index) => {
+        const slidesPerView = parseInt(swiperEl.dataset.slides) || 1;
+        
+        new Swiper(swiperEl, {
+            slidesPerView: 1,
+            spaceBetween: 10,
+            navigation: {
+                nextEl: `.custom-next`,
+                prevEl: `.custom-prev`,
+            },
+            breakpoints: {
+                640: { slidesPerView: Math.min(slidesPerView, 2), spaceBetween: 20 },
+                768: { slidesPerView: Math.min(slidesPerView, 2), spaceBetween: 30 },
+                1024: { slidesPerView: slidesPerView, spaceBetween: 40 },
+            },
+            // Enable touch/swipe
+            touchRatio: 1,
+            touchAngle: 45,
+            grabCursor: true,
+            // Allow slide change
+            allowTouchMove: true,
+            // Loop if needed
+            loop: false,
+            // Speed
+            speed: 300,
+        });
+    });
+});
+</script>
+    <script>
+        function toggleAgreementContent(id) {
+            const element = document.getElementById(id);
+            if (element.classList.contains('hidden')) {
+                element.classList.remove('hidden');
+            } else {
+                element.classList.add('hidden');
+            }
+        }
+    </script>
+{% endblock scripts %}
