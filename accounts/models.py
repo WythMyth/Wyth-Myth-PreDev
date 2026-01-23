@@ -539,7 +539,7 @@ class Property(models.Model):
 
     
     def __str__(self):
-        return self.Property_name
+        return self.property_name
 
     def get_contributors(self):
         return self.contributors.filter(is_active=True)
