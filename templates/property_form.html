@@ -46,8 +46,8 @@
 
       <!-- Title -->
       <div>
-        <label class="block font-medium">{{ form.title.label }}</label>
-        {{ form.title|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        <label class="block font-medium">{{ form.property_name.label }}</label>
+        {{ form.property_name|add_class:"w-full border border-black rounded-md px-3 py-2" }}
       </div>
 
       <!-- Description -->
@@ -62,24 +62,10 @@
         {{ form.address|add_class:"w-full border border-black rounded-md px-3 py-2" }}
       </div>
 
-      <!-- City & State -->
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block font-medium">{{ form.city.label }}</label>
-          {{ form.city|add_class:"w-full border border-black rounded-md px-3 py-2" }}
-        </div>
-        <div>
-          <label class="block font-medium">{{ form.state.label }}</label>
-          {{ form.state|add_class:"w-full border border-black rounded-md px-3 py-2" }}
-        </div>
-      </div>
+      
 
-      <!-- Zip, Bedrooms, Bathrooms -->
       <div class="grid grid-cols-3 gap-4">
-        <div>
-          <label class="block font-medium">{{ form.zip_code.label }}</label>
-          {{ form.zip_code|add_class:"w-full border border-black rounded-md px-3 py-2" }}
-        </div>
+       
         <div>
           <label class="block font-medium">{{ form.bedrooms.label }}</label>
           {{ form.bedrooms|add_class:"w-full border border-black rounded-md px-3 py-2" }}
@@ -88,46 +74,93 @@
           <label class="block font-medium">{{ form.bathrooms.label }}</label>
           {{ form.bathrooms|add_class:"w-full border border-black rounded-md px-3 py-2" }}
         </div>
+        <div>
+          <label class="block font-medium">{{ form.parking.label }}</label>
+          {{ form.parking|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
       </div>
 
       <!-- Dining Rooms & Square Feet -->
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block font-medium">{{ form.dining_rooms.label }}</label>
-          {{ form.dining_rooms|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+          <label class="block font-medium">{{ form.living_area.label }}</label>
+          {{ form.living_area|add_class:"w-full border border-black rounded-md px-3 py-2" }}
         </div>
         <div>
-          <label class="block font-medium">{{ form.square_feet.label }}</label>
-          {{ form.square_feet|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+          <label class="block font-medium">{{ form.lot_area.label }}</label>
+          {{ form.lot_area|add_class:"w-full border border-black rounded-md px-3 py-2" }}
         </div>
       </div>
 
+      <div class="grid grid-cols-3 gap-4">
+        <div>
+          <label class="block font-medium">{{ form.property_type.label }}</label>
+          {{ form.property_type|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
+        <div>
+          <label class="block font-medium">{{ form.year_build.label }}</label>
+          {{ form.year_build|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
+        <div>
+          <label class="block font-medium">{{ form.exterior_feature.label }}</label>
+          {{ form.exterior_feature|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div>
+          <label class="block font-medium">{{ form.neighborhood_Demographic_Profile.label }}</label>
+          {{ form.neighborhood_Demographic_Profile|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
+        <div>
+          <label class="block font-medium">{{ form.neighborhood_percentage.label }}</label>
+          {{ form.neighborhood_percentage|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
+      </div>
+
+      
+      <div class="md:col-span-2 mb-4">
+          <button type="button" id="toggle-all-boxes" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-md text-sm font-medium transition-all shadow-sm hover:shadow-md" onclick="toggleAllBoxes()">
+              Hide
+          </button>
+      </div>
+
       <!-- Fixed Box (First Level Buyers) - TOP PRIORITY -->
-      <div class="md:col-span-2 bg-purple-50 p-4 rounded-lg border-2 border-purple-400">
+      <div class="md:col-span-2 bg-purple-50 p-4 rounded-lg border-2 border-purple-400" id="fixed-layer-container">
           <div class="flex justify-between items-center mb-2">
               <label class="block font-medium text-lg">Invested Layer</label>
               <span class="text-sm text-purple-700 italic">Priority investors - Fixed amounts, ALL sequences allowed</span>
           </div>
-          <div class="bg-white p-3 rounded border border-purple-300 space-y-3" id="fixed-box-container">
-              <p class="text-gray-400 text-sm text-center py-2" id="fixed-box-empty">No 1st level buyers yet. Move any sequence from Active Box below.</p>
+          <div id="fixed-layer-content" class="transition-all duration-300 ease-in-out overflow-hidden">
+              <div class="bg-white p-3 rounded border border-purple-300 space-y-3" id="fixed-box-container">
+                  <p class="text-gray-400 text-sm text-center py-2" id="fixed-box-empty">No 1st level buyers yet. Move any sequence from Active Box below.</p>
+              </div>
           </div>
       </div>
 
       <!-- Selected Contributors Section (Active Box) -->
-      <div class="md:col-span-2 bg-green-50 p-4 rounded-lg">
-          <label class="block font-medium mb-2 text-lg">Active Layer</label>
-          <div class="bg-white p-3 rounded border border-green-300 space-y-3" id="selected-contributors-container">
-              <!-- Selected contributors will be dynamically moved here -->
+      <div class="md:col-span-2 bg-green-50 p-4 rounded-lg" id="active-layer-container">
+          <div class="flex justify-between items-center mb-2">
+              <label class="block font-medium text-lg">Active Layer</label>
+          </div>
+          <div id="active-layer-content" class="transition-all duration-300 ease-in-out overflow-hidden">
+              <div class="bg-white p-3 rounded border border-green-300 space-y-3" id="selected-contributors-container">
+                  <!-- Selected contributors will be dynamically moved here -->
+              </div>
           </div>
       </div>
 
       <!-- Available Contributors Section (Inactive Box) -->
-      <div class="md:col-span-2 bg-blue-50 p-4 rounded-lg">
-          <label class="block font-medium mb-2 text-lg">Non-invested Layer</label>
-          <div class="bg-white p-3 rounded border border-blue-300 space-y-3" id="available-contributors-container">
-              <!-- Available contributors will be dynamically moved here -->
+      <div class="md:col-span-2 bg-blue-50 p-4 rounded-lg" id="non-invested-layer-container">
+          <div class="flex justify-between items-center mb-2">
+              <label class="block font-medium text-lg">Non-invested Layer</label>
+          </div>
+          <div id="non-invested-layer-content" class="transition-all duration-300 ease-in-out overflow-hidden">
+              <div class="bg-white p-3 rounded border border-blue-300 space-y-3" id="available-contributors-container">
+                  <!-- Available contributors will be dynamically moved here -->
+              </div>
           </div>
       </div>
+
 
       <!-- Hidden container for initial rendering -->
       <div style="display: none;" id="initial-contributors-container">
@@ -662,16 +695,14 @@
                 const moveBtn = row.querySelector('.move-to-first-btn-container');
                 if (moveBtn) moveBtn.style.display = 'none';
 
-                // ✅ FIXED: শুধুমাত্র তখনই নতুন row create করবে যখন inactive box-এ কোনো sequence নেই
+                
                 const existingInactiveRows = availableBox.querySelectorAll(`[data-user-id="${userId}"]`);
                 const balanceSpan = document.querySelector(`.user-balance-${userId}`);
                 const currentBalance = balanceSpan ? parseFloat(balanceSpan.textContent) || 0 : 0;
                 const originalInvest = parseFloat(row.querySelector('.invest-input').getAttribute('data-original-invest')) || parseFloat(investInput.getAttribute('data-original-invest')) || 0;
                 const remainingBalance = originalInvest - usedAmount;
 
-                // শুধুমাত্র তখনই নতুন row create করবে যদি:
-                // 1. Remaining balance > 0
-                // 2. Inactive box-এ এই user-এর কোনো row নেই
+                
                 if (remainingBalance > 0 && existingInactiveRows.length === 0) {
                   console.log(`✨ Creating new row for user ${userId} (remaining: $${remainingBalance.toFixed(2)})`);
                   createNewRowForUser(userId, userName, remainingBalance, false);
@@ -1285,78 +1316,7 @@
 
       </script>
       <!-- Status -->
-      <div>
-        <label class="block font-medium">{{ form.status.label }}</label>
-        {{ form.status|add_class:"w-full border border-black rounded-md px-3 py-2" }}
-      </div>
 
-      <!-- Conditional Groups -->
-      <div class="grid grid-cols-3 gap-4">
-
-        <!-- Wishlist Fields -->
-        <div class="status-group wishlist-fields hidden col-span-3 grid grid-cols-3 gap-4">
-          <div>
-            <label class="block font-medium">{{ form.auction_price.label }}</label>
-            {{ form.auction_price|add_class:"w-full border border-black rounded-md px-3 py-2" }}
-          </div>
-          <div>
-            <label class="block font-medium">{{ form.booking_fee.label }}</label>
-            {{ form.booking_fee|add_class:"w-full border border-black rounded-md px-3 py-2" }}
-          </div>
-          <div>
-            <label class="block font-medium">{{ form.estimated_price.label }}</label>
-            {{ form.estimated_price|add_class:"w-full border border-black rounded-md px-3 py-2" }}
-          </div>
-          <div class="col-span-2">
-            <label class="block font-medium">{{ form.url.label }}</label>
-            {{ form.url|add_class:"w-full border border-black rounded-md px-3 py-2" }}
-          </div>
-          <div>
-            <label class="block font-medium">{{ form.auction_date.label }}</label>
-            {{ form.auction_date|add_class:"w-full border border-black rounded-md px-3 py-2" }}
-          </div>
-        </div>
-
-        <!-- Bought Fields -->
-        <div class="status-group bought-fields hidden col-span-3 grid grid-cols-3 gap-4">
-          <div>
-            <label class="block font-medium">{{ form.buying_price.label }}</label>
-            {{ form.buying_price|add_class:"w-full border border-black rounded-md px-3 py-2 buying-price-input" }}
-          </div>
-          <div>
-            <label class="block font-medium">{{ form.service_cost.label }}</label>
-            {{ form.service_cost|add_class:"w-full border border-black rounded-md px-3 py-2 service-cost-input" }}
-          </div>
-          <div>
-            <label class="block font-medium">{{ form.buying_date.label }}</label>
-            {{ form.buying_date|add_class:"w-full border border-black rounded-md px-3 py-2 buying-date-input" }}
-          </div>
-            <div>
-              <label class="block font-medium">{{ form.acquisition_cost.label }}</label>
-              {{ form.acquisition_cost|add_class:"w-full border border-black rounded-md px-3 py-2 bg-gray-100 acquisition-cost-input" }}
-            </div>
-        </div>
-
-        <!-- Ready to Sell + Sold -->
-        <div class="status-group ready-to-sell-fields hidden col-span-3 grid grid-cols-3 gap-4">
-          <div>
-            <label class="block font-medium">{{ form.asking_price.label }}</label>
-            {{ form.asking_price|add_class:"w-full border border-black rounded-md px-3 py-2" }}
-          </div>
-
-          <div class="sold-fields hidden col-span-2 grid grid-cols-2 gap-4">
-            <div>
-              <label class="block font-medium">{{ form.selling_price.label }}</label>
-              {{ form.selling_price|add_class:"w-full border border-black rounded-md px-3 py-2" }}
-            </div>
-            <div>
-              <label class="block font-medium">{{ form.selling_date.label }}</label>
-              {{ form.selling_date|add_class:"w-full border border-black rounded-md px-3 py-2 selling-date-input" }}
-            </div>
-          </div>
-        </div>
-
-      </div>
 
       <!-- Images -->
       {{ image_formset.management_form }}
@@ -1395,6 +1355,83 @@
         <button type="button" id="add-more-images" class="bg-orange-100 text-orange-600 px-4 py-2 rounded-md">
           Add More Image
         </button>
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div class="col-span-2">
+          <label class="block font-medium">{{ form.status.label }}</label>
+          {{ form.status|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
+        <div>
+            <label class="block font-medium">{{ form.auction_date.label }}</label>
+            {{ form.auction_date|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+        </div>
+      </div>
+
+      <!-- Conditional Groups -->
+      <div class="grid grid-cols-3 gap-4">
+
+        <!-- Wishlist Fields -->
+        <div class="status-group wishlist-fields hidden col-span-3 grid grid-cols-3 gap-4">
+          <div>
+            <label class="block font-medium">{{ form.auction_price.label }}</label>
+            {{ form.auction_price|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+          </div>
+          <div>
+            <label class="block font-medium">{{ form.estimated_price.label }}</label>
+            {{ form.estimated_price|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+          </div>
+          <div>
+            <label class="block font-medium">{{ form.booking_fee.label }}</label>
+            {{ form.booking_fee|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+          </div>
+          
+          <div class="col-span-2">
+            <label class="block font-medium">{{ form.url.label }}</label>
+            {{ form.url|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+          </div>
+          <div>
+            <label class="block font-medium">{{ form.buying_date.label }}</label>
+            {{ form.buying_date|add_class:"w-full border border-black rounded-md px-3 py-2 buying-date-input" }}
+          </div>
+         
+        </div>
+
+        <!-- Bought Fields -->
+        <div class="status-group bought-fields hidden col-span-3 grid grid-cols-3 gap-4">
+          <div>
+            <label class="block font-medium">{{ form.buying_price.label }}</label>
+            {{ form.buying_price|add_class:"w-full border border-black rounded-md px-3 py-2 buying-price-input" }}
+          </div>
+          <div>
+            <label class="block font-medium">{{ form.service_cost.label }}</label>
+            {{ form.service_cost|add_class:"w-full border border-black rounded-md px-3 py-2 service-cost-input" }}
+          </div>
+
+            <div>
+              <label class="block font-medium">{{ form.acquisition_cost.label }}</label>
+              {{ form.acquisition_cost|add_class:"w-full border border-black rounded-md px-3 py-2 bg-gray-100 acquisition-cost-input" }}
+            </div>
+        </div>
+
+        <!-- Ready to Sell + Sold -->
+        <div class="status-group ready-to-sell-fields hidden col-span-3 grid grid-cols-3 gap-4">
+          <div>
+            <label class="block font-medium">{{ form.asking_price.label }}</label>
+            {{ form.asking_price|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+          </div>
+
+          <div class="sold-fields hidden col-span-2 grid grid-cols-2 gap-4">
+            <div>
+              <label class="block font-medium">{{ form.selling_price.label }}</label>
+              {{ form.selling_price|add_class:"w-full border border-black rounded-md px-3 py-2" }}
+            </div>
+            <div>
+              <label class="block font-medium">{{ form.selling_date.label }}</label>
+              {{ form.selling_date|add_class:"w-full border border-black rounded-md px-3 py-2 selling-date-input" }}
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- Save Button -->
@@ -1798,4 +1835,59 @@
       updateAcquisitionCost();
     });
   </script>
+  <script>
+  function toggleAllBoxes() {
+      const button = document.getElementById('toggle-all-boxes');
+      const boxes = ['fixed-layer', 'active-layer', 'non-invested-layer'];
+      
+      // Check if all boxes are currently hidden
+      const allHidden = boxes.every(boxId => {
+          const content = document.getElementById(boxId + '-content');
+          return content.classList.contains('hidden');
+      });
+      
+      boxes.forEach(function(boxId) {
+          const content = document.getElementById(boxId + '-content');
+          
+          if (allHidden) {
+              // Show all boxes
+              content.classList.remove('hidden');
+              button.textContent = 'Hide All Layers';
+              button.classList.remove('bg-green-500', 'hover:bg-green-600');
+              button.classList.add('bg-red-500', 'hover:bg-red-600');
+              localStorage.removeItem('all-boxes-hidden');
+          } else {
+              // Hide all boxes
+              content.classList.add('hidden');
+              button.textContent = 'Show All Layers';
+              button.classList.remove('bg-red-500', 'hover:bg-red-600');
+              button.classList.add('bg-green-500', 'hover:bg-green-600');
+              localStorage.setItem('all-boxes-hidden', 'true');
+          }
+      });
+  }
+
+  // Restore hidden state on page load
+  document.addEventListener('DOMContentLoaded', function() {
+      const button = document.getElementById('toggle-all-boxes');
+      const boxes = ['fixed-layer', 'active-layer', 'non-invested-layer'];
+      
+      if (localStorage.getItem('all-boxes-hidden') === 'true') {
+          boxes.forEach(function(boxId) {
+              const content = document.getElementById(boxId + '-content');
+              if (content) {
+                  content.classList.add('hidden');
+              }
+          });
+          
+          if (button) {
+              button.textContent = 'Show All Layers';
+              button.classList.remove('bg-red-500', 'hover:bg-red-600');
+              button.classList.add('bg-green-500', 'hover:bg-green-600');
+          }
+      }
+  });
+  </script>
+
+
 {% endblock scripts %}
