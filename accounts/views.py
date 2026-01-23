@@ -1,7 +1,7 @@
 import datetime
 import os
 from django.views.generic import CreateView, UpdateView
-
+from django.utils import timezone
 from django.http import HttpResponseRedirect
 from .models import Property, User, PropertyContribution
 
@@ -299,7 +299,7 @@ def dashboard(request):
 
         property_data = {
             "id": prop.id,
-            "title": prop.title,
+            "title": prop.property_name,
             "number": i + 1,
             "bought": prop.buying_price,
             "repair_cost": prop.service_cost or Decimal("0.00"),
@@ -756,7 +756,7 @@ class PropertyCreateView(PropertyUserRequiredMixin, CreateView):
             self.object = form.save(commit=False)
             self.object.save()
             
-            print(f"✅ Property saved: {self.object.title}")
+            print(f"✅ Property saved: {self.object.property_name}")
             print(f"   Status: {self.object.status}")
             print(f"   Buying Price: ${self.object.buying_price}")
             print(f"   Service Cost: ${self.object.service_cost}")
@@ -3014,7 +3014,8 @@ class ExpensesCopyView(LoginRequiredMixin, View):
         copied = Expense.objects.create(
             purpose=f"{original.purpose} (Copy)",
             description=original.description,
-            expense_date=original.expense_date,
+            # expense_date=original.expense_date,
+            expense_date=timezone.now().date(),
             status='pending',
             image=original.image,
             property=original.property, 

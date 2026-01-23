@@ -217,6 +217,85 @@ class UserLoginForm(AuthenticationForm):
     username = forms.EmailField(widget=forms.EmailInput(attrs={'autocomplete': 'email'}))
     password = forms.CharField(widget=forms.PasswordInput(attrs={'autocomplete': 'current-password'}))
 
+# class PropertyForm(forms.ModelForm):
+#     contributors = forms.ModelMultipleChoiceField(
+#         queryset=User.objects.filter(is_active=True, investor=True),
+#         required=False,
+#         widget=forms.SelectMultiple(attrs={
+#             'class': 'w-full border border-black rounded-md px-3 py-2',
+#             'size': '8',  
+#         }),
+#         label="Select Contributors",
+        
+#     )
+    
+#     class Meta:
+#         model = Property
+#         exclude = ['listed_by', 'listed_date', 'is_contribution_locked']
+#         widgets = {
+#             'buying_date': DateInput(attrs={'type': 'date'}),
+#             'selling_date': DateInput(attrs={'type': 'date'}),
+#             'auction_date': DateInput(attrs={'type': 'date'}),
+#             'description': forms.Textarea(attrs={'rows': 4}),
+#             'acquisition_cost': forms.NumberInput(attrs={
+#                 'readonly': 'readonly',
+#                 'class': 'bg-gray-100'
+#             }),
+#         }
+    
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+        
+#         # Set labels
+#         self.fields['title'].label = "Title"
+#         self.fields['description'].label = "Description of the Property"
+#         self.fields['auction_price'].label = "Auction Price"
+#         self.fields['service_cost'].label = "Service Cost"
+#         self.fields['profit'].label = "Profit"
+#         self.fields['asking_price'].label = "Asking Price"
+#         self.fields['selling_price'].label = "Selling Price"
+#         self.fields['buying_date'].label = "Buying Date"
+#         self.fields['buying_price'].label = "Buying Price"
+#         self.fields['acquisition_cost'].label = "Acquisition Cost"
+#         self.fields['selling_date'].label = "Selling Date"
+#         self.fields['address'].label = "Address of the property"
+#         self.fields['url'].label = "URL"
+#         # self.fields['city'].label = "City"
+#         # self.fields['state'].label = "State"
+#         # self.fields['zip_code'].label = "Zip Code"
+#         self.fields['bedrooms'].label = "Bedrooms"
+#         self.fields['bathrooms'].label = "Bathrooms"
+#         self.fields['living_area'].label = "Living Area(sqft)"
+#         self.fields['lot_area'].label = "Lot Area(sqft)"
+#         self.fields['status'].label = "Status"
+
+#         self.fields['buying_date'].required = False
+#         self.fields['selling_date'].required = False
+#         self.fields['profit'].required = False
+#         self.fields['url'].required = False
+#         self.fields['auction_date'].required = False
+#         self.fields['booking_fee'].required = False
+#         self.fields['estimated_price'].required = False
+#         self.fields['auction_price'].required = False
+#         self.fields['service_cost'].required = False
+#         self.fields['buying_price'].required = False
+#         self.fields['acquisition_cost'].required = False 
+#         self.fields['dining_rooms'].required = False
+#         self.fields['contributors'].label_from_instance = lambda obj: f"{obj.get_full_name()} (Balance: ${obj.balance:,.2f})"
+
+#     def clean(self):
+#         cleaned_data = super().clean()
+#         buying_price = cleaned_data.get('buying_price') or 0
+#         service_cost = cleaned_data.get('service_cost') or 0
+        
+#         # Calculate acquisition cost
+#         if buying_price or service_cost:
+#             cleaned_data['acquisition_cost'] = buying_price + service_cost
+#         else:
+#             cleaned_data['acquisition_cost'] = None
+            
+#         return cleaned_data
+
 class PropertyForm(forms.ModelForm):
     contributors = forms.ModelMultipleChoiceField(
         queryset=User.objects.filter(is_active=True, investor=True),
@@ -226,7 +305,6 @@ class PropertyForm(forms.ModelForm):
             'size': '8',  
         }),
         label="Select Contributors",
-        
     )
     
     class Meta:
@@ -247,29 +325,37 @@ class PropertyForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         # Set labels
-        self.fields['title'].label = "Title"
-        self.fields['description'].label = "Description"
-        self.fields['auction_price'].label = "Auction Price"
-        self.fields['service_cost'].label = "Service Cost"
+        self.fields['property_name'].label = "Property Name"
+        self.fields['description'].label = "Description of the property"
+        self.fields['estimated_price'].label = "Original listing price (Zillow/Redfine) $"
+        self.fields['booking_fee'].label = "Earnest money deposit $"
+        self.fields['auction_price'].label = "Auction Price ($)"
+        self.fields['service_cost'].label = "Service Cost ($)"
         self.fields['profit'].label = "Profit"
-        self.fields['asking_price'].label = "Asking Price"
-        self.fields['selling_price'].label = "Selling Price"
+        self.fields['asking_price'].label = "Asking Price ($)"
+        self.fields['selling_price'].label = "Selling Price ($)"
         self.fields['buying_date'].label = "Buying Date"
-        self.fields['buying_price'].label = "Buying Price"
-        self.fields['acquisition_cost'].label = "Acquisition Cost"
+        self.fields['buying_price'].label = "Buying Price ($)"
+        self.fields['acquisition_cost'].label = "Acquisition(Buying price + Service cost)"
         self.fields['selling_date'].label = "Selling Date"
-        self.fields['address'].label = "Address"
+        self.fields['address'].label = "Address of the property"
         self.fields['url'].label = "URL"
-        self.fields['city'].label = "City"
-        self.fields['state'].label = "State"
-        self.fields['zip_code'].label = "Zip Code"
         self.fields['bedrooms'].label = "Bedrooms"
         self.fields['bathrooms'].label = "Bathrooms"
-        self.fields['dining_rooms'].label = "Dining Rooms"
-        self.fields['square_feet'].label = "Square Feet"
+        self.fields['living_area'].label = "Living Area (sqft)"
+        self.fields['lot_area'].label = "Lot Area (sqft)"
+        self.fields['parking'].label = "Parking"
+        self.fields['year_build'].label = "Year Build"
+        self.fields['property_type'].label = "Property Type"
+        self.fields['exterior_feature'].label = "Exterior Feature"
+        self.fields['neighborhood_Demographic_Profile'].label = "Neighborhood Demographic Profile"
+        self.fields['neighborhood_percentage'].label = "Neighborhood Percentage"
         self.fields['status'].label = "Status"
+        self.fields['auction_date'].label = "Auction Date"
 
+        # Set required fields
         self.fields['buying_date'].required = False
+        self.fields['description'].required = False
         self.fields['selling_date'].required = False
         self.fields['profit'].required = False
         self.fields['url'].required = False
@@ -279,8 +365,13 @@ class PropertyForm(forms.ModelForm):
         self.fields['auction_price'].required = False
         self.fields['service_cost'].required = False
         self.fields['buying_price'].required = False
-        self.fields['acquisition_cost'].required = False 
-        self.fields['dining_rooms'].required = False
+        self.fields['acquisition_cost'].required = False
+        self.fields['living_area'].required = False
+        self.fields['lot_area'].required = False
+        self.fields['parking'].required = False
+        self.fields['year_build'].required = False
+        self.fields['neighborhood_percentage'].required = False
+        
         self.fields['contributors'].label_from_instance = lambda obj: f"{obj.get_full_name()} (Balance: ${obj.balance:,.2f})"
 
     def clean(self):

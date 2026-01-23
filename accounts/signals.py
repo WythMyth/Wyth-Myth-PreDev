@@ -126,27 +126,46 @@ def track_property_changes(sender, instance, **kwargs):
         instance._is_being_created = True  # ✅ Flag for creation
 
 
-
-
 @receiver(post_save, sender=Property)
 def create_profit_distribution_on_property_create(sender, instance, created, **kwargs):
 
     if created:
-        profit_dist, created = PropertyProfitDistribution.objects.get_or_create(
+        profit_dist, dist_created = PropertyProfitDistribution.objects.get_or_create(
             property=instance,
             defaults={
                 'first_level_share': Decimal('1.00'),
                 'second_level_share': Decimal('1.00'),
             }
         )
-        
-        if created:
+
+        if dist_created:
             print(f"\n{'='*70}")
-            print(f"✅ PropertyProfitDistribution CREATED")
-            print(f"   Property: {instance.title}")
+            print("✅ PropertyProfitDistribution CREATED")
+            print(f"   Property: {instance.property_name}")
             print(f"   First Level Share: {profit_dist.first_level_share}")
             print(f"   Second Level Share: {profit_dist.second_level_share}")
             print(f"{'='*70}\n")
+
+
+# @receiver(post_save, sender=Property)
+# def create_profit_distribution_on_property_create(sender, instance, created, **kwargs):
+
+#     if created:
+#         profit_dist, created = PropertyProfitDistribution.objects.get_or_create(
+#             property=instance,
+#             defaults={
+#                 'first_level_share': Decimal('1.00'),
+#                 'second_level_share': Decimal('1.00'),
+#             }
+#         )
+        
+#         if created:
+#             print(f"\n{'='*70}")
+#             print(f"✅ PropertyProfitDistribution CREATED")
+#             print(f"   Property: {instance.title}")
+#             print(f"   First Level Share: {profit_dist.first_level_share}")
+#             print(f"   Second Level Share: {profit_dist.second_level_share}")
+#             print(f"{'='*70}\n")
 
 
 @receiver(m2m_changed, sender=Property.contributors.through)

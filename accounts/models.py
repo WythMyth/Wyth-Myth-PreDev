@@ -480,8 +480,22 @@ class Property(models.Model):
         ('ready_to_sell', 'Ready to sell'),
         ('sold', 'Sold'),
     ]
-    title = models.CharField(max_length=200)
-    description = models.TextField()
+    TYPE_CHOICES = [
+        ('single_family', 'Single Family'),
+        ('double_family', 'Double Family')
+    ]
+    EXTERIOR_CHOICES = [
+        ('brick', 'Brick'),
+        ('veneer', 'Veneer')
+    ]
+    NEIGHBORHOOD_CHOICES = [
+        ('White (Non-Hispanic)', 'White (Non-Hispanic)'),
+        ('Black or African American', 'Black or African American'),
+        ('Asian', 'Asian'),
+        ('Hispanic or Latino', 'Hispanic or Latino')
+    ]
+    property_name = models.CharField(max_length=200)
+    description = models.TextField(null=True, blank=True,)
     estimated_price= models.DecimalField(max_digits=50, decimal_places=2,null=True, blank=True, verbose_name="Estimated Price")
     booking_fee = models.DecimalField(max_digits=50, decimal_places=2,null=True, blank=True, verbose_name="Booking fee")
     auction_price = models.DecimalField(max_digits=50, decimal_places=2,null=True, blank=True, verbose_name="Auction Price")
@@ -491,18 +505,22 @@ class Property(models.Model):
     selling_price = models.DecimalField(max_digits=50, decimal_places=2, null=True, blank=True, verbose_name="Selling Price")
     acquisition_cost = models.DecimalField(max_digits=50, decimal_places=6, null=True, blank=True, verbose_name="Acquisition Cost")
     profit = models.DecimalField(max_digits=50, decimal_places=2,null=True, blank=True, verbose_name="Profit")
-    address = models.CharField(max_length=255)
-    city = models.CharField(max_length=100)
-    state = models.CharField(max_length=100)
-    zip_code = models.CharField(max_length=10)
+    address = models.CharField(max_length=255, null=True, blank=True)
+
     
     # Add status field
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='wishlist')
+    status = models.CharField(max_length=20, null=True, blank=True, choices=STATUS_CHOICES, default='wishlist')
 
-    bedrooms = models.IntegerField(verbose_name="Bedrooms")
-    bathrooms = models.FloatField(verbose_name="Bathrooms")
-    dining_rooms = models.IntegerField(null=True, blank=True,verbose_name="Dining Rooms")
-    square_feet = models.IntegerField(verbose_name="Total Square Feet")
+    bedrooms = models.IntegerField(null=True, blank=True,verbose_name="Bedrooms")
+    bathrooms = models.FloatField(null=True, blank=True,verbose_name="Bathrooms")
+    living_area = models.IntegerField(null=True, blank=True,verbose_name="Living Area")
+    lot_area = models.IntegerField(null=True, blank=True, verbose_name="Total Square Feet")
+    parking = models.IntegerField(null=True, blank=True,verbose_name="Parking")
+    year_build = models.IntegerField(null=True, blank=True,verbose_name="year build")
+    property_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='single_family')
+    exterior_feature = models.CharField(max_length=20, choices=EXTERIOR_CHOICES, default='brick')
+    neighborhood_Demographic_Profile = models.CharField(max_length=30, choices=NEIGHBORHOOD_CHOICES, default='White (Non-Hispanic)')
+    neighborhood_percentage = models.IntegerField(null=True, blank=True, verbose_name="Neighborhood Percentage")
     auction_date = models.DateField(null=True, blank=True)
     buying_date = models.DateField(null=True, blank=True)
     selling_date = models.DateField(null=True, blank=True)
@@ -521,7 +539,7 @@ class Property(models.Model):
 
     
     def __str__(self):
-        return self.title
+        return self.Property_name
 
     def get_contributors(self):
         return self.contributors.filter(is_active=True)
@@ -1206,7 +1224,7 @@ class Property(models.Model):
             return False
 
         print("\n" + "="*80)
-        print(f"🏠 CALCULATING SHARE-BASED PROFIT WEIGHTS FOR: {self.title}")
+        print(f"🏠 CALCULATING SHARE-BASED PROFIT WEIGHTS FOR: {self.property_name}")
         print("="*80)
         
         share_price = SharePrice.get_current_price()
@@ -1298,7 +1316,7 @@ class Property(models.Model):
         total_profit = selling_price - total_contribution
 
         print("\n" + "="*100)
-        print(f"💵 GROUP-BASED PROFIT DISTRIBUTION FOR: {self.title}")
+        print(f"💵 GROUP-BASED PROFIT DISTRIBUTION FOR: {self.property_name}")
         print("="*100)
         print(f"\n📊 FINANCIAL SUMMARY:")
         print(f"  Total Investment:            ${float(total_contribution):,.2f}")
@@ -1925,7 +1943,7 @@ class PropertyImage(models.Model):
     is_primary = models.BooleanField(default=False)
     
     def __str__(self):
-        return f"Image for {self.property.title}"
+        return f"Image for {self.property.property_name}"
     
     class Meta:
         ordering = ['-is_primary', 'id']

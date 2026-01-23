@@ -190,29 +190,73 @@ class PaymentAdmin(admin.ModelAdmin):
 
         return redirect(request.META.get('HTTP_REFERER'))
 
+# @admin.register(Property)
+# class PropertyAdmin(admin.ModelAdmin):
+#     list_display = ('title', 'address', 'city', 'state', 'auction_price', 'selling_price', 'profit', 'status', 'is_contribution_locked', 'listed_by', 'created_at')
+#     list_filter = ('status', 'is_contribution_locked', 'state', 'city')
+#     search_fields = ('title', 'address', 'city', 'state', 'zip_code')
+#     readonly_fields = ('created_at', 'updated_at', 'listed_by', 'listed_date', 'profit')
+    
+#     fieldsets = (
+#         (None, {
+#             'fields': ('title', 'description', 'status', 'is_contribution_locked')
+#         }),
+#         ('Price Info', {
+#             'fields': ('auction_price', 'buying_price', 'service_cost', 'acquisition_cost', 'asking_price', 'selling_price', 'profit'),
+#             'description': 'Profit is automatically calculated: Selling Price - Acquisition Cost'
+#         }),
+#         ('Property Info', {
+#             'fields': ('bedrooms', 'bathrooms', 'dining_rooms', 'square_feet')
+#         }),
+#         ('Location', {
+#             'fields': ('address', 'city', 'state', 'zip_code')
+#         }),
+#         ('Dates', {
+#             'fields': ('buying_date', 'selling_date', 'listed_date', 'created_at', 'updated_at')
+#         }),
+#         ('Listed By', {
+#             'fields': ('listed_by',)
+#         }),
+#     )
+    
+#     actions = ['recalculate_profit_distribution']
+    
+#     def recalculate_profit_distribution(self, request, queryset):
+#         """Admin action to recalculate profit distribution for selected properties"""
+#         count = 0
+#         for property_obj in queryset:
+#             if property_obj.status == 'sold' and property_obj.selling_price:
+#                 if property_obj.distribute_sale_proceeds():
+#                     count += 1
+        
+#         self.message_user(
+#             request,
+#             f'Successfully recalculated profit distribution for {count} propert{"y" if count == 1 else "ies"}.'
+#         )
+#     recalculate_profit_distribution.short_description = "Recalculate profit distribution for sold properties"
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
-    list_display = ('title', 'address', 'city', 'state', 'auction_price', 'selling_price', 'profit', 'status', 'is_contribution_locked', 'listed_by', 'created_at')
-    list_filter = ('status', 'is_contribution_locked', 'state', 'city')
-    search_fields = ('title', 'address', 'city', 'state', 'zip_code')
+    list_display = ('property_name', 'address', 'auction_price', 'selling_price', 'profit', 'status', 'is_contribution_locked', 'listed_by', 'created_at')
+    list_filter = ('status', 'is_contribution_locked', 'property_type', 'exterior_feature')
+    search_fields = ('property_name', 'address', 'description')
     readonly_fields = ('created_at', 'updated_at', 'listed_by', 'listed_date', 'profit')
     
     fieldsets = (
         (None, {
-            'fields': ('title', 'description', 'status', 'is_contribution_locked')
+            'fields': ('property_name', 'description', 'status', 'is_contribution_locked')
         }),
         ('Price Info', {
-            'fields': ('auction_price', 'buying_price', 'service_cost', 'acquisition_cost', 'asking_price', 'selling_price', 'profit'),
+            'fields': ('estimated_price', 'booking_fee', 'auction_price', 'buying_price', 'service_cost', 'acquisition_cost', 'asking_price', 'selling_price', 'profit'),
             'description': 'Profit is automatically calculated: Selling Price - Acquisition Cost'
         }),
         ('Property Info', {
-            'fields': ('bedrooms', 'bathrooms', 'dining_rooms', 'square_feet')
+            'fields': ('bedrooms', 'bathrooms', 'living_area', 'lot_area', 'parking', 'year_build', 'property_type', 'exterior_feature', 'neighborhood_Demographic_Profile', 'neighborhood_percentage')
         }),
         ('Location', {
-            'fields': ('address', 'city', 'state', 'zip_code')
+            'fields': ('address', 'url')
         }),
         ('Dates', {
-            'fields': ('buying_date', 'selling_date', 'listed_date', 'created_at', 'updated_at')
+            'fields': ('auction_date', 'buying_date', 'selling_date', 'listed_date', 'created_at', 'updated_at')
         }),
         ('Listed By', {
             'fields': ('listed_by',)
@@ -234,7 +278,6 @@ class PropertyAdmin(admin.ModelAdmin):
             f'Successfully recalculated profit distribution for {count} propert{"y" if count == 1 else "ies"}.'
         )
     recalculate_profit_distribution.short_description = "Recalculate profit distribution for sold properties"
-
 class PropertyNameFilter(admin.SimpleListFilter):
     title = 'Property'
     parameter_name = 'property'
