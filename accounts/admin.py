@@ -283,8 +283,8 @@ class PropertyNameFilter(admin.SimpleListFilter):
     parameter_name = 'property'
 
     def lookups(self, request, model_admin):
-        properties = Property.objects.all().order_by('title')
-        return [(p.id, p.title) for p in properties]
+        properties = Property.objects.all().order_by('property_name')
+        return [(p.id, p.property_name) for p in properties]
 
     def queryset(self, request, queryset):
         if self.value():

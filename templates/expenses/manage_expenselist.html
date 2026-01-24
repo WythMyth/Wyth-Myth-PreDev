@@ -91,7 +91,7 @@
                             <td class="p-2 border border-gray-100 text-center">{{ expense.purpose }}</td>
                             <td class="p-2 border border-gray-100 text-center">
                                 {% if expense.property %} 
-                                {{expense.property.title|truncatewords:3}}
+                                {{expense.property.property_name|truncatewords:3}}
                                 {% else %}
                                 Office
                                 {% endif %}

@@ -313,7 +313,7 @@ def track_contribution_sequences(sender, instance, created, **kwargs):
             
             print(f"\n{'='*70}")
             print(f"🔵 SECOND LEVEL TRACKING")
-            print(f"   Property: {instance.property.title}")
+            print(f"   Property: {instance.property.property_name}")
             print(f"   User: {user.get_full_name()}")
             print(f"   Investment Sequence: #{instance.investment_sequence}")
             print(f"   ✅ Added to SECOND LEVEL (Repeat Investment)")

@@ -81,7 +81,7 @@
                 <tr class="border-b">
                     <td class="p-2 text-center">{{ expense.expense_date|date:"M d, Y" }}</td>
                     <td class="p-2 text-center">{{ expense.purpose }}</td>
-                    <td class="p-2 text-center">{{ expense.property.title|default:"—" }}</td>
+                    <td class="p-2 text-center">{{ expense.property.property_name|default:"—" }}</td>
                     <td class="p-2 text-center">{{ expense.created_by.short_name }}</td>
                     <td class="p-2 text-center">{{ expense.paid_by_user.short_name|default:"—" }}</td>
                     <td class="p-2 text-center">${{ expense.amount|floatformat:2 }}</td>

@@ -442,7 +442,7 @@ class PropertyContribution(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.user.get_full_name()} → {self.property.title} (#{self.investment_sequence}: {self.shares} shares)"
+        return f"{self.user.get_full_name()} → {self.property.property_name} (#{self.investment_sequence}: {self.shares} shares)"
     
     def calculate_shares(self):
         """Calculate number of shares based on contribution amount"""
@@ -2221,7 +2221,7 @@ class Expense(models.Model):
                 print(f"\n{'='*80}")
                 print(f"💰 PROPERTY EXPENSE APPROVAL: {self.purpose}")
                 print(f"{'='*80}")
-                print(f"Property: {self.property.title}")
+                print(f"Property: {self.property.property_name}")
                 print(f"Expense Amount: ${amount_value:.2f}")
                 print(f"Old Service Cost: ${old_service_cost:.2f}")
                 print(f"New Service Cost: ${new_service_cost:.2f}")
@@ -2734,7 +2734,7 @@ class PropertyProfitDistribution(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.property.title} - First: {self.first_level_buyer_count}, Second: {self.second_level_buyer_count}"
+        return f"{self.property.property_name} - First: {self.first_level_buyer_count}, Second: {self.second_level_buyer_count}"
 
     def update_buyer_counts(self):
         """Update buyer counts"""
@@ -2868,7 +2868,7 @@ class PropertyProfitDistribution(models.Model):
 
         print("\n" + "="*80)
         print("🔄 UPDATING PROFIT WEIGHTS WITH BUYER LEVELS")
-        print(f"Property: {self.property.title}")
+        print(f"Property: {self.property.property_name}")
         print("="*80)
 
         with transaction.atomic():

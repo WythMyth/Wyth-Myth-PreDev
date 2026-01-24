@@ -563,7 +563,19 @@
       </div>
 
       <!-- Summary Row -->
-      <div class="md:col-span-2 mt-4 p-3 bg-gradient-to-r from-indigo-500 to-red-600 rounded text-white">
+      {% comment %} <div class="md:col-span-2 mt-4 p-3 bg-gradient-to-r from-indigo-500 to-red-600 rounded text-white">
+          <div class="flex justify-between items-center font-semibold">
+              <span class="text-lg">Total:</span>
+              <div class="flex space-x-4">
+                  <span>Fixed: $<span id="total-fixed">0.00</span></span>
+                  <span>Active: $<span id="total-active">0.00</span></span>
+                  <span>Invest: $<span id="total-invest">0.00</span></span>
+                  <span>Used: $<span id="total-used">0.00</span></span>
+                  <span>Remain: $<span id="total-remain">0.00</span></span>
+              </div>
+          </div>
+      </div> {% endcomment %}
+      <div class="md:col-span-2 mt-4 p-3 bg-gradient-to-r from-indigo-500 to-red-600 rounded text-white transition-all duration-300 ease-in-out overflow-hidden" id="summary-section">
           <div class="flex justify-between items-center font-semibold">
               <span class="text-lg">Total:</span>
               <div class="flex space-x-4">
@@ -1836,59 +1848,70 @@
       updateAcquisitionCost();
     });
   </script>
-  <script>
-  function toggleAllBoxes() {
-      const button = document.getElementById('toggle-all-boxes');
-      const boxes = ['fixed-layer', 'active-layer', 'non-invested-layer'];
-      
-      // Check if all boxes are currently hidden
-      const allHidden = boxes.every(boxId => {
-          const content = document.getElementById(boxId + '-content');
-          return content.classList.contains('hidden');
-      });
-      
-      boxes.forEach(function(boxId) {
-          const content = document.getElementById(boxId + '-content');
-          
-          if (allHidden) {
-              // Show all boxes
-              content.classList.remove('hidden');
-              button.textContent = 'Hide All Layers';
-              button.classList.remove('bg-green-500', 'hover:bg-green-600');
-              button.classList.add('bg-red-500', 'hover:bg-red-600');
-              localStorage.removeItem('all-boxes-hidden');
-          } else {
-              // Hide all boxes
-              content.classList.add('hidden');
-              button.textContent = 'Show All Layers';
-              button.classList.remove('bg-red-500', 'hover:bg-red-600');
-              button.classList.add('bg-green-500', 'hover:bg-green-600');
-              localStorage.setItem('all-boxes-hidden', 'true');
-          }
-      });
-  }
+<script>
+function toggleAllBoxes() {
+    const button = document.getElementById('toggle-all-boxes');
+    const boxes = ['fixed-layer', 'active-layer', 'non-invested-layer'];
+    const summarySection = document.getElementById('summary-section');
+    
+    // Check if all boxes are currently hidden
+    const allHidden = boxes.every(boxId => {
+        const content = document.getElementById(boxId + '-content');
+        return content.classList.contains('hidden');
+    });
+    
+    boxes.forEach(function(boxId) {
+        const content = document.getElementById(boxId + '-content');
+        
+        if (allHidden) {
+            // Show all boxes and summary
+            content.classList.remove('hidden');
+            if (summarySection) {
+                summarySection.classList.remove('hidden');
+            }
+            button.textContent = 'Hide All Layers';
+            button.classList.remove('bg-green-500', 'hover:bg-green-600');
+            button.classList.add('bg-red-500', 'hover:bg-red-600');
+            localStorage.removeItem('all-boxes-hidden');
+        } else {
+            // Hide all boxes and summary
+            content.classList.add('hidden');
+            if (summarySection) {
+                summarySection.classList.add('hidden');
+            }
+            button.textContent = 'Show All Layers';
+            button.classList.remove('bg-red-500', 'hover:bg-red-600');
+            button.classList.add('bg-green-500', 'hover:bg-green-600');
+            localStorage.setItem('all-boxes-hidden', 'true');
+        }
+    });
+}
 
-  // Restore hidden state on page load
-  document.addEventListener('DOMContentLoaded', function() {
-      const button = document.getElementById('toggle-all-boxes');
-      const boxes = ['fixed-layer', 'active-layer', 'non-invested-layer'];
-      
-      if (localStorage.getItem('all-boxes-hidden') === 'true') {
-          boxes.forEach(function(boxId) {
-              const content = document.getElementById(boxId + '-content');
-              if (content) {
-                  content.classList.add('hidden');
-              }
-          });
-          
-          if (button) {
-              button.textContent = 'Show All Layers';
-              button.classList.remove('bg-red-500', 'hover:bg-red-600');
-              button.classList.add('bg-green-500', 'hover:bg-green-600');
-          }
-      }
-  });
-  </script>
-
-
+// Restore hidden state on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const button = document.getElementById('toggle-all-boxes');
+    const boxes = ['fixed-layer', 'active-layer', 'non-invested-layer'];
+    const summarySection = document.getElementById('summary-section');
+    
+    if (localStorage.getItem('all-boxes-hidden') === 'true') {
+        boxes.forEach(function(boxId) {
+            const content = document.getElementById(boxId + '-content');
+            if (content) {
+                content.classList.add('hidden');
+            }
+        });
+        
+        // Hide summary section
+        if (summarySection) {
+            summarySection.classList.add('hidden');
+        }
+        
+        if (button) {
+            button.textContent = 'Show All Layers';
+            button.classList.remove('bg-red-500', 'hover:bg-red-600');
+            button.classList.add('bg-green-500', 'hover:bg-green-600');
+        }
+    }
+});
+</script>
 {% endblock scripts %}

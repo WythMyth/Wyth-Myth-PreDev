@@ -931,7 +931,7 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
         old_status = old_property.status
         
         print("\n" + "="*80)
-        print(f"🔄 UPDATING PROPERTY: {old_property.title}")
+        print(f"🔄 UPDATING PROPERTY: {old_property.property_name}")
         print("="*80)
         
         buying_price = form.cleaned_data.get("buying_price") or 0
@@ -1128,7 +1128,7 @@ def property_api_detail(request, pk):
     # Format property data for JSON response
     data = {
         "id": property.id,
-        "title": property.title,
+        "title": property.property_name,
         "description": property.description,
         "address": property.address,
         "city": property.city,
@@ -2388,7 +2388,7 @@ def expense_download(request):
         worksheet.cell(
             row=row_idx,
             column=8,
-            value=expense.property.title if expense.property else "",
+            value=expense.property.property_name if expense.property else "",
         )
 
     # Auto-adjust column widths
