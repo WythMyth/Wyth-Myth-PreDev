@@ -327,7 +327,7 @@ class PropertyContributionAdmin(admin.ModelAdmin):
         'user__first_name',
         'user__last_name',
         'user__email',
-        'property__title'
+        'property__property_name'
     ]
     
     readonly_fields = [
@@ -529,7 +529,7 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
     list_filter = ['created_at', 'updated_at']
 
     search_fields = [
-        'property__title',
+        'property__property_name',
         'property__address',
         'first_level_buyers__email',
         'second_level_buyers__email',
@@ -605,12 +605,12 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
                 </div>
                 ''',
                 url,
-                obj.property.title
+                obj.property.property_name
             )
         except Exception as e:
             return format_html(
                 '<div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 20px;">🏠</span><span>{}</span></div>',
-                obj.property.title
+                obj.property.property_name
             )
     property_name_with_icon.short_description = 'Property Name'
 
@@ -624,15 +624,15 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
         
         try:
             property_url = reverse('admin:accounts_property_change', args=[p.id])
-            property_link = f'<a href="{property_url}" style="color: #0066cc; font-weight: bold;">{p.title}</a>'
+            property_link = f'<a href="{property_url}" style="color: #0066cc; font-weight: bold;">{p.property_name}</a>'
         except:
-            property_link = p.title
+            property_link = p.property_name
 
         html = f"""
         <div style="background:#f5f5f5;padding:15px;border-radius:5px;border-left:4px solid #0066cc;">
             <h3 style="margin-top:0;color:#0066cc;">📋 Property Details</h3>
             <table style="width:100%;border-collapse:collapse;">
-                <tr><td style="padding:5px;"><b>Title:</b></td><td style="padding:5px;">{property_link}</td></tr>
+                <tr><td style="padding:5px;"><b>Property Name:</b></td><td style="padding:5px;">{property_link}</td></tr>
                 <tr><td style="padding:5px;"><b>Address:</b></td><td style="padding:5px;">{p.address}, {p.city}</td></tr>
                 <tr><td style="padding:5px;"><b>Status:</b></td>
                     <td style="padding:5px;"><span style="background:#4CAF50;color:#fff;padding:3px 8px;border-radius:3px;">{p.get_status_display()}</span></td>
@@ -813,7 +813,7 @@ class BuyerLevelHistoryAdmin(admin.ModelAdmin):
         'user__email',
         'user__first_name',
         'user__last_name',
-        'profit_distribution__property__title',
+        'profit_distribution__property__property_name',
     ]
 
     readonly_fields = [
@@ -832,7 +832,7 @@ class BuyerLevelHistoryAdmin(admin.ModelAdmin):
     user_name.short_description = 'User'
 
     def property_name(self, obj):
-        return obj.profit_distribution.property.title
+        return obj.profit_distribution.property.property_name
     property_name.short_description = 'Property'
 
     def level_change_display(self, obj):
