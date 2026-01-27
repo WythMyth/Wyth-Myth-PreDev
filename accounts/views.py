@@ -3577,3 +3577,247 @@ class managementexpenselist(ListView):
             context["total_balance"] = self.request.user.balance
 
         return context
+    
+
+
+
+
+from decimal import Decimal
+from datetime import datetime
+import openpyxl
+
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db import transaction
+from django.shortcuts import redirect, render
+from django.urls import reverse_lazy
+from django.views import View
+
+from .forms import PropertyExcelUploadForm
+from .models import Property, User
+
+
+def _to_decimal(val, default=None):
+    if val is None or val == "":
+        return default
+    try:
+        return Decimal(str(val))
+    except Exception:
+        return default
+
+
+def _to_int(val, default=None):
+    if val is None or val == "":
+        return default
+    try:
+        return int(val)
+    except Exception:
+        return default
+
+
+def _to_float(val, default=None):
+    if val is None or val == "":
+        return default
+    try:
+        return float(val)
+    except Exception:
+        return default
+
+
+def _to_date(val, default=None):
+    if val is None or val == "":
+        return default
+    if hasattr(val, "date"):
+        try:
+            return val.date()
+        except Exception:
+            pass
+    if isinstance(val, str):
+        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y"):
+            try:
+                return datetime.strptime(val.strip(), fmt).date()
+            except Exception:
+                continue
+    return default
+
+
+class IsSuperUserOrStaffMixin(UserPassesTestMixin):
+    def test_func(self):
+        u = self.request.user
+        return u.is_authenticated and (u.is_superuser or u.is_staff)
+
+
+class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrStaffMixin, View):
+    template_name = "property_excel_upload.html"
+    success_url = reverse_lazy("accounts:property_list")  # আপনার url name অনুযায়ী change করুন
+
+    def get(self, request):
+        form = PropertyExcelUploadForm()
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request):
+        form = PropertyExcelUploadForm(request.POST, request.FILES)
+        if not form.is_valid():
+            return render(request, self.template_name, {"form": form})
+
+        f = form.cleaned_data["file"]
+        if not f.name.endswith(".xlsx"):
+            messages.error(request, "Please upload a valid .xlsx file")
+            return render(request, self.template_name, {"form": form})
+
+        try:
+            wb = openpyxl.load_workbook(f, data_only=True)
+        except Exception as e:
+            messages.error(request, f"Excel read failed: {e}")
+            return render(request, self.template_name, {"form": form})
+
+        if "property" not in wb.sheetnames:
+            messages.error(request, "Missing sheet: property")
+            return render(request, self.template_name, {"form": form})
+
+        # investments sheet optional now ✅
+        ws_prop = wb["property"]
+        ws_inv = wb["investments"] if "investments" in wb.sheetnames else None
+
+        # -------- Read property --------
+        prop_headers = [c.value for c in next(ws_prop.iter_rows(min_row=1, max_row=1))]
+        prop_row = None
+        for r in ws_prop.iter_rows(min_row=2, values_only=True):
+            if any(v is not None and v != "" for v in r):
+                prop_row = r
+                break
+
+        if not prop_row:
+            messages.error(request, "No data row found in 'property' sheet")
+            return render(request, self.template_name, {"form": form})
+
+        prop_data = dict(zip(prop_headers, prop_row))
+
+        property_name = (prop_data.get("property_name") or "").strip()
+        if not property_name:
+            messages.error(request, "property_name is required in 'property' sheet")
+            return render(request, self.template_name, {"form": form})
+
+        status = (prop_data.get("status") or "wishlist").strip()
+
+        # Optional listed_by
+        listed_by = None
+        listed_by_email = (prop_data.get("listed_by_email") or "").strip()
+        if listed_by_email:
+            listed_by = User.objects.filter(email__iexact=listed_by_email).first()
+
+        # -------- Read investments (optional) --------
+        investments_list = []
+        investment_dates_list = []
+
+        if ws_inv:
+            inv_headers = [c.value for c in next(ws_inv.iter_rows(min_row=1, max_row=1))]
+
+            for row in ws_inv.iter_rows(min_row=2, values_only=True):
+                if not any(v is not None and v != "" for v in row):
+                    continue
+                d = dict(zip(inv_headers, row))
+
+                email = (d.get("user_email") or "").strip()
+                if not email:
+                    continue
+
+                user = User.objects.filter(email__iexact=email).first()
+                if not user:
+                    messages.error(request, f"User not found for email: {email}")
+                    return render(request, self.template_name, {"form": form})
+
+                invest_amount = _to_decimal(d.get("invest_amount"), default=Decimal("0"))
+                # invest_amount invalid হলে row skip না করে error চাইলে এখানে error দিতে পারেন
+                if invest_amount <= 0:
+                    # Blank/invalid row ignore
+                    continue
+
+                is_fixed_raw = d.get("is_fixed")
+                is_fixed = False
+                if isinstance(is_fixed_raw, bool):
+                    is_fixed = is_fixed_raw
+                elif isinstance(is_fixed_raw, str):
+                    is_fixed = is_fixed_raw.strip().lower() in ("true", "yes", "1")
+
+                sequence = _to_int(d.get("sequence"), default=1) or 1
+
+                inv_date = _to_date(d.get("investment_date"), default=None)
+                if inv_date:
+                    investment_dates_list.append({
+                        "user_id": user.id,
+                        "sequence": sequence,
+                        "date": inv_date,
+                    })
+
+                investments_list.append({
+                    "user_id": user.id,
+                    "invest_amount": invest_amount,
+                    "is_fixed": is_fixed,
+                    "sequence": sequence,
+                })
+
+        # -------- Create Property --------
+        try:
+            with transaction.atomic():
+                prop = Property.objects.create(
+                    property_name=property_name,
+                    description=prop_data.get("description"),
+                    estimated_price=_to_decimal(prop_data.get("estimated_price")),
+                    booking_fee=_to_decimal(prop_data.get("booking_fee")),
+                    auction_price=_to_decimal(prop_data.get("auction_price")),
+                    buying_price=_to_decimal(prop_data.get("buying_price")),
+                    service_cost=_to_decimal(prop_data.get("service_cost")),
+                    asking_price=_to_decimal(prop_data.get("asking_price")),
+                    selling_price=_to_decimal(prop_data.get("selling_price")),
+                    acquisition_cost=_to_decimal(prop_data.get("acquisition_cost")),
+                    address=prop_data.get("address"),
+                    status=status,
+                    bedrooms=_to_int(prop_data.get("bedrooms")),
+                    bathrooms=_to_float(prop_data.get("bathrooms")),
+                    living_area=_to_int(prop_data.get("living_area")),
+                    lot_area=_to_int(prop_data.get("lot_area")),
+                    parking=_to_int(prop_data.get("parking")),
+                    year_build=_to_int(prop_data.get("year_build")),
+                    property_type=(prop_data.get("property_type") or "single_family"),
+                    exterior_feature=(prop_data.get("exterior_feature") or "brick"),
+                    neighborhood_Demographic_Profile=(
+                        prop_data.get("neighborhood_Demographic_Profile") or "White (Non-Hispanic)"
+                    ),
+                    neighborhood_percentage=_to_int(prop_data.get("neighborhood_percentage")),
+                    auction_date=_to_date(prop_data.get("auction_date")),
+                    buying_date=_to_date(prop_data.get("buying_date")),
+                    selling_date=_to_date(prop_data.get("selling_date")),
+                    url=prop_data.get("url"),
+                    listed_by=listed_by,
+                )
+
+                # contributors add only if we have investments
+                if investments_list:
+                    user_ids = list({inv["user_id"] for inv in investments_list})
+                    contributors = User.objects.filter(id__in=user_ids, is_active=True)
+                    prop.contributors.add(*contributors)
+
+                # ✅ Contribution deduction only when:
+                # - buying_price and service_cost both given (so total_cost > 0)
+                # - and investments_list not empty
+                buying_price_val = prop.buying_price or Decimal("0")
+                service_cost_val = prop.service_cost or Decimal("0")
+                total_cost = buying_price_val + service_cost_val
+
+                should_run_deduction = (total_cost > 0) and bool(investments_list)
+
+                if should_run_deduction:
+                    ok = prop.deduct_property_costs_with_multiple_investments(
+                        investments_list=investments_list,
+                        investment_dates_list=investment_dates_list or None
+                    )
+                    if not ok:
+                        raise ValueError("Contribution deduction failed (balances/cost mismatch).")
+
+        except Exception as e:
+            messages.error(request, f"Upload failed: {e}")
+            return render(request, self.template_name, {"form": form})
+
+        messages.success(request, f"Property created successfully: {property_name}")
+        return redirect(self.success_url)

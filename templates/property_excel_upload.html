@@ -1,0 +1,42 @@
+{% extends "dashboard//layout/dashboardLayout.html" %}
+{% block content %}
+<div class="max-w-2xl mx-auto p-6 bg-white rounded shadow">
+        <h2 class="text-xl font-semibold mb-4">Upload Property Excel (.xlsx)</h2>
+
+        {% if messages %}
+        <div class="mb-4">
+                {% for message in messages %}
+                <div class="p-2 mb-2 rounded 
+          {% if message.tags == 'error' %}bg-red-100 text-red-800{% else %}bg-green-100 text-green-800{% endif %}">
+                        {{ message }}
+                </div>
+                {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-4">
+                        <label class="block font-medium mb-2">Excel File</label>
+                        {{ form.file }}
+                        <p class="text-sm text-gray-500 mt-2">
+                                Required sheets: <b>property</b>, <b>investments</b>. File must be <b>.xlsx</b>
+                        </p>
+                </div>
+
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">
+                        Upload
+                </button>
+        </form>
+
+        <hr class="my-6">
+
+        <h3 class="font-semibold mb-2">Excel Rules</h3>
+        <ul class="list-disc ml-6 text-sm text-gray-700">
+                <li><b>property</b> sheet: header + 1 data row</li>
+                <li><b>investments</b> sheet: multiple rows (user_email, invest_amount, is_fixed, sequence,
+                        investment_date)</li>
+                <li>If <b>buying_price</b> Then → auto contribution deduction run</li>
+        </ul>
+</div>
+{% endblock %}

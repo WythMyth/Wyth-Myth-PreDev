@@ -109,5 +109,6 @@ urlpatterns = [
          name='office_expense_detail'),
     path('expense/', expenselist.as_view(), name='expenselist'),
     path('managementexpense/', managementexpenselist.as_view(), name='management_expense_list'),
+    path("properties/upload-excel/", PropertyExcelUploadView.as_view(), name="property_upload_excel"),
     
 ]

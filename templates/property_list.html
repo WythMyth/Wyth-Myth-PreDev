@@ -21,9 +21,28 @@
                 </select>
             </form>
         </div>
+        {% if user.is_superuser or user.is_property %}
+        <div class="flex gap-3 items-end">
+
+          <!-- Manual Property Create -->
+          <a href="{% url 'accounts:property_create' %}">
+            <button class="bg-[#183665] text-white py-2 px-4 rounded">
+              + Add New Property
+            </button>
+          </a>
+
+          <!-- Excel Upload -->
+          <a href="{% url 'accounts:property_upload_excel' %}">
+            <button class="bg-green-600 text-white py-2 px-4 rounded">
+              ⬆ Upload Property (Excel)
+            </button>
+          </a>
+
+        </div>
+        {% endif %}
 
         <!-- Add New Property Button -->
-        {% if user.is_superuser or user.is_property %}
+        <!-- {% if user.is_superuser or user.is_property %}
         <div class="items-end">
             <a href="{% url 'accounts:property_create' %}">
                 <button class="bg-[#183665] text-white py-2 px-4 rounded">
@@ -31,7 +50,8 @@
                 </button>
             </a>
         </div>
-        {% endif %}
+
+        {% endif %} -->
     </div>
 
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -58,8 +78,9 @@
             data-zip-code="{{ property.zip_code }}"
             data-bedrooms="{{ property.bedrooms }}"
             data-bathrooms="{{ property.bathrooms }}"
-            data-dining-rooms="{{ property.dining_rooms }}"
-            data-square-feet="{{ property.square_feet }}"
+            data-living-area="{{ property.living_area }}"
+            data-lot-area="{{ property.lot_area }}"
+            
             data-buying-date="{{ property.buying_date|date:'Y-m-d'|default:'' }}"
             data-selling-date="{{ property.selling_date|date:'Y-m-d'|default:'' }}"
             data-listed-date="{{ property.listed_date|date:'Y-m-d' }}"
@@ -170,12 +191,14 @@
                 </div>
                 <!-- Property Info -->
               <p class="text-gray-600 mt-2 mb-2">
-                {{ property.bedrooms }} bd <span class="font-bold text-2xl text-orange-600">.</span> {{ property.bathrooms }} ba <span class="font-bold text-2xl text-orange-600">.</span>
-                {{ property.square_feet }} sqft
+                {{ property.bedrooms }} bd <span class="font-bold text-2xl text-orange-600">.</span> {{ property.bathrooms }} ba <span class="font-bold text-2xl text-orange-600">.</span>{{ property.parking }} pk<span class="font-bold text-2xl text-orange-600">.</span>{{ property.exterior_feature}} <span class="font-bold text-2xl text-orange-600">.</span>
               </p>
-
+              <p class="text-gray-600 mt-2 mb-2">
+                {{ property.living_area }} sq ft <span class="font-bold text-2xl text-orange-600">.</span> {{ property.lot_area }} sq ft<span
+                  class="font-bold text-2xl text-orange-600">.</span>
+              </p>
               <p class="text-gray-500 text-sm">
-                <i class="fa-solid fa-location-dot"></i> {{ property.address }}, {{ property.city }}, {{ property.state }} {{ property.zip_code }}
+                <i class="fa-solid fa-location-dot"></i> {{ property.address }}
               </p>
               </div>
       </div>
@@ -275,9 +298,9 @@
                                     </div>
                                     <div class="grid grid-cols-4 gap-4 text-left">
                                         <div class="text-[#2B2B2B99]">Bedrooms <br><b id="property-bedrooms"></b></div>
-                                        <div class="text-[#2B2B2B99]">Dining Rooms <br><b id="property-dining-rooms"></b></div>
                                         <div class="text-[#2B2B2B99]">Bathrooms <br><b id="property-bathrooms"></b></div>
-                                        <div class="text-[#2B2B2B99]">Sqft <br><b id="property-square-feet"></b></div>
+                                        <div class="text-[#2B2B2B99]">Living Area <br><b id="property-living-area"></b></div>
+                                        <div class="text-[#2B2B2B99]">Lot Size <br><b id="property-lot-area"></b></div>
                                     </div>
                                 </div>
                             </div>
@@ -388,7 +411,8 @@
         const bedrooms = this.dataset.bedrooms;
         const bathrooms = this.dataset.bathrooms;
         const diningRooms = this.dataset.diningRooms;
-        const squareFeet = this.dataset.squareFeet;
+        const livingArea = this.dataset.livingArea;
+        const lotArea = this.dataset.lotArea;
         const listedDate = this.dataset.listedDate;
         const auctionDate = this.dataset.auctionDate;
         const buyingDate = this.dataset.buyingDate;
@@ -468,10 +492,12 @@
           bedrooms || "N/A";
         document.getElementById("property-bathrooms").textContent =
           bathrooms || "N/A";
-        document.getElementById("property-dining-rooms").textContent =
-          diningRooms || "N/A";
-        document.getElementById("property-square-feet").textContent =
-          squareFeet || "N/A";
+        document.getElementById("property-living-area").textContent =
+          livingArea ? `${livingArea} sq ft` : "N/A";
+
+        document.getElementById("property-lot-area").textContent =
+          lotArea ? `${lotArea} sq ft` : "N/A";
+
 
         // Contact link
         document.getElementById(

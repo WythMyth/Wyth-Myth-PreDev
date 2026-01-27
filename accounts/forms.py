@@ -330,20 +330,20 @@ class PropertyForm(forms.ModelForm):
         self.fields['estimated_price'].label = "Original listing price [Zillow/Redfine] ($)"
         self.fields['booking_fee'].label = "Earnest money deposit ($)"
         self.fields['auction_price'].label = "Auction Price ($)"
-        self.fields['service_cost'].label = "Service Cost[sc] ($)"
+        self.fields['service_cost'].label = "Service Cost ($) [sc]"
         self.fields['profit'].label = "Profit"
         self.fields['asking_price'].label = "New listing Price ($)"
         self.fields['selling_price'].label = "Final Sold Price ($)"
         self.fields['buying_date'].label = "Buying Date"
-        self.fields['buying_price'].label = "Buying Price[bp] ($)"
-        self.fields['acquisition_cost'].label = "Acquisition cost[bp + sc] ($)"
+        self.fields['buying_price'].label = "Buying Price ($) [bp]"
+        self.fields['acquisition_cost'].label = "Acquisition cost ($) [bp + sc]"
         self.fields['selling_date'].label = "Selling Date"
         self.fields['address'].label = "Address of the property"
         self.fields['url'].label = "URL"
         self.fields['bedrooms'].label = "Bedrooms"
         self.fields['bathrooms'].label = "Bathrooms"
-        self.fields['living_area'].label = "Living Area (Sqft)"
-        self.fields['lot_area'].label = "Lot Size (Sqft)"
+        self.fields['living_area'].label = "Living Area (Sq ft)"
+        self.fields['lot_area'].label = "Lot Size (Sq ft)"
         self.fields['parking'].label = "Parking"
         self.fields['year_build'].label = "Year Built"
         self.fields['property_type'].label = "Property Type"
@@ -538,3 +538,8 @@ class OfficeExpensePaymentForm(forms.ModelForm):
         self.fields['receipt'].required = False
         self.fields['user'].required = True
         self.fields['receive_type'].required = True
+
+
+
+class PropertyExcelUploadForm(forms.Form):
+    file = forms.FileField()
