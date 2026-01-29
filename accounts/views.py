@@ -3597,6 +3597,42 @@ from .forms import PropertyExcelUploadForm
 from .models import Property, User
 
 
+# ✅ Excel (Form Label) -> Model Field mapping
+PROPERTY_EXCEL_HEADER_MAP = {
+    "Property Name": "property_name",
+    "Description of the property": "description",
+    "Status": "status",
+    "Address of the property": "address",
+    "URL": "url",
+    "Auction Date": "auction_date",
+    "Auction Price ($)": "auction_price",
+    "Original listing price [Zillow/Redfine] ($)": "estimated_price",
+    "Earnest money deposit ($)": "booking_fee",
+    "Buying Date": "buying_date",
+    "Buying Price ($) [bp]": "buying_price",
+    "Service Cost ($) [sc]": "service_cost",
+    "Acquisition cost ($) [bp + sc]": "acquisition_cost",
+    "New listing Price ($)": "asking_price",
+    "Final Sold Price ($)": "selling_price",
+    "Profit": "profit",
+    "Bedrooms": "bedrooms",
+    "Bathrooms": "bathrooms",
+    "Living Area (Sq ft)": "living_area",
+    "Lot Size (Sq ft)": "lot_area",
+    "Parking": "parking",
+    "Year Built": "year_build",
+    "Property Type": "property_type",
+    "Exterior Feature": "exterior_feature",
+    "Neighborhood Demographic Profile": "neighborhood_Demographic_Profile",
+    "Neighborhood Percentage": "neighborhood_percentage",
+    "Selling Date": "selling_date",
+    "Listed By Email (optional)": "listed_by_email",
+}
+
+# fields that are allowed even if not in map (for backward compatibility)
+ALLOWED_FIELD_HEADERS = set(PROPERTY_EXCEL_HEADER_MAP.values()) | {"listed_by_email"}
+
+
 def _to_decimal(val, default=None):
     if val is None or val == "":
         return default
@@ -3627,11 +3663,15 @@ def _to_float(val, default=None):
 def _to_date(val, default=None):
     if val is None or val == "":
         return default
+
+    # excel datetime object
     if hasattr(val, "date"):
         try:
             return val.date()
         except Exception:
             pass
+
+    # string date
     if isinstance(val, str):
         for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y"):
             try:
@@ -3649,11 +3689,10 @@ class IsSuperUserOrStaffMixin(UserPassesTestMixin):
 
 class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrStaffMixin, View):
     template_name = "property_excel_upload.html"
-    success_url = reverse_lazy("accounts:property_list")  # আপনার url name অনুযায়ী change করুন
+    success_url = reverse_lazy("accounts:property_list")
 
     def get(self, request):
-        form = PropertyExcelUploadForm()
-        return render(request, self.template_name, {"form": form})
+        return render(request, self.template_name, {"form": PropertyExcelUploadForm()})
 
     def post(self, request):
         form = PropertyExcelUploadForm(request.POST, request.FILES)
@@ -3661,7 +3700,7 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrStaffMixin, View)
             return render(request, self.template_name, {"form": form})
 
         f = form.cleaned_data["file"]
-        if not f.name.endswith(".xlsx"):
+        if not f.name.lower().endswith(".xlsx"):
             messages.error(request, "Please upload a valid .xlsx file")
             return render(request, self.template_name, {"form": form})
 
@@ -3675,12 +3714,14 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrStaffMixin, View)
             messages.error(request, "Missing sheet: property")
             return render(request, self.template_name, {"form": form})
 
-        # investments sheet optional now ✅
         ws_prop = wb["property"]
-        ws_inv = wb["investments"] if "investments" in wb.sheetnames else None
+        ws_inv = wb["investments"] if "investments" in wb.sheetnames else None  # optional ✅
 
-        # -------- Read property --------
-        prop_headers = [c.value for c in next(ws_prop.iter_rows(min_row=1, max_row=1))]
+        # -------------------------
+        # Read Property sheet
+        # -------------------------
+        raw_headers = [c.value for c in next(ws_prop.iter_rows(min_row=1, max_row=1))]
+
         prop_row = None
         for r in ws_prop.iter_rows(min_row=2, values_only=True):
             if any(v is not None and v != "" for v in r):
@@ -3691,27 +3732,50 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrStaffMixin, View)
             messages.error(request, "No data row found in 'property' sheet")
             return render(request, self.template_name, {"form": form})
 
-        prop_data = dict(zip(prop_headers, prop_row))
+        # Map headers (label -> field), allow field headers too
+        mapped_headers = []
+        unknown = []
+        for h in raw_headers:
+            h = (h or "").strip()
+            if not h:
+                mapped_headers.append("")
+                continue
+
+            if h in PROPERTY_EXCEL_HEADER_MAP:
+                mapped_headers.append(PROPERTY_EXCEL_HEADER_MAP[h])
+            else:
+                # backward compatible: if user provided actual field name
+                mapped_headers.append(h)
+                if h not in ALLOWED_FIELD_HEADERS:
+                    unknown.append(h)
+
+        if unknown:
+            messages.error(request, f"Unknown column header(s): {', '.join(unknown)}")
+            return render(request, self.template_name, {"form": form})
+
+        prop_data = dict(zip(mapped_headers, prop_row))
 
         property_name = (prop_data.get("property_name") or "").strip()
         if not property_name:
-            messages.error(request, "property_name is required in 'property' sheet")
+            messages.error(request, "Property Name is required")
             return render(request, self.template_name, {"form": form})
 
         status = (prop_data.get("status") or "wishlist").strip()
 
-        # Optional listed_by
         listed_by = None
         listed_by_email = (prop_data.get("listed_by_email") or "").strip()
         if listed_by_email:
             listed_by = User.objects.filter(email__iexact=listed_by_email).first()
 
-        # -------- Read investments (optional) --------
+        # -------------------------
+        # Read Investments sheet (OPTIONAL)
+        # -------------------------
         investments_list = []
         investment_dates_list = []
 
         if ws_inv:
             inv_headers = [c.value for c in next(ws_inv.iter_rows(min_row=1, max_row=1))]
+            inv_headers = [(h or "").strip() for h in inv_headers]
 
             for row in ws_inv.iter_rows(min_row=2, values_only=True):
                 if not any(v is not None and v != "" for v in row):
@@ -3728,9 +3792,8 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrStaffMixin, View)
                     return render(request, self.template_name, {"form": form})
 
                 invest_amount = _to_decimal(d.get("invest_amount"), default=Decimal("0"))
-                # invest_amount invalid হলে row skip না করে error চাইলে এখানে error দিতে পারেন
                 if invest_amount <= 0:
-                    # Blank/invalid row ignore
+                    # blank/invalid investment row ignore
                     continue
 
                 is_fixed_raw = d.get("is_fixed")
@@ -3757,22 +3820,32 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrStaffMixin, View)
                     "sequence": sequence,
                 })
 
-        # -------- Create Property --------
+        # -------------------------
+        # Create Property + optional contributors + optional deduction
+        # -------------------------
         try:
             with transaction.atomic():
                 prop = Property.objects.create(
                     property_name=property_name,
                     description=prop_data.get("description"),
+                    status=status,
+                    address=prop_data.get("address"),
+                    url=prop_data.get("url"),
+
+                    auction_date=_to_date(prop_data.get("auction_date")),
+                    auction_price=_to_decimal(prop_data.get("auction_price")),
                     estimated_price=_to_decimal(prop_data.get("estimated_price")),
                     booking_fee=_to_decimal(prop_data.get("booking_fee")),
-                    auction_price=_to_decimal(prop_data.get("auction_price")),
+
+                    buying_date=_to_date(prop_data.get("buying_date")),
                     buying_price=_to_decimal(prop_data.get("buying_price")),
                     service_cost=_to_decimal(prop_data.get("service_cost")),
+                    acquisition_cost=_to_decimal(prop_data.get("acquisition_cost")),
+
                     asking_price=_to_decimal(prop_data.get("asking_price")),
                     selling_price=_to_decimal(prop_data.get("selling_price")),
-                    acquisition_cost=_to_decimal(prop_data.get("acquisition_cost")),
-                    address=prop_data.get("address"),
-                    status=status,
+                    profit=_to_decimal(prop_data.get("profit")),
+
                     bedrooms=_to_int(prop_data.get("bedrooms")),
                     bathrooms=_to_float(prop_data.get("bathrooms")),
                     living_area=_to_int(prop_data.get("living_area")),
@@ -3785,22 +3858,17 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrStaffMixin, View)
                         prop_data.get("neighborhood_Demographic_Profile") or "White (Non-Hispanic)"
                     ),
                     neighborhood_percentage=_to_int(prop_data.get("neighborhood_percentage")),
-                    auction_date=_to_date(prop_data.get("auction_date")),
-                    buying_date=_to_date(prop_data.get("buying_date")),
-                    selling_date=_to_date(prop_data.get("selling_date")),
-                    url=prop_data.get("url"),
+
                     listed_by=listed_by,
                 )
 
-                # contributors add only if we have investments
+                # add contributors only if investments exist
                 if investments_list:
                     user_ids = list({inv["user_id"] for inv in investments_list})
                     contributors = User.objects.filter(id__in=user_ids, is_active=True)
                     prop.contributors.add(*contributors)
 
-                # ✅ Contribution deduction only when:
-                # - buying_price and service_cost both given (so total_cost > 0)
-                # - and investments_list not empty
+                # ✅ only run deduction when cost exists AND investments exist
                 buying_price_val = prop.buying_price or Decimal("0")
                 service_cost_val = prop.service_cost or Decimal("0")
                 total_cost = buying_price_val + service_cost_val
@@ -3810,7 +3878,7 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrStaffMixin, View)
                 if should_run_deduction:
                     ok = prop.deduct_property_costs_with_multiple_investments(
                         investments_list=investments_list,
-                        investment_dates_list=investment_dates_list or None
+                        investment_dates_list=investment_dates_list or None,
                     )
                     if not ok:
                         raise ValueError("Contribution deduction failed (balances/cost mismatch).")
@@ -3821,3 +3889,4 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrStaffMixin, View)
 
         messages.success(request, f"Property created successfully: {property_name}")
         return redirect(self.success_url)
+

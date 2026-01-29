@@ -77,6 +77,12 @@
             data-state="{{ property.state }}"
             data-zip-code="{{ property.zip_code }}"
             data-bedrooms="{{ property.bedrooms }}"
+            data-parking="{{ property.parking }}"
+
+            data-year-build="{{ property.year_build|default:'' }}"
+            data-property-type="{{ property.get_property_type_display }}"
+            data-neighborhood-demographic-profile="{{ property.get_neighborhood_Demographic_Profile_display }}"
+
             data-bathrooms="{{ property.bathrooms }}"
             data-living-area="{{ property.living_area }}"
             data-lot-area="{{ property.lot_area }}"
@@ -116,7 +122,7 @@
                     {% if  property.auction_price %}
                       <div class="text-center">
                         <div class="text-xl font-bold text-black">
-                          $ {{ property.auction_price|floatformat:2|intcomma|default:"N/A" }}
+                          $ {{ property.auction_price|floatformat:2|intcomma|default:"-" }}
                         </div>
                         <div class="text-gray-500 text-sm">Auction Price</div>
                       </div>
@@ -128,7 +134,7 @@
                     <!-- Estimated Price -->
                     <div class="text-center">
                       <div class="text-xl font-bold text-black">
-                        $ {{ property.estimated_price|floatformat:2|intcomma|default:"N/A" }}
+                        $ {{ property.estimated_price|floatformat:2|intcomma|default:"-" }}
                       </div>
                       <div class="text-gray-500 text-sm">Listing Price</div>
                     </div>
@@ -138,7 +144,7 @@
                     {% if  property.auction_price %}
                       <div class="text-center">
                         <div class="text-xl font-bold text-black">
-                          $ {{ property.auction_price|floatformat:2|intcomma|default:"N/A" }}
+                          $ {{ property.auction_price|floatformat:2|intcomma|default:"-" }}
                         </div>
                         <div class="text-gray-500 text-sm">Auction Price</div>
                       </div>
@@ -150,7 +156,7 @@
                     <!-- Estimated Price -->
                     <div class="text-center">
                       <div class="text-xl font-bold text-black">
-                        $ {{ property.buying_price|floatformat:2|intcomma|default:"N/A" }}
+                        $ {{ property.buying_price|floatformat:2|intcomma|default:"-" }}
                       </div>
                       <div class="text-gray-500 text-sm">Buying Price</div>
                     </div>
@@ -160,7 +166,7 @@
                     {% if  property.auction_price %}
                       <div class="text-center">
                         <div class="text-xl font-bold text-black">
-                          $ {{ property.buying_price|floatformat:2|intcomma|default:"N/A" }}
+                          $ {{ property.buying_price|floatformat:2|intcomma|default:"-" }}
                         </div>
                         <div class="text-gray-500 text-sm">Buying Price</div>
                       </div>
@@ -172,7 +178,7 @@
                     <!-- Estimated Price -->
                     <div class="text-center">
                       <div class="text-xl font-bold text-black">
-                        $ {{ property.selling_price|floatformat:2|intcomma|default:"N/A" }}
+                        $ {{ property.selling_price|floatformat:2|intcomma|default:"-" }}
                       </div>
                       <div class="text-gray-500 text-sm">Selling Price</div>
                     </div>
@@ -181,7 +187,7 @@
                     <!-- Auction Price -->
                       <div class="text-center">
                         <div class="text-xl font-bold text-black">
-                          $ {{ property.asking_price|floatformat:2|intcomma|default:"N/A" }}
+                          $ {{ property.asking_price|floatformat:2|intcomma|default:"-" }}
                         </div>
                         <div class="text-gray-500 text-sm">Asking Price</div>
                       </div>
@@ -191,10 +197,10 @@
                 </div>
                 <!-- Property Info -->
               <p class="text-gray-600 mt-2 mb-2">
-                {{ property.bedrooms }} bd <span class="font-bold text-2xl text-orange-600">.</span> {{ property.bathrooms }} ba <span class="font-bold text-2xl text-orange-600">.</span>{{ property.parking }} pk<span class="font-bold text-2xl text-orange-600">.</span>{{ property.exterior_feature}} <span class="font-bold text-2xl text-orange-600">.</span>
+                {{ property.bedrooms|default:"-" }} bd <span class="font-bold text-2xl text-orange-600">.</span> {{ property.bathrooms|default:"-" }} ba <span class="font-bold text-2xl text-orange-600">.</span> {{ property.parking|default:"-" }} pk<span class="font-bold text-2xl text-orange-600">.</span> {{ property.exterior_feature|default:"-" }} <span class="font-bold text-2xl text-orange-600">.</span>
               </p>
               <p class="text-gray-600 mt-2 mb-2">
-                {{ property.living_area }} sq ft <span class="font-bold text-2xl text-orange-600">.</span> {{ property.lot_area }} sq ft<span
+                LA {{ property.living_area|default:"-" }} sq ft <span class="font-bold text-2xl text-orange-600">.</span> LS {{ property.lot_area|default:"-" }} sq ft<span
                   class="font-bold text-2xl text-orange-600">.</span>
               </p>
               <p class="text-gray-500 text-sm">
@@ -301,6 +307,14 @@
                                         <div class="text-[#2B2B2B99]">Bathrooms <br><b id="property-bathrooms"></b></div>
                                         <div class="text-[#2B2B2B99]">Living Area <br><b id="property-living-area"></b></div>
                                         <div class="text-[#2B2B2B99]">Lot Size <br><b id="property-lot-area"></b></div>
+                                    </div>
+
+                                    <div class="grid grid-cols-4 gap-4 text-left">
+                                        <div class="text-[#2B2B2B99]">Parking <br><b id="parking"></b></div>
+                                        <div class="text-[#2B2B2B99]">Year Built <br><b id="year_built"></b></div>
+                                        <div class="text-[#2B2B2B99]">Property Type <br><b id="property_type"></b></div>
+                                        <div class="text-[#2B2B2B99]">Neighborhood D P <br><b id="neighborhood_Demographic_Profile"></b></div>
+                                   
                                     </div>
                                 </div>
                             </div>
@@ -417,44 +431,48 @@
         const auctionDate = this.dataset.auctionDate;
         const buyingDate = this.dataset.buyingDate;
         const bookingFee = this.dataset.bookingFee;
+        const parking = this.dataset.parking;
+        const year_build = this.dataset.yearBuild;
+        const property_type = this.dataset.propertyType;
+        const neighborhood_Demographic_Profile = this.dataset.neighborhoodDemographicProfile;
 
-        document.getElementById("property-title").textContent = title || "N/A";
+        document.getElementById("property-title").textContent = title || "-";
         document.getElementById("property-description").textContent =
-          description || "N/A";
+          description || "-";
           const anchor = document.getElementById("property-url");
 
         if (url) {
           anchor.href = url;
           anchor.textContent = `URL : ${url}`;
         } else {
-          anchor.textContent = "URL : N/A";
+          anchor.textContent = "URL : -";
           anchor.removeAttribute("href");
         }
         document.getElementById("property-status").textContent =
-          status || "N/A";
+          status || "-";
         document.getElementById("property-address").textContent = `${
           address || ""
         }, ${city || ""}, ${state || ""} ${zipCode || ""}`;
 
         document.getElementById("property-asking-price").textContent =
-          askingPrice ? formatCurrency(askingPrice) : "N/A";
+          askingPrice ? formatCurrency(askingPrice) : "-";
         document.getElementById("property-auction-price").textContent =
-          auctionPrice ? formatCurrency(auctionPrice) : "N/A";
+          auctionPrice ? formatCurrency(auctionPrice) : "-";
         document.getElementById("property-buying-price").textContent =
-          buyingPrice ? formatCurrency(buyingPrice) : "N/A";
+          buyingPrice ? formatCurrency(buyingPrice) : "-";
         document.getElementById("property-service-cost").textContent =
-          serviceCost ? formatCurrency(serviceCost) : "N/A";
+          serviceCost ? formatCurrency(serviceCost) : "-";
         document.getElementById("property-booking-fee").textContent = bookingFee
           ? formatCurrency(bookingFee)
-          : "N/A";
+          : "-";
 
         document.getElementById("property-estimated-price").textContent =
-          estimatedPrice ? formatCurrency(estimatedPrice) : "N/A";
+          estimatedPrice ? formatCurrency(estimatedPrice) : "-";
 
         // Selling price and profit
         if (sellingPrice) {
           document.getElementById("property-selling-price").textContent =
-            sellingPrice ? formatCurrency(sellingPrice) : "N/A";
+            sellingPrice ? formatCurrency(sellingPrice) : "-";
           document
             .getElementById("property-selling-price-container")
             .classList.remove("hidden");
@@ -467,7 +485,7 @@
         if (profit) {
           document.getElementById("property-profit").textContent = profit
             ? formatCurrency(profit)
-            : "N/A";
+            : "-";
           document
             .getElementById("property-profit-container")
             .classList.remove("hidden");
@@ -480,23 +498,31 @@
         // Dates
         document.getElementById("property-listed-date").textContent = listedDate
           ? new Date(listedDate).toLocaleDateString()
-          : "N/A";
+          : "-";
         document.getElementById("property-buying-date").textContent = buyingDate
           ? new Date(buyingDate).toLocaleDateString()
-          : "N/A";
+          : "-";
         document.getElementById("property-auction-date").textContent =
-          auctionDate ? new Date(auctionDate).toLocaleDateString() : "N/A";
+          auctionDate ? new Date(auctionDate).toLocaleDateString() : "-";
 
         // Misc
         document.getElementById("property-bedrooms").textContent =
-          bedrooms || "N/A";
+          bedrooms || "-";
+        document.getElementById("parking").textContent =
+          parking || "-";
+        document.getElementById("year_built").textContent =
+          year_build || "-";
+        document.getElementById("property_type").textContent =
+          property_type || "-";
+        document.getElementById("neighborhood_Demographic_Profile").textContent =
+          neighborhood_Demographic_Profile || "-";
         document.getElementById("property-bathrooms").textContent =
-          bathrooms || "N/A";
+          bathrooms || "-";
         document.getElementById("property-living-area").textContent =
-          livingArea ? `${livingArea} sq ft` : "N/A";
+          livingArea ? `${livingArea} sq ft` : "-";
 
         document.getElementById("property-lot-area").textContent =
-          lotArea ? `${lotArea} sq ft` : "N/A";
+          lotArea ? `${lotArea} sq ft` : "-";
 
 
         // Contact link
