@@ -76,16 +76,16 @@
             data-city="{{ property.city }}"
             data-state="{{ property.state }}"
             data-zip-code="{{ property.zip_code }}"
-            data-bedrooms="{{ property.bedrooms }}"
-            data-parking="{{ property.parking }}"
+            data-bedrooms="{{ property.bedrooms|default:''  }}"
+            data-parking="{{ property.parking|default:''  }}"
 
             data-year-build="{{ property.year_build|default:'' }}"
-            data-property-type="{{ property.get_property_type_display }}"
-            data-neighborhood-demographic-profile="{{ property.get_neighborhood_Demographic_Profile_display }}"
+            data-property-type="{{ property.get_property_type_display|default:''  }}"
+            data-neighborhood-demographic-profile="{{ property.get_neighborhood_Demographic_Profile_display|default:'' }}"
 
-            data-bathrooms="{{ property.bathrooms }}"
-            data-living-area="{{ property.living_area }}"
-            data-lot-area="{{ property.lot_area }}"
+            data-bathrooms="{{ property.bathrooms|default:''  }}"
+            data-living-area="{{ property.living_area|default:''  }}"
+            data-lot-area="{{ property.lot_area|default:''  }}"
             
             data-buying-date="{{ property.buying_date|date:'Y-m-d'|default:'' }}"
             data-selling-date="{{ property.selling_date|date:'Y-m-d'|default:'' }}"
@@ -391,7 +391,9 @@
     const backToInfo = document.getElementById("back-to-info");
     const currentPhoto = document.getElementById("current-photo");
     const totalPhotos = document.getElementById("total-photos");
-
+    function valueOrDash(val) {
+      return val && val !== "null" && val !== "undefined" ? val : "-";
+    }
     // Function to format currency
     function formatCurrency(amount) {
       return new Intl.NumberFormat("en-US", {

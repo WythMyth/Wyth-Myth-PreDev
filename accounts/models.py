@@ -494,7 +494,7 @@ class Property(models.Model):
         ('Asian', 'Asian'),
         ('Hispanic or Latino', 'Hispanic or Latino')
     ]
-    property_name = models.CharField(max_length=200)
+    property_name = models.CharField(max_length=200, unique=True) 
     description = models.TextField(null=True, blank=True,)
     estimated_price= models.DecimalField(max_digits=50, decimal_places=2,null=True, blank=True, verbose_name="Estimated Price")
     booking_fee = models.DecimalField(max_digits=50, decimal_places=2,null=True, blank=True, verbose_name="Booking fee")
