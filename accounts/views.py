@@ -3603,39 +3603,39 @@ from .models import Property, User
 # ==============================
 PROPERTY_EXCEL_HEADER_MAP = {
     "Property Name": "property_name",
-    "Description of the property": "description",
-    "Address of the property": "address",
+    "Description": "description",
+    "Address": "address",
 
     "Bedrooms": "bedrooms",
     "Bathrooms": "bathrooms",
     "Parking": "parking",
-    "Living Area (Sq ft)": "living_area",
-    "Lot Size (Sq ft)": "lot_area",
+    "Living Area": "living_area",
+    "Lot Size": "lot_area",
 
     "Property Type": "property_type",
     "Year Built": "year_build",
-    "Exterior Feature": "exterior_feature",
+    "Exterior": "exterior_feature",
 
-    "Neighborhood Demographic Profile": "neighborhood_Demographic_Profile",
-    "Neighborhood Percentage": "neighborhood_percentage",
+    "Neighborhood": "neighborhood_Demographic_Profile",
+    "Percentage": "neighborhood_percentage",
 
     "Status": "status",
     "Auction Date": "auction_date",
-    "Auction Price ($)": "auction_price",
-    "Original listing price [Zillow/Redfine] ($)": "estimated_price",
-    "Earnest money deposit ($)": "booking_fee",
+    "Auction Price": "auction_price",
+    "Listing price": "estimated_price",
+    "Deposit": "booking_fee",
     "URL": "url",
 
     "Buying Date": "buying_date",
-    "Buying Price ($) [bp]": "buying_price",
-    "Service Cost ($) [sc]": "service_cost",
-    "Acquisition cost ($) [bp + sc]": "acquisition_cost",
+    "Buying Price": "buying_price",
+    "Service Cost": "service_cost",
+    "Acquisition Cost": "acquisition_cost",
 
-    "New listing Price ($)": "asking_price",
-    "Final Sold Price ($)": "selling_price",
+    "New listing Price": "asking_price",
+    "Final Sold Price": "selling_price",
     "Selling Date": "selling_date",
 
-    "Listed By Email (optional)": "listed_by_email",
+    "Listed By (Email)": "listed_by_email",
 }
 
 ALLOWED_FIELD_HEADERS = set(PROPERTY_EXCEL_HEADER_MAP.values()) | {"listed_by_email"}
