@@ -3936,14 +3936,16 @@ class managementexpenselist(ListView):
 #         return redirect(self.success_url)
 
 
+import re
 from decimal import Decimal
 from datetime import datetime
+
 import openpyxl
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db import transaction
-from django.shortcuts import redirect, render
+from django.shortcuts import render, redirect
 from django.urls import reverse_lazy
 from django.views import View
 
@@ -3952,54 +3954,54 @@ from .models import Property, User
 
 
 # ===============================
-# Header Mapping
+# Exact Excel Header Mapping
 # ===============================
-PROPERTY_EXCEL_HEADER_MAP = {
+HEADER_MAP = {
     "Property Name": "property_name",
-    "Description of the property": "description",
-    "Address of the property": "address",
+    "Address": "address",
+    "Address ": "address",
+
+    "Neighborhood": "neighborhood_Demographic_Profile",
+    "Percentage": "neighborhood_percentage",
+
+    "Listing price": "estimated_price",
+    "Auction Price": "auction_price",
+    "Auction Price ": "auction_price",
+
+    "LP-AP": "__ignore__",
 
     "Bedrooms": "bedrooms",
     "Bathrooms": "bathrooms",
-    "Parking": "parking",
-    "Living Area (Sq ft)": "living_area",
-    "Lot Size (Sq ft)": "lot_area",
+    "Living Area": "living_area",
+    "Lot Size": "lot_area",
 
+    "URL": "url",
+    "Parking": "parking",
     "Property Type": "property_type",
     "Year Built": "year_build",
-    "Exterior Feature": "exterior_feature",
-
-    "Neighborhood Demographic Profile": "neighborhood_Demographic_Profile",
-    "Neighborhood Percentage": "neighborhood_percentage",
+    "Exterior": "exterior_feature",
+    "Description": "description",
 
     "Status": "status",
-
     "Auction Date": "auction_date",
-    "Auction Price ($)": "auction_price",
-    "Original listing price [Zillow/Redfine] ($)": "estimated_price",
-    "Earnest money deposit ($)": "booking_fee",
-    "URL": "url",
+    "Deposit": "booking_fee",
+    "Deposit ": "booking_fee",
 
     "Buying Date": "buying_date",
-    "Buying Price ($) [bp]": "buying_price",
-    "Service Cost ($) [sc]": "service_cost",
-    "Acquisition cost ($) [bp + sc]": "acquisition_cost",
-
-    "New listing Price ($)": "asking_price",
-    "Final Sold Price ($)": "selling_price",
+    "Buying Price": "buying_price",
+    "Service Cost": "service_cost",
+    "Acquisition Cost": "acquisition_cost",
+    "New listing Price": "asking_price",
+    "Final Sold Price": "selling_price",
     "Selling Date": "selling_date",
-
-    "Listed By Email (optional)": "listed_by_email",
-
-    # ✅ Excel extra column (ignored)
-    "LP-AP": "__ignore__",
+    "Listed By (Email)": "listed_by_email",
 }
 
 
 # ===============================
-# Status & Neighborhood Mapping
+# Status & Neighbor Mapping
 # ===============================
-STATUS_CODE_MAP = {
+STATUS_MAP = {
     "1": "wishlist",
     "2": "failed_to_bought",
     "3": "move_to_next_option",
@@ -4008,127 +4010,110 @@ STATUS_CODE_MAP = {
     "6": "sold",
 }
 
-NEIGHBOR_CODE_MAP = {
+NEIGHBOR_MAP = {
     "1": "White (Non-Hispanic)",
     "2": "Black or African American",
     "3": "Asian",
     "4": "Hispanic or Latino",
 }
 
-VALID_STATUSES = set(STATUS_CODE_MAP.values())
-VALID_NEIGHBORS = set(NEIGHBOR_CODE_MAP.values())
-
 
 # ===============================
-# Helper Functions
+# Helpers
 # ===============================
-def _clean(val):
+def clean(val):
     if val is None:
         return ""
-    s = str(val).strip()
-    if s.lower() in ("none", "null", "nan"):
-        return ""
-    return s
+    return str(val).strip()
 
 
-def _to_decimal(val):
-    s = _clean(val)
-    if not s:
+def has_value(val):
+    if val is None:
+        return False
+    if isinstance(val, str) and val.strip() == "":
+        return False
+    return True
+
+
+def parse_decimal(val):
+    if not has_value(val):
         return None
+
+    if isinstance(val, (int, float)):
+        return Decimal(str(val))
+
+    s = str(val).replace("$", "").replace(",", "").strip().lower()
+
+    if s.endswith("k"):
+        s = str(Decimal(s[:-1]) * 1000)
+
     try:
         return Decimal(s)
-    except Exception:
+    except:
         return None
 
 
-def _to_int(val):
-    s = _clean(val)
-    if not s:
-        return None
-    try:
-        return int(float(s))
-    except Exception:
-        return None
-
-
-def _to_float(val):
-    s = _clean(val)
-    if not s:
+def parse_int(val):
+    if not has_value(val):
         return None
     try:
-        return float(s)
-    except Exception:
+        return int(float(val))
+    except:
         return None
 
 
-def _to_date(val):
-    # excel date
+def parse_float(val):
+    if not has_value(val):
+        return None
+    try:
+        return float(val)
+    except:
+        return None
+
+
+def parse_date(val):
     if hasattr(val, "date"):
-        try:
-            return val.date()
-        except Exception:
-            pass
+        return val.date()
 
-    s = _clean(val)
-    if not s:
+    if not has_value(val):
         return None
 
-    # support multiple formats
     for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y"):
         try:
-            return datetime.strptime(s, fmt).date()
-        except Exception:
+            return datetime.strptime(str(val), fmt).date()
+        except:
             continue
-
     return None
 
 
-def _normalize_status(val):
-    """
-    Default = 1 = wishlist
-    Supports: 1, 1.0, '1', 'wishlist'
-    """
-    if val is None or str(val).strip() == "":
-        return STATUS_CODE_MAP["1"]
+def normalize_status(val):
+    if not has_value(val):
+        return STATUS_MAP["1"]
 
     if isinstance(val, (int, float)):
-        val = str(int(val))  # 1.0 -> "1"
+        val = str(int(val))
 
-    s = str(val).strip().lower()
+    val = str(val).lower().strip()
 
-    if s in STATUS_CODE_MAP:
-        return STATUS_CODE_MAP[s]
+    if val in STATUS_MAP:
+        return STATUS_MAP[val]
 
-    if s in VALID_STATUSES:
-        return s
-
-    raise ValueError(
-        f"Invalid status '{val}'. Use 1-6 or one of: {', '.join(sorted(VALID_STATUSES))}"
-    )
+    return val
 
 
-def _normalize_neighbor(val):
-    """
-    Default = 1 = White (Non-Hispanic)
-    Supports: 1, 1.0, '1', 'Asian'
-    """
-    if val is None or str(val).strip() == "":
-        return NEIGHBOR_CODE_MAP["1"]
+def normalize_neighbor(val):
+    if not has_value(val):
+        return NEIGHBOR_MAP["1"]
 
     if isinstance(val, (int, float)):
-        val = str(int(val))  # 1.0 -> "1"
+        val = str(int(val))
 
-    s = str(val).strip()
+    val = str(val).strip()
 
-    if s in NEIGHBOR_CODE_MAP:
-        return NEIGHBOR_CODE_MAP[s]
+    if val in NEIGHBOR_MAP:
+        return NEIGHBOR_MAP[val]
 
-    if s in VALID_NEIGHBORS:
-        return s
-
-    raise ValueError(
-        f"Invalid neighborhood '{val}'. Use 1-4 or one of: {', '.join(sorted(VALID_NEIGHBORS))}"
-    )
+    return val
 
 
 # ===============================
@@ -4156,106 +4141,112 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrPropertyMixin, Vi
             return render(request, self.template_name, {"form": form})
 
         file = form.cleaned_data["file"]
-        if not file.name.lower().endswith(".xlsx"):
-            messages.error(request, "Upload a valid .xlsx file.")
-            return render(request, self.template_name, {"form": form})
 
-        try:
-            wb = openpyxl.load_workbook(file, data_only=True)
-        except Exception as e:
-            messages.error(request, f"Excel read failed: {e}")
-            return render(request, self.template_name, {"form": form})
+        wb = openpyxl.load_workbook(file, data_only=True)
+        ws = wb.active
 
-        # ✅ Only property sheet required
-        if "property" not in wb.sheetnames:
-            messages.error(request, "Sheet 'property' is required.")
-            return render(request, self.template_name, {"form": form})
-
-        ws = wb["property"]
-
-        raw_headers = [_clean(c.value) for c in next(ws.iter_rows(max_row=1))]
-
-        # Map headers
-        headers = []
-        for h in raw_headers:
-            headers.append(PROPERTY_EXCEL_HEADER_MAP.get(h, h))
+        raw_headers = [clean(c.value) for c in next(ws.iter_rows(max_row=1))]
+        headers = [HEADER_MAP.get(h, h) for h in raw_headers]
 
         created = 0
         updated = 0
 
-        try:
-            with transaction.atomic():
-                for row in ws.iter_rows(min_row=2, values_only=True):
-                    if not any(v is not None and v != "" for v in row):
-                        continue
+        with transaction.atomic():
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not any(has_value(v) for v in row):
+                    continue
 
-                    data = dict(zip(headers, row))
+                data = dict(zip(headers, row))
+                data.pop("__ignore__", None)
 
-                    # ✅ remove ignored columns (LP-AP etc.)
-                    data.pop("__ignore__", None)
+                property_name = clean(data.get("property_name"))
+                if not property_name:
+                    continue
 
-                    property_name = _clean(data.get("property_name"))
-                    if not property_name:
-                        # property_name ছাড়া skip
-                        continue
+                prop, was_created = Property.objects.get_or_create(
+                    property_name=property_name
+                )
 
-                    status = _normalize_status(data.get("status"))
-                    neighbor = _normalize_neighbor(data.get("neighborhood_Demographic_Profile"))
+                # Always set defaults
+                prop.status = normalize_status(data.get("status"))
+                prop.neighborhood_Demographic_Profile = normalize_neighbor(
+                    data.get("neighborhood_Demographic_Profile")
+                )
 
-                    defaults = {
-                        "description": _clean(data.get("description")) or None,
-                        "status": status,
-                        "address": _clean(data.get("address")) or None,
+                # Update only if value exists
+                for field in [
+                    "description", "address", "url",
+                ]:
+                    if has_value(data.get(field)):
+                        setattr(prop, field, clean(data.get(field)))
 
-                        "auction_price": _to_decimal(data.get("auction_price")),
-                        "estimated_price": _to_decimal(data.get("estimated_price")),
-                        "booking_fee": _to_decimal(data.get("booking_fee")),
+                if has_value(data.get("auction_price")):
+                    prop.auction_price = parse_decimal(data.get("auction_price"))
 
-                        "buying_price": _to_decimal(data.get("buying_price")),
-                        "service_cost": _to_decimal(data.get("service_cost")),
-                        "asking_price": _to_decimal(data.get("asking_price")),
-                        "selling_price": _to_decimal(data.get("selling_price")),
-                        "acquisition_cost": _to_decimal(data.get("acquisition_cost")),
+                if has_value(data.get("estimated_price")):
+                    prop.estimated_price = parse_decimal(data.get("estimated_price"))
 
-                        "bedrooms": _to_int(data.get("bedrooms")),
-                        "bathrooms": _to_float(data.get("bathrooms")),
-                        "living_area": _to_int(data.get("living_area")),
-                        "lot_area": _to_int(data.get("lot_area")),
-                        "parking": _to_int(data.get("parking")),
-                        "year_build": _to_int(data.get("year_build")),
+                if has_value(data.get("booking_fee")):
+                    prop.booking_fee = parse_decimal(data.get("booking_fee"))
 
-                        # ✅ MUST NOT BE NULL
-                        "neighborhood_Demographic_Profile": neighbor,
-                        "neighborhood_percentage": _to_int(data.get("neighborhood_percentage")),
+                if has_value(data.get("buying_price")):
+                    prop.buying_price = parse_decimal(data.get("buying_price"))
 
-                        "auction_date": _to_date(data.get("auction_date")),
-                        "buying_date": _to_date(data.get("buying_date")),
-                        "selling_date": _to_date(data.get("selling_date")),
+                if has_value(data.get("service_cost")):
+                    prop.service_cost = parse_decimal(data.get("service_cost"))
 
-                        "url": _clean(data.get("url")) or None,
-                    }
+                if has_value(data.get("acquisition_cost")):
+                    prop.acquisition_cost = parse_decimal(data.get("acquisition_cost"))
 
-                    prop, was_created = Property.objects.update_or_create(
-                        property_name=property_name,
-                        defaults=defaults
-                    )
+                if has_value(data.get("asking_price")):
+                    prop.asking_price = parse_decimal(data.get("asking_price"))
 
-                    # listed_by optional
-                    listed_by_email = _clean(data.get("listed_by_email"))
-                    if listed_by_email:
-                        listed_by = User.objects.filter(email__iexact=listed_by_email).first()
-                        if listed_by:
-                            prop.listed_by = listed_by
-                            prop.save(update_fields=["listed_by"])
+                if has_value(data.get("selling_price")):
+                    prop.selling_price = parse_decimal(data.get("selling_price"))
 
-                    if was_created:
-                        created += 1
-                    else:
-                        updated += 1
+                if has_value(data.get("bedrooms")):
+                    prop.bedrooms = parse_int(data.get("bedrooms"))
 
-        except Exception as e:
-            messages.error(request, f"Upload failed: {e}")
-            return render(request, self.template_name, {"form": form})
+                if has_value(data.get("bathrooms")):
+                    prop.bathrooms = parse_float(data.get("bathrooms"))
+
+                if has_value(data.get("living_area")):
+                    prop.living_area = parse_int(data.get("living_area"))
+
+                if has_value(data.get("lot_area")):
+                    prop.lot_area = parse_int(data.get("lot_area"))
+
+                if has_value(data.get("parking")):
+                    prop.parking = parse_int(data.get("parking"))
+
+                if has_value(data.get("year_build")):
+                    prop.year_build = parse_int(data.get("year_build"))
+
+                if has_value(data.get("neighborhood_percentage")):
+                    prop.neighborhood_percentage = parse_int(data.get("neighborhood_percentage"))
+
+                if has_value(data.get("auction_date")):
+                    prop.auction_date = parse_date(data.get("auction_date"))
+
+                if has_value(data.get("buying_date")):
+                    prop.buying_date = parse_date(data.get("buying_date"))
+
+                if has_value(data.get("selling_date")):
+                    prop.selling_date = parse_date(data.get("selling_date"))
+
+                listed_email = clean(data.get("listed_by_email"))
+                if listed_email:
+                    user = User.objects.filter(email__iexact=listed_email).first()
+                    if user:
+                        prop.listed_by = user
+
+                prop.save()
+
+                if was_created:
+                    created += 1
+                else:
+                    updated += 1
 
         messages.success(request, f"Upload done. Created: {created}, Updated: {updated}")
         return redirect(self.success_url)
+    
