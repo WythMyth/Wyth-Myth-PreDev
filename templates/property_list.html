@@ -119,22 +119,34 @@
                 <div class="flex items-center space-x-4 mt-2">
                   {% if property.status == 'wishlist' or property.status == 'failed_to_bought' or property.status == 'move_to_next_option' %}
                     <!-- Auction Price -->
-                    {% if  property.auction_price %}
-                      <div class="text-center">
-                        <div class="text-xl font-bold text-black">
-                          $ {{ property.auction_price|floatformat:2|intcomma|default:"-" }}
-                        </div>
-                        <div class="text-gray-500 text-sm">Auction Price</div>
+                    <div class="text-center">
+                      <div class="text-xl font-bold text-black">
+                        {% if property.auction_price %}
+                        $ {{ property.auction_price|floatformat:0 }}K
+                        {% else %}
+                        -
+                        {% endif %}
                       </div>
-                    {% endif %}
+                      <div class="text-gray-500 text-sm">Auction Price</div>
+                    </div>
 
                     <!-- Divider -->
                     <div class="h-10 rounded w-1 bg-orange-500"></div>
 
                     <!-- Estimated Price -->
+                    <!-- <div class="text-center">
+                      <div class="text-xl font-bold text-black">
+                        $ {{ property.estimated_price|default:"-" }}
+                      </div>
+                      <div class="text-gray-500 text-sm">Listing Price</div>
+                    </div> -->
                     <div class="text-center">
                       <div class="text-xl font-bold text-black">
-                        $ {{ property.estimated_price|floatformat:2|intcomma|default:"-" }}
+                        {% if property.estimated_price %}
+                        $ {{ property.estimated_price|floatformat:0 }}K
+                        {% else %}
+                        -
+                        {% endif %}
                       </div>
                       <div class="text-gray-500 text-sm">Listing Price</div>
                     </div>
@@ -175,7 +187,7 @@
                     <!-- Divider -->
                     <div class="h-10 rounded w-1 bg-orange-500"></div>
 
-                    <!-- Estimated Price -->
+                   
                     <div class="text-center">
                       <div class="text-xl font-bold text-black">
                         $ {{ property.selling_price|floatformat:2|intcomma|default:"-" }}

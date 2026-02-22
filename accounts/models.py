@@ -481,12 +481,17 @@ class Property(models.Model):
         ('sold', 'Sold'),
     ]
     TYPE_CHOICES = [
-        ('single_family', 'Single Family'),
-        ('double_family', 'Double Family')
+        ('single_family', 'Single-Family House'),
+        ('rowhouse', 'Rowhouse'),
+        ('condo', 'Condo'),
+        ('duplex', 'Duplex'),
     ]
     EXTERIOR_CHOICES = [
         ('brick', 'Brick'),
-        ('veneer', 'Veneer')
+        ('wood_frame', 'Wood Frame'),
+        ('brick_veneer', 'Brick Veneer over Wood Frame'),
+        ('cmu', 'Concrete Block (CMU)'),
+        ('stone', 'Stone'),
     ]
     NEIGHBORHOOD_CHOICES = [
         ('White (Non-Hispanic)', 'White (Non-Hispanic)'),
