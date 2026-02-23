@@ -4109,6 +4109,7 @@ STATUS_MAP = {
     "4": "bought",
     "5": "ready_to_sell",
     "6": "sold",
+    "7": "stayed",
 }
 
 NEIGHBOR_MAP = {

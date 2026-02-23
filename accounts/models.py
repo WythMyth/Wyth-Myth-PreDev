@@ -479,6 +479,7 @@ class Property(models.Model):
         ('bought', 'Bought'),
         ('ready_to_sell', 'Ready to sell'),
         ('sold', 'Sold'),
+        ('stayed', 'Stayed')
     ]
     TYPE_CHOICES = [
         ('single_family', 'Single-Family House'),
