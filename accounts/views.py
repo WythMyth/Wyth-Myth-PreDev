@@ -644,43 +644,143 @@ def member_detail(request, pk):
     return render(request, "member_detail.html", context)
 
 
+# class PropertyListView(LoginRequiredMixin, ListView):
+#     model = Property
+#     template_name = "property_list.html"
+#     context_object_name = "properties"
+
+#     def get_queryset(self):
+#         # Prefetch stories ordered by latest
+#         story_prefetch = Prefetch(
+#             "stories",
+#             queryset=Story.objects.only(
+#                 "id", "message", "created_at", "related_property"
+#             ).order_by("-created_at"),
+#         )
+
+#         queryset = Property.objects.prefetch_related("images", story_prefetch).order_by(
+#             "-created_at"
+#         )
+
+#         status = self.request.GET.get("status")
+#         if status:
+#             queryset = queryset.filter(status=status)
+#         return queryset
+
+#     def get_context_data(self, **kwargs):
+#         context = super().get_context_data(**kwargs)
+#         context["status_choices"] = Property.STATUS_CHOICES
+#         context["selected_status"] = self.request.GET.get("status", "")
+#         # Total balance logic
+#         if self.request.user.is_superuser:
+#             total_investment = (
+#                 User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+#             )
+#             context["total_balance"] = total_investment
+#         else:
+#             context["total_balance"] = self.request.user.balance
+#         return context
+#start
+# views.py
+import calendar
+from datetime import date
+
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Prefetch, Q, Sum
+from django.utils import timezone
+from django.views.generic import ListView
+
+from .models import Property, User
+from .models import Story 
+
+
+def add_one_month(d: date) -> date:
+    """
+    Add exactly 1 calendar month (rolling window).
+    If next month has fewer days, clamp to last day of next month.
+    Example: Jan 31 -> Feb 28/29
+    """
+    y, m = d.year, d.month
+    if m == 12:
+        ny, nm = y + 1, 1
+    else:
+        ny, nm = y, m + 1
+
+    last_day = calendar.monthrange(ny, nm)[1]
+    nd = min(d.day, last_day)
+    return date(ny, nm, nd)
+
+
 class PropertyListView(LoginRequiredMixin, ListView):
     model = Property
     template_name = "property_list.html"
     context_object_name = "properties"
 
     def get_queryset(self):
-        # Prefetch stories ordered by latest
         story_prefetch = Prefetch(
             "stories",
-            queryset=Story.objects.only(
-                "id", "message", "created_at", "related_property"
-            ).order_by("-created_at"),
+            queryset=Story.objects.only("id", "message", "created_at", "related_property").order_by("-created_at"),
         )
 
-        queryset = Property.objects.prefetch_related("images", story_prefetch).order_by(
-            "-created_at"
+        qs = Property.objects.prefetch_related("images", story_prefetch).order_by("-created_at")
+
+        user = self.request.user
+        today = timezone.localdate()
+        cutoff = add_one_month(today)  # upcoming window end (exclusive below)
+
+        # If you want "is_property" to behave like superuser, enable this:
+        is_admin_like = bool(getattr(user, "is_superuser", False) or getattr(user, "is_property", False))
+
+        auction_statuses = ["wishlist", "move_to_next_option"]
+
+        # 1) Past auction_date for wishlist/move_to_next_option -> hidden for everyone
+        qs = qs.exclude(
+            Q(status__in=auction_statuses) &
+            Q(auction_date__isnull=False) &
+            Q(auction_date__lt=today)
         )
 
+        # 2) auction_date NULL for wishlist/move_to_next_option -> hidden for everyone
+        qs = qs.exclude(
+            Q(status__in=auction_statuses) &
+            Q(auction_date__isnull=True)
+        )
+
+        # 3) Upcoming vs Future rules
+        if is_admin_like:
+            # Show all future wishlist/move_to_next_option (today and beyond)
+            qs = qs.filter(
+                Q(status__in=auction_statuses, auction_date__gte=today) |
+                Q(~Q(status__in=auction_statuses))
+            )
+        else:
+            # Normal user: show wishlist/move_to_next_option only within 1 month window [today, cutoff)
+            qs = qs.filter(
+                Q(status__in=auction_statuses, auction_date__gte=today, auction_date__lt=cutoff) |
+                Q(~Q(status__in=auction_statuses))
+            )
+
+        # Optional dropdown status filter
         status = self.request.GET.get("status")
         if status:
-            queryset = queryset.filter(status=status)
-        return queryset
+            qs = qs.filter(status=status)
+
+        return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["status_choices"] = Property.STATUS_CHOICES
         context["selected_status"] = self.request.GET.get("status", "")
+
         # Total balance logic
         if self.request.user.is_superuser:
-            total_investment = (
-                User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
-            )
-            context["total_balance"] = total_investment
+            context["total_balance"] = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
         else:
             context["total_balance"] = self.request.user.balance
+
         return context
 
+#end
 
 class PropertyDetailView(DetailView):
     model = Property
@@ -3969,6 +4069,7 @@ HEADER_MAP = {
     "Auction Price ": "auction_price",
 
     "LP-AP": "__ignore__",
+    "Comment": "__ignore__", 
 
     "Bedrooms": "bedrooms",
     "Bathrooms": "bathrooms",
@@ -4011,10 +4112,10 @@ STATUS_MAP = {
 }
 
 NEIGHBOR_MAP = {
-    "1": "White (Non-Hispanic)",
-    "2": "Black or African American",
-    "3": "Asian",
-    "4": "Hispanic or Latino",
+    "white": "White (Non-Hispanic)",
+    "black": "Black or African American",
+    "asian": "Asian",
+    "latino": "Hispanic or Latino",
 }
 
 
