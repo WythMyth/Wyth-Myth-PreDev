@@ -681,34 +681,49 @@ def member_detail(request, pk):
 #             context["total_balance"] = self.request.user.balance
 #         return context
 #start
-# views.py
+#today start
+from datetime import date, datetime
 import calendar
-from datetime import date
 
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Prefetch, Q, Sum
+from django.db.models import Prefetch, Sum, Case, When, Value, IntegerField, F, DateField, DateTimeField
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.views.generic import ListView
 
 from .models import Property, User
-from .models import Story 
+from .models import Story  # adjust import if Story is in different app
 
 
-def add_one_month(d: date) -> date:
-    """
-    Add exactly 1 calendar month (rolling window).
-    If next month has fewer days, clamp to last day of next month.
-    Example: Jan 31 -> Feb 28/29
-    """
-    y, m = d.year, d.month
-    if m == 12:
-        ny, nm = y + 1, 1
+def third_friday(year: int, month: int) -> date:
+    first_day = date(year, month, 1)
+    first_weekday = first_day.weekday()
+    days_until_friday = (4 - first_weekday) % 7
+    first_friday = first_day.day + days_until_friday
+    third_friday_day = first_friday + 14
+    return date(year, month, third_friday_day)
+
+
+def add_months(d: date, months: int) -> date:
+    year = d.year + (d.month - 1 + months) // 12
+    month = (d.month - 1 + months) % 12 + 1
+    day = min(d.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+def get_auction_cycle_window(today: date) -> tuple[date, date]:
+    this_month_auction = third_friday(today.year, today.month)
+
+    if today >= this_month_auction:
+        cycle_start = this_month_auction
+        next_month = add_months(today, 1)
+        cycle_end = third_friday(next_month.year, next_month.month)
     else:
-        ny, nm = y, m + 1
+        prev_month = add_months(today, -1)
+        cycle_start = third_friday(prev_month.year, prev_month.month)
+        cycle_end = this_month_auction
 
-    last_day = calendar.monthrange(ny, nm)[1]
-    nd = min(d.day, last_day)
-    return date(ny, nm, nd)
+    return cycle_start, cycle_end
 
 
 class PropertyListView(LoginRequiredMixin, ListView):
@@ -722,63 +737,183 @@ class PropertyListView(LoginRequiredMixin, ListView):
             queryset=Story.objects.only("id", "message", "created_at", "related_property").order_by("-created_at"),
         )
 
-        qs = Property.objects.prefetch_related("images", story_prefetch).order_by("-created_at")
+        qs = Property.objects.prefetch_related("images", story_prefetch)
 
-        user = self.request.user
-        today = timezone.localdate()
-        cutoff = add_one_month(today)  # upcoming window end (exclusive below)
-
-        # If you want "is_property" to behave like superuser, enable this:
-        is_admin_like = bool(getattr(user, "is_superuser", False) or getattr(user, "is_property", False))
-
-        auction_statuses = ["wishlist", "move_to_next_option"]
-
-        # 1) Past auction_date for wishlist/move_to_next_option -> hidden for everyone
-        qs = qs.exclude(
-            Q(status__in=auction_statuses) &
-            Q(auction_date__isnull=False) &
-            Q(auction_date__lt=today)
-        )
-
-        # 2) auction_date NULL for wishlist/move_to_next_option -> hidden for everyone
-        qs = qs.exclude(
-            Q(status__in=auction_statuses) &
-            Q(auction_date__isnull=True)
-        )
-
-        # 3) Upcoming vs Future rules
-        if is_admin_like:
-            # Show all future wishlist/move_to_next_option (today and beyond)
-            qs = qs.filter(
-                Q(status__in=auction_statuses, auction_date__gte=today) |
-                Q(~Q(status__in=auction_statuses))
-            )
-        else:
-            # Normal user: show wishlist/move_to_next_option only within 1 month window [today, cutoff)
-            qs = qs.filter(
-                Q(status__in=auction_statuses, auction_date__gte=today, auction_date__lt=cutoff) |
-                Q(~Q(status__in=auction_statuses))
-            )
-
-        # Optional dropdown status filter
-        status = self.request.GET.get("status")
+        # -------- Filters --------
+        status = self.request.GET.get("status") or ""
         if status:
             qs = qs.filter(status=status)
+
+        from_date_str = (self.request.GET.get("from_date") or "").strip()
+        to_date_str = (self.request.GET.get("to_date") or "").strip()
+
+        from_date = parse_date(from_date_str) if from_date_str else None
+        to_date = parse_date(to_date_str) if to_date_str else None
+
+        if from_date:
+            qs = qs.filter(auction_date__gte=from_date)
+        if to_date:
+            qs = qs.filter(auction_date__lte=to_date)
+
+        # -------- Upcoming ordering logic (3rd Friday window) --------
+        today = timezone.localdate()
+        cycle_start, cycle_end = get_auction_cycle_window(today)
+
+        aware_min_dt = timezone.make_aware(datetime(1970, 1, 1))
+        max_date = date(9999, 12, 31)
+
+        qs = qs.annotate(
+            upcoming_rank=Case(
+                When(
+                    status="wishlist",
+                    auction_date__isnull=False,
+                    auction_date__gt=cycle_start,
+                    auction_date__lte=cycle_end,
+                    then=Value(0),
+                ),
+                default=Value(1),
+                output_field=IntegerField(),
+            ),
+            auction_date_order=Case(
+                When(upcoming_rank=0, then=F("auction_date")),
+                default=Value(max_date),
+                output_field=DateField(),
+            ),
+            fifo_created_order=Case(
+                When(upcoming_rank=0, then=F("created_at")),
+                default=Value(aware_min_dt),
+                output_field=DateTimeField(),
+            ),
+        ).order_by(
+            "upcoming_rank",
+            "auction_date_order",
+            "fifo_created_order",
+            "-created_at",
+        )
 
         return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+
         context["status_choices"] = Property.STATUS_CHOICES
         context["selected_status"] = self.request.GET.get("status", "")
 
-        # Total balance logic
+        # expose filter inputs back to template
+        context["from_date"] = self.request.GET.get("from_date", "")
+        context["to_date"] = self.request.GET.get("to_date", "")
+
         if self.request.user.is_superuser:
-            context["total_balance"] = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            total_investment = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            context["total_balance"] = total_investment
         else:
             context["total_balance"] = self.request.user.balance
 
+        today = timezone.localdate()
+        cycle_start, cycle_end = get_auction_cycle_window(today)
+        context["auction_cycle_start"] = cycle_start
+        context["auction_cycle_end"] = cycle_end
+
         return context
+#today end
+# views.py
+# import calendar
+# from datetime import date
+
+# from django.contrib.auth.mixins import LoginRequiredMixin
+# from django.db.models import Prefetch, Q, Sum
+# from django.utils import timezone
+# from django.views.generic import ListView
+
+# from .models import Property, User
+# from .models import Story 
+
+
+# def add_one_month(d: date) -> date:
+#     """
+#     Add exactly 1 calendar month (rolling window).
+#     If next month has fewer days, clamp to last day of next month.
+#     Example: Jan 31 -> Feb 28/29
+#     """
+#     y, m = d.year, d.month
+#     if m == 12:
+#         ny, nm = y + 1, 1
+#     else:
+#         ny, nm = y, m + 1
+
+#     last_day = calendar.monthrange(ny, nm)[1]
+#     nd = min(d.day, last_day)
+#     return date(ny, nm, nd)
+
+
+# class PropertyListView(LoginRequiredMixin, ListView):
+#     model = Property
+#     template_name = "property_list.html"
+#     context_object_name = "properties"
+
+#     def get_queryset(self):
+#         story_prefetch = Prefetch(
+#             "stories",
+#             queryset=Story.objects.only("id", "message", "created_at", "related_property").order_by("-created_at"),
+#         )
+
+#         qs = Property.objects.prefetch_related("images", story_prefetch).order_by("-created_at")
+
+#         user = self.request.user
+#         today = timezone.localdate()
+#         cutoff = add_one_month(today)  # upcoming window end (exclusive below)
+
+#         # If you want "is_property" to behave like superuser, enable this:
+#         is_admin_like = bool(getattr(user, "is_superuser", False) or getattr(user, "is_property", False))
+
+#         auction_statuses = ["wishlist", "move_to_next_option"]
+
+#         # 1) Past auction_date for wishlist/move_to_next_option -> hidden for everyone
+#         qs = qs.exclude(
+#             Q(status__in=auction_statuses) &
+#             Q(auction_date__isnull=False) &
+#             Q(auction_date__lt=today)
+#         )
+
+#         # 2) auction_date NULL for wishlist/move_to_next_option -> hidden for everyone
+#         qs = qs.exclude(
+#             Q(status__in=auction_statuses) &
+#             Q(auction_date__isnull=True)
+#         )
+
+#         # 3) Upcoming vs Future rules
+#         if is_admin_like:
+#             # Show all future wishlist/move_to_next_option (today and beyond)
+#             qs = qs.filter(
+#                 Q(status__in=auction_statuses, auction_date__gte=today) |
+#                 Q(~Q(status__in=auction_statuses))
+#             )
+#         else:
+#             # Normal user: show wishlist/move_to_next_option only within 1 month window [today, cutoff)
+#             qs = qs.filter(
+#                 Q(status__in=auction_statuses, auction_date__gte=today, auction_date__lt=cutoff) |
+#                 Q(~Q(status__in=auction_statuses))
+#             )
+
+#         # Optional dropdown status filter
+#         status = self.request.GET.get("status")
+#         if status:
+#             qs = qs.filter(status=status)
+
+#         return qs
+
+#     def get_context_data(self, **kwargs):
+#         context = super().get_context_data(**kwargs)
+#         context["status_choices"] = Property.STATUS_CHOICES
+#         context["selected_status"] = self.request.GET.get("status", "")
+
+#         # Total balance logic
+#         if self.request.user.is_superuser:
+#             context["total_balance"] = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+#         else:
+#             context["total_balance"] = self.request.user.balance
+
+#         return context
 
 #end
 

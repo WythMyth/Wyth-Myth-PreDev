@@ -7,62 +7,51 @@
     <hr class="my-4 border-gray-300">
 
     <div class="flex flex-col sm:flex-row justify-between items-end mb-6 gap-4">
-      <!-- Filter Form -->
-      <form method="get" class="flex flex-col sm:flex-row items-end gap-4">
-
-        <!-- Status -->
+        <!-- Filter -->
         <div class="flex flex-col space-y-2">
-          <label for="status" class="text-sm font-medium text-gray-700">Status</label>
-          <select name="status" id="status" onchange="this.form.submit()" class="border px-3 py-2 rounded w-64">
-            <option value="">All</option>
-            {% for value, label in status_choices %}
-            <option value="{{ value }}" {% if value == selected_status %}selected{% endif %}>
-              {{ label }}
-            </option>
-            {% endfor %}
-          </select>
+            <label for="status" class="text-sm font-medium text-gray-700">Status</label>
+            <form method="get">
+                <select name="status" id="status"
+                        onchange="this.form.submit()"
+                        class="border px-3 py-2 rounded w-64">
+                    <option value="">All</option>
+                    {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if value == selected_status %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </form>
         </div>
+        {% if user.is_superuser or user.is_property %}
+        <div class="flex gap-3 items-end">
 
-        <!-- From Date -->
-        <div class="flex flex-col space-y-2">
-          <label for="from_date" class="text-sm font-medium text-gray-700">From Date</label>
-          <input type="date" name="from_date" id="from_date" value="{{ from_date }}"
-            class="border px-3 py-2 rounded w-44" />
-        </div>
-
-        <!-- To Date -->
-        <div class="flex flex-col space-y-2">
-          <label for="to_date" class="text-sm font-medium text-gray-700">To Date</label>
-          <input type="date" name="to_date" id="to_date" value="{{ to_date }}" class="border px-3 py-2 rounded w-44" />
-        </div>
-
-        <!-- Buttons -->
-        <div class="flex gap-2">
-          <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded">
-            Filter
-          </button>
-
-          <a href="{% url 'accounts:property_list' %}" class="bg-gray-200 text-gray-800 py-2 px-4 rounded">
-            Reset
+          <!-- Manual Property Create -->
+          <a href="{% url 'accounts:property_create' %}">
+            <button class="bg-[#183665] text-white py-2 px-4 rounded">
+              + Add New Property
+            </button>
           </a>
+
+          <!-- Excel Upload -->
+          <a href="{% url 'accounts:property_upload_excel' %}">
+            <button class="bg-green-600 text-white py-2 px-4 rounded">
+              ⬆ Upload Property (Excel)
+            </button>
+          </a>
+
         </div>
-      </form>
+        {% endif %}
 
-      {% if user.is_superuser or user.is_property %}
-      <div class="flex gap-3 items-end">
-        <a href="{% url 'accounts:property_create' %}">
-          <button class="bg-[#183665] text-white py-2 px-4 rounded">
-            + Add New Property
-          </button>
-        </a>
+        <!-- Add New Property Button -->
+        <!-- {% if user.is_superuser or user.is_property %}
+        <div class="items-end">
+            <a href="{% url 'accounts:property_create' %}">
+                <button class="bg-[#183665] text-white py-2 px-4 rounded">
+                    + Add New Property
+                </button>
+            </a>
+        </div>
 
-        <a href="{% url 'accounts:property_upload_excel' %}">
-          <button class="bg-green-600 text-white py-2 px-4 rounded">
-            ⬆ Upload Property (Excel)
-          </button>
-        </a>
-      </div>
-      {% endif %}
+        {% endif %} -->
     </div>
 
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -102,50 +91,33 @@
             data-selling-date="{{ property.selling_date|date:'Y-m-d'|default:'' }}"
             data-listed-date="{{ property.listed_date|date:'Y-m-d' }}"
             data-auction-date="{{ property.auction_date|date:'Y-m-d' }}">
-           
             <!-- Images -->
-            <div class="relative">
-              {% with images=property.images.all %}
-              {% if images %}
-              <img src="{{ images.0.image.url }}" alt="{{ property.property_name }}" class="w-full h-48 object-cover rounded-md" />
+            <div class="space-y-2 relative">
+              {% with images=property.images.all %} {% if images %}
+              <img
+                src="{{ images.0.image.url }}"
+                alt="{{ property.property_name }}"
+                class="w-full h-48 object-cover rounded-md"
+              />
               {% else %}
-              <img src="{% static 'images/property.jpeg' %}" alt="Default Property" class="w-full h-48 object-cover rounded-md" />
-              {% endif %}
-              {% endwith %}
-
-              <!-- Top bar overlay -->
-              <div class="absolute top-0 left-0 right-0">
-                <div class="bg-gray-200/80 px-3 py-2">
-                  <div class="grid grid-cols-3 items-center text-xs font-semibold text-gray-800">
-
-                    <!-- Left -->
-                    <div class="text-left truncate">
-                      {{ property.get_status_display }}
-                    </div>
-
-                    <!-- Middle -->
-                    <div class="text-center">
-                      {% if property.auction_date %}
-                      {{ property.auction_date|date:"M d, Y" }}
-                      {% else %}
-                      -
-                      {% endif %}
-                    </div>
-
-                    <!-- Right -->
-                    <div class="text-right truncate">
-                      {{ property.property_name }}
-                    </div>
-
-                  </div>
-                </div>
+              <div
+                class="bg-gray-100 text-center text-sm text-gray-500 py-10 rounded"
+              >
+                No Images Available
               </div>
+              {% endif %} {% endwith %}
+              <div
+                    class="absolute top-3 left-[-25px] bg-white text-gray-700 text-xs font-semibold px-10 py-1 rotate-[-25deg] shadow z-10"
+                >
+                    {{ property.get_status_display }}
+            </div>
+
             </div>
 
             <!-- Property Info -->
               <div class="p-4">
                 <div class="flex items-center space-x-4 mt-2">
-                  {% if property.status == 'wishlist' or property.status == 'failed_to_bought' or property.status == 'move_to_next_option' or property.status == 'stayed' %}
+                  {% if property.status == 'wishlist' or property.status == 'failed_to_bought' or property.status == 'move_to_next_option' %}
                     <!-- Auction Price -->
                     <div class="text-center">
                       <div class="text-xl font-bold text-black">
@@ -161,6 +133,13 @@
                     <!-- Divider -->
                     <div class="h-10 rounded w-1 bg-orange-500"></div>
 
+                    <!-- Estimated Price -->
+                    <!-- <div class="text-center">
+                      <div class="text-xl font-bold text-black">
+                        $ {{ property.estimated_price|default:"-" }}
+                      </div>
+                      <div class="text-gray-500 text-sm">Listing Price</div>
+                    </div> -->
                     <div class="text-center">
                       <div class="text-xl font-bold text-black">
                         {% if property.estimated_price %}
