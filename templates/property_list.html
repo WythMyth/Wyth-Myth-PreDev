@@ -103,43 +103,42 @@
             data-listed-date="{{ property.listed_date|date:'Y-m-d' }}"
             data-auction-date="{{ property.auction_date|date:'Y-m-d' }}">
            
-            <!-- Images -->
-            <div class="relative">
-              {% with images=property.images.all %}
-              {% if images %}
-              <img src="{{ images.0.image.url }}" alt="{{ property.property_name }}" class="w-full h-48 object-cover rounded-md" />
-              {% else %}
-              <img src="{% static 'images/property.jpeg' %}" alt="Default Property" class="w-full h-48 object-cover rounded-md" />
-              {% endif %}
-              {% endwith %}
+            <div class="bg-white shadow rounded-lg overflow-hidden w-full">
 
-              <!-- Top bar overlay -->
-              <div class="absolute top-0 left-0 right-0">
-                <div class="bg-gray-200/80 px-3 py-2">
-                  <div class="grid grid-cols-3 items-center text-xs font-semibold text-gray-800">
+              <!-- 🔵 Top Info Bar -->
+              <div class="bg-gray-200 px-3 py-2 w-full">
+                <div class="grid grid-cols-3 items-center text-xs font-semibold text-gray-800">
 
-                    <!-- Left -->
-                    <div class="text-left truncate">
-                      {{ property.get_status_display }}
-                    </div>
-
-                    <!-- Middle -->
-                    <div class="text-center">
-                      {% if property.auction_date %}
-                      {{ property.auction_date|date:"M d, Y" }}
-                      {% else %}
-                      -
-                      {% endif %}
-                    </div>
-
-                    <!-- Right -->
-                    <div class="text-right truncate">
-                      {{ property.property_name }}
-                    </div>
-
+                  <div class="text-left truncate">
+                    {{ property.get_status_display }}
                   </div>
+
+                  <div class="text-center">
+                    {% if property.auction_date %}
+                    {{ property.auction_date|date:"M d, Y" }}
+                    {% else %}
+                    -
+                    {% endif %}
+                  </div>
+
+                  <div class="text-right truncate">
+                    {{ property.property_name }}
+                  </div>
+
                 </div>
               </div>
+
+              <!-- 🖼 Image Section -->
+              <div class="w-full h-72 bg-white flex items-center justify-center overflow-hidden">
+                {% with images=property.images.all %}
+                {% if images %}
+                <img src="{{ images.0.image.url }}" alt="{{ property.property_name }}" class="w-full h-full object-contain" />
+                {% else %}
+                <img src="{% static 'images/property.jpeg' %}" alt="Default Property" class="w-full h-full object-contain" />
+                {% endif %}
+                {% endwith %}
+              </div>
+
             </div>
 
             <!-- Property Info -->
