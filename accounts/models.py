@@ -1761,7 +1761,7 @@ class Property(models.Model):
         print(f"\n{'='*80}")
         print(f"💰 ADJUSTING ACTIVE LAYER CONTRIBUTIONS FOR SERVICE COST INCREASE")
         print(f"{'='*80}")
-        print(f"Property: {self.title}")
+        print(f"Property: {self.property_name}")
         print(f"Service Cost Increase: ${service_cost_increase:.2f}")
         print(f"Total Active Contribution: ${total_contribution:.2f}")
         print(f"Active Contributors (non-fixed): {contributions.count()}")
