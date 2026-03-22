@@ -198,7 +198,7 @@ def handle_contributors_m2m_change(sender, instance, action, pk_set, **kwargs):
             
             print(f"\n{'='*70}")
             print(f"🆕 ADDING CONTRIBUTORS")
-            print(f"   Property: {instance.title}")
+            print(f"   Property: {instance.property_name}")
             print(f"   Is First Contributor Addition: {is_first_contributor_addition}")
             print(f"   Current First Level Count: {profit_dist.first_level_buyers.count()}")
             print(f"   Users to Add: {len(pk_set)}")
