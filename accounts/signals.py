@@ -40,11 +40,11 @@ def property_change_story(sender, instance, **kwargs):
         return
     
     if not old.buying_date and instance.buying_date:
-        msg = f"House '{instance.title}' was bought for ${format_currency(instance.auction_price)}"
+        msg = f"House '{instance.property_name}' was bought for ${format_currency(instance.auction_price)}"
         create_story(msg, instance.updated_at, instance)
 
     if not old.selling_date and instance.selling_date:
-        msg = f"House '{instance.title}' was sold for ${format_currency(instance.selling_price)}"
+        msg = f"House '{instance.property_name}' was sold for ${format_currency(instance.selling_price)}"
         create_story(msg, instance.updated_at, instance)
 
     if old.selling_price != instance.selling_price and instance.selling_price:
@@ -245,7 +245,7 @@ def handle_contributors_m2m_change(sender, instance, action, pk_set, **kwargs):
         with transaction.atomic():
             print(f"\n{'='*70}")
             print(f"🗑️  REMOVING CONTRIBUTORS")
-            print(f"   Property: {instance.title}")
+            print(f"   Property: {instance.property_name}")
             print(f"   Users to Remove: {len(pk_set)}")
             print(f"{'='*70}")
             
