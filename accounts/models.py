@@ -1729,96 +1729,160 @@ class Property(models.Model):
             print(f"{'='*60}\n")
         
         return True
-    
-    def adjust_contributions_for_service_cost_change(self, service_cost_increase):
-        """
-        Adjust contributions when service cost increases (e.g., expense approval)
-        WITHOUT refunding - just deduct the additional amount proportionally
+    ##latest code comment start
+    # def adjust_contributions_for_service_cost_change(self, service_cost_increase):
+    #     """
+    #     Adjust contributions when service cost increases (e.g., expense approval)
+    #     WITHOUT refunding - just deduct the additional amount proportionally
         
-        ✅ FIXED: Only deduct from ACTIVE (non-fixed) contributors
-        """
+    #     ✅ FIXED: Only deduct from ACTIVE (non-fixed) contributors
+    #     """
+    #     if service_cost_increase <= 0:
+    #         return True
+        
+    #     # ✅ Get ONLY ACTIVE (non-fixed) contributors who have contributed
+    #     contributions = PropertyContribution.objects.filter(
+    #         property=self,
+    #         contribution__gt=0,
+    #         is_fixed_amount=False  # ✅ CRITICAL: Only non-fixed (Active Layer)
+    #     ).select_related('user')
+        
+    #     if not contributions.exists():
+    #         print("❌ No active (non-fixed) contributions found")
+    #         return False
+        
+    #     # Calculate total contribution from ACTIVE contributors only
+    #     total_contribution = sum(c.contribution for c in contributions)
+        
+    #     if total_contribution <= 0:
+    #         print("❌ Total active contribution is zero")
+    #         return False
+        
+    #     print(f"\n{'='*80}")
+    #     print(f"💰 ADJUSTING ACTIVE LAYER CONTRIBUTIONS FOR SERVICE COST INCREASE")
+    #     print(f"{'='*80}")
+    #     print(f"Property: {self.property_name}")
+    #     print(f"Service Cost Increase: ${service_cost_increase:.2f}")
+    #     print(f"Total Active Contribution: ${total_contribution:.2f}")
+    #     print(f"Active Contributors (non-fixed): {contributions.count()}")
+    #     print(f"{'='*80}\n")
+        
+    #     with transaction.atomic():
+    #         distributed_total = Decimal('0')
+    #         contribution_list = list(contributions)
+            
+    #         for i, contrib in enumerate(contribution_list):
+    #             user = contrib.user
+                
+    #             # Calculate this user's share of the increase (proportional to their active contribution)
+    #             ratio = contrib.contribution / total_contribution
+                
+    #             # Last user gets exact remaining to avoid rounding issues
+    #             if i == len(contribution_list) - 1:
+    #                 user_share = service_cost_increase - distributed_total
+    #             else:
+    #                 user_share = (service_cost_increase * ratio).quantize(
+    #                     Decimal('0.000001'), rounding=ROUND_HALF_UP
+    #                 )
+    #                 distributed_total += user_share
+                
+    #             # Check if user has sufficient balance
+    #             if user.balance < user_share:
+    #                 print(f"❌ {user.get_full_name()} has insufficient balance!")
+    #                 print(f"   Required: ${user_share:.2f}, Available: ${user.balance:.2f}")
+    #                 return False
+                
+    #             # Deduct from user balance
+    #             old_balance = user.balance
+    #             user.balance -= user_share
+    #             user.save(update_fields=['balance'])
+                
+    #             # Update contribution amounts
+    #             old_contribution = contrib.contribution
+    #             contrib.contribution += user_share
+                
+    #             # Recalculate acquisition cost for ratio
+    #             acquisition_cost = (self.buying_price or Decimal('0')) + (self.service_cost or Decimal('0')) + service_cost_increase
+    #             contrib.ratio = (contrib.contribution / acquisition_cost * 100) if acquisition_cost > 0 else 0
+    #             contrib.save(update_fields=['contribution', 'ratio'])
+                
+    #             print(f"👤 {user.get_full_name():20}")
+    #             print(f"   Share of increase: ${user_share:.2f} ({ratio*100:.2f}%)")
+    #             print(f"   Balance: ${old_balance:.2f} → ${user.balance:.2f}")
+    #             print(f"   Contribution: ${old_contribution:.2f} → ${contrib.contribution:.2f}")
+    #             print(f"   Layer: ACTIVE (non-fixed)")
+    #             print()
+            
+    #         print(f"{'='*80}")
+    #         print(f"✅ ACTIVE LAYER ADJUSTMENT COMPLETED")
+    #         print(f"   Fixed Layer contributors were NOT affected")
+    #         print(f"{'='*80}\n")
+        
+    #     return True
+    ##latest code comment end
+    def adjust_contributions_for_service_cost_change(self, service_cost_increase):
         if service_cost_increase <= 0:
             return True
-        
-        # ✅ Get ONLY ACTIVE (non-fixed) contributors who have contributed
+
         contributions = PropertyContribution.objects.filter(
             property=self,
             contribution__gt=0,
-            is_fixed_amount=False  # ✅ CRITICAL: Only non-fixed (Active Layer)
+            is_fixed_amount=False
         ).select_related('user')
-        
+
         if not contributions.exists():
-            print("❌ No active (non-fixed) contributions found")
+            print("❌ No active contributions found")
             return False
-        
-        # Calculate total contribution from ACTIVE contributors only
+
         total_contribution = sum(c.contribution for c in contributions)
-        
+
         if total_contribution <= 0:
-            print("❌ Total active contribution is zero")
+            print("❌ Total contribution is zero")
             return False
-        
-        print(f"\n{'='*80}")
-        print(f"💰 ADJUSTING ACTIVE LAYER CONTRIBUTIONS FOR SERVICE COST INCREASE")
-        print(f"{'='*80}")
-        print(f"Property: {self.property_name}")
-        print(f"Service Cost Increase: ${service_cost_increase:.2f}")
-        print(f"Total Active Contribution: ${total_contribution:.2f}")
-        print(f"Active Contributors (non-fixed): {contributions.count()}")
-        print(f"{'='*80}\n")
-        
+
+        print(f"\n🔥 ROW-WISE PROPORTIONAL DEDUCTION START")
+
         with transaction.atomic():
             distributed_total = Decimal('0')
-            contribution_list = list(contributions)
-            
-            for i, contrib in enumerate(contribution_list):
+            contrib_list = list(contributions)
+
+            for i, contrib in enumerate(contrib_list):
                 user = contrib.user
-                
-                # Calculate this user's share of the increase (proportional to their active contribution)
+
+                # 🔥 KEY FIX: row-wise ratio
                 ratio = contrib.contribution / total_contribution
-                
-                # Last user gets exact remaining to avoid rounding issues
-                if i == len(contribution_list) - 1:
-                    user_share = service_cost_increase - distributed_total
+
+                if i == len(contrib_list) - 1:
+                    deduction = service_cost_increase - distributed_total
                 else:
-                    user_share = (service_cost_increase * ratio).quantize(
+                    deduction = (service_cost_increase * ratio).quantize(
                         Decimal('0.000001'), rounding=ROUND_HALF_UP
                     )
-                    distributed_total += user_share
-                
-                # Check if user has sufficient balance
-                if user.balance < user_share:
-                    print(f"❌ {user.get_full_name()} has insufficient balance!")
-                    print(f"   Required: ${user_share:.2f}, Available: ${user.balance:.2f}")
+                    distributed_total += deduction
+
+                if user.balance < deduction:
+                    print(f"❌ {user.get_full_name()} insufficient balance")
                     return False
-                
-                # Deduct from user balance
-                old_balance = user.balance
-                user.balance -= user_share
+
+                # balance deduct
+                user.balance -= deduction
                 user.save(update_fields=['balance'])
-                
-                # Update contribution amounts
+
+                # 🔥 IMPORTANT: update THIS ROW only
                 old_contribution = contrib.contribution
-                contrib.contribution += user_share
-                
-                # Recalculate acquisition cost for ratio
-                acquisition_cost = (self.buying_price or Decimal('0')) + (self.service_cost or Decimal('0')) + service_cost_increase
-                contrib.ratio = (contrib.contribution / acquisition_cost * 100) if acquisition_cost > 0 else 0
-                contrib.save(update_fields=['contribution', 'ratio'])
-                
-                print(f"👤 {user.get_full_name():20}")
-                print(f"   Share of increase: ${user_share:.2f} ({ratio*100:.2f}%)")
-                print(f"   Balance: ${old_balance:.2f} → ${user.balance:.2f}")
-                print(f"   Contribution: ${old_contribution:.2f} → ${contrib.contribution:.2f}")
-                print(f"   Layer: ACTIVE (non-fixed)")
-                print()
-            
-            print(f"{'='*80}")
-            print(f"✅ ACTIVE LAYER ADJUSTMENT COMPLETED")
-            print(f"   Fixed Layer contributors were NOT affected")
-            print(f"{'='*80}\n")
-        
-        return True
+                contrib.contribution += deduction
+
+                contrib.save(update_fields=['contribution'])
+
+                print(f"""
+    👤 {user.get_full_name()} | Seq #{contrib.investment_sequence}
+    Old: {old_contribution}
+    Deduction: {deduction}
+    New: {contrib.contribution}
+    """)
+
+        print("✅ Row-wise deduction completed")
+        return True    
     # def adjust_contributions_for_service_cost_change(self, service_cost_increase):
     #     """
     #     Adjust contributions when service cost increases (e.g., expense approval)
