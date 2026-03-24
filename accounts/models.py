@@ -1821,6 +1821,16 @@ class Property(models.Model):
     #     return True
     ##latest code comment end
     def adjust_contributions_for_service_cost_change(self, service_cost_increase):
+        """
+        Add approved service cost proportionally to ACTIVE (non-fixed) contribution rows.
+        
+        IMPORTANT:
+        - Same user can have multiple rows
+        - Each row gets its own proportional deduction
+        - But user balance is deducted ONLY ONCE using total deduction of all rows
+        """
+        service_cost_increase = Decimal(str(service_cost_increase or 0))
+
         if service_cost_increase <= 0:
             return True
 
@@ -1828,61 +1838,130 @@ class Property(models.Model):
             property=self,
             contribution__gt=0,
             is_fixed_amount=False
-        ).select_related('user')
+        ).select_related('user').order_by('user_id', 'investment_sequence', 'id')
 
         if not contributions.exists():
             print("❌ No active contributions found")
             return False
 
-        total_contribution = sum(c.contribution for c in contributions)
+        total_contribution = sum(
+            Decimal(str(c.contribution or 0)) for c in contributions
+        )
 
         if total_contribution <= 0:
             print("❌ Total contribution is zero")
             return False
 
-        print(f"\n🔥 ROW-WISE PROPORTIONAL DEDUCTION START")
+        print("\n" + "=" * 80)
+        print("💰 ROW-WISE PROPORTIONAL DEDUCTION START")
+        print("=" * 80)
+        print(f"Property: {self.property_name}")
+        print(f"Service Cost Increase: ${service_cost_increase}")
+        print(f"Total Active Contribution: ${total_contribution}")
+        print("=" * 80)
 
         with transaction.atomic():
-            distributed_total = Decimal('0')
             contrib_list = list(contributions)
+            distributed_total = Decimal('0.000000')
+
+            
+            row_deductions = []
+            user_total_deductions = {}
 
             for i, contrib in enumerate(contrib_list):
-                user = contrib.user
-
-                # 🔥 KEY FIX: row-wise ratio
-                ratio = contrib.contribution / total_contribution
+                row_contribution = Decimal(str(contrib.contribution or 0))
+                ratio = row_contribution / total_contribution
 
                 if i == len(contrib_list) - 1:
                     deduction = service_cost_increase - distributed_total
                 else:
                     deduction = (service_cost_increase * ratio).quantize(
-                        Decimal('0.000001'), rounding=ROUND_HALF_UP
+                        Decimal('0.000001'),
+                        rounding=ROUND_HALF_UP
                     )
                     distributed_total += deduction
 
-                if user.balance < deduction:
-                    print(f"❌ {user.get_full_name()} insufficient balance")
+                if deduction < 0:
+                    deduction = Decimal('0.000000')
+
+                row_deductions.append((contrib, deduction))
+
+                if contrib.user_id not in user_total_deductions:
+                    user_total_deductions[contrib.user_id] = Decimal('0.000000')
+
+                user_total_deductions[contrib.user_id] += deduction
+
+           
+            locked_users = {}
+            for user_id, total_deduction in user_total_deductions.items():
+                user = User.objects.select_for_update().get(id=user_id)
+                locked_users[user_id] = user
+
+                if user.balance < total_deduction:
+                    print(
+                        f"❌ {user.get_full_name()} insufficient balance | "
+                        f"Need: ${total_deduction} | Available: ${user.balance}"
+                    )
                     return False
 
-                # balance deduct
-                user.balance -= deduction
+            
+            acquisition_cost = (
+                Decimal(str(self.buying_price or 0)) +
+                Decimal(str(self.service_cost or 0))
+            )
+
+            for contrib, deduction in row_deductions:
+                old_contribution = Decimal(str(contrib.contribution or 0))
+                invest_amount = Decimal(str(contrib.invest_amount or 0))
+
+                contrib.contribution = (old_contribution + deduction).quantize(
+                    Decimal('0.000001'),
+                    rounding=ROUND_HALF_UP
+                )
+
+                contrib.remaining = (invest_amount - contrib.contribution).quantize(
+                    Decimal('0.000001'),
+                    rounding=ROUND_HALF_UP
+                )
+
+                contrib.ratio = (
+                    (contrib.contribution / acquisition_cost) * Decimal('100')
+                ).quantize(Decimal('0.000001'), rounding=ROUND_HALF_UP) if acquisition_cost > 0 else Decimal('0.000000')
+
+                contrib.save(update_fields=['contribution', 'remaining', 'ratio'])
+
+                print(
+                    f"👤 {contrib.user.get_full_name()} | "
+                    f"Seq #{contrib.investment_sequence} | "
+                    f"Old: {old_contribution} | "
+                    f"Deduction: {deduction} | "
+                    f"New: {contrib.contribution}"
+                )
+
+           
+            print("\n🔻 USER BALANCE UPDATE")
+            print("-" * 80)
+
+            for user_id, total_deduction in user_total_deductions.items():
+                user = locked_users[user_id]
+                old_balance = Decimal(str(user.balance or 0))
+
+                user.balance = (old_balance - total_deduction).quantize(
+                    Decimal('0.000001'),
+                    rounding=ROUND_HALF_UP
+                )
                 user.save(update_fields=['balance'])
 
-                # 🔥 IMPORTANT: update THIS ROW only
-                old_contribution = contrib.contribution
-                contrib.contribution += deduction
+                print(
+                    f"👤 {user.get_full_name()} | "
+                    f"Deducted Total: {total_deduction} | "
+                    f"Balance: {old_balance} → {user.balance}"
+                )
 
-                contrib.save(update_fields=['contribution'])
-
-                print(f"""
-    👤 {user.get_full_name()} | Seq #{contrib.investment_sequence}
-    Old: {old_contribution}
-    Deduction: {deduction}
-    New: {contrib.contribution}
-    """)
-
-        print("✅ Row-wise deduction completed")
-        return True    
+        print("=" * 80)
+        print("✅ Row-wise deduction completed successfully")
+        print("=" * 80)
+        return True
     # def adjust_contributions_for_service_cost_change(self, service_cost_increase):
     #     """
     #     Adjust contributions when service cost increases (e.g., expense approval)
