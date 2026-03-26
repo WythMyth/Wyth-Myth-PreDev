@@ -292,176 +292,392 @@ class PropertyNameFilter(admin.SimpleListFilter):
         return queryset
 
 
+
+
+
+
+from decimal import Decimal
+
+from django.contrib import admin
+from .models import PropertyContribution
+
+
 @admin.register(PropertyContribution)
 class PropertyContributionAdmin(admin.ModelAdmin):
     list_display = [
+        'profit_propotion_display',
         'user_display',
         'user_group_display',
-        'property', 
-        'investment_sequence',
-        'contribution', 
-        'invest_amount',
-        'remaining',
+        'property_display',
+        'level_of_investment_display',
+        'amount_invested_display',
+        'amount_available_to_invest_display',
+        'amount_remaining_display',
         'investment_date',
         'total_days',
         'days_proportion',
         'shares',
+        'investment_ratio',
         'profit_weight',
         'profit_display',
         'deduction_display',
         'final_profit_display',
         'ratio',
-
-        'is_fixed_amount'
+        'fixed_or_proportion_display',
     ]
-    
+
     list_filter = [
-        PropertyNameFilter,
         'is_fixed_amount',
         'investment_date',
-        'created_at',
-        'user__user_group'
+        'user__user_group',
     ]
-    
+
     search_fields = [
         'user__first_name',
+        'user__middle_name',
         'user__last_name',
         'user__email',
-        'property__property_name'
+        'property__property_name',
     ]
-    
+
+    ordering = ['property__property_name', 'user__first_name', 'investment_sequence']
+
     readonly_fields = [
-        'created_at',
-        'updated_at',
-        'shares'
+        'shares',
+        'total_days',
+        'days_proportion',
+        'investment_ratio',
+        'profit_weight',
+        'profit',
+        'deduction',
+        'final_profit',
     ]
-    
+
     fieldsets = (
         ('Basic Information', {
             'fields': (
                 'user',
                 'property',
                 'investment_sequence',
-                'is_fixed_amount'
+                'investment_date',
+                'is_fixed_amount',
             )
         }),
-        ('Investment Details', {
+        ('Contribution Information', {
             'fields': (
-                'invest_amount',
                 'contribution',
+                'invest_amount',
                 'remaining',
-                'ratio'
+                'ratio',
             )
         }),
-        ('Profit Breakdown', {
+        ('Calculated Values', {
+            'fields': (
+                'shares',
+                'total_days',
+                'days_proportion',
+                'investment_ratio',
+                'profit_weight',
+            )
+        }),
+        ('Profit Information', {
             'fields': (
                 'profit',
                 'deduction',
-                'final_profit'
-            ),
-            'description': 'Profit breakdown for this contribution based on user group deduction percentage'
-        }),
-        ('Date & Time Tracking', {
-            'fields': (
-                'investment_date',
-                'total_days',
+                'final_profit',
             )
         }),
-        ('Shares & Weight Calculation', {
-            'fields': (
-                'shares',
-                'days_proportion',
-                'investment_ratio',
-                'profit_weight'
-            ),
-            'description': 'Share-based profit calculation: Profit Weight = Days Proportion × Shares'
-        }),
-        ('Timestamps', {
-            'fields': (
-                'created_at',
-                'updated_at'
-            ),
-            'classes': ('collapse',)
-        })
     )
-    
+
+    list_per_page = 50
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related(
+            'user',
+            'user__user_group',
+            'property',
+        ).prefetch_related(
+            'property__profit_distribution__first_level_buyers',
+            'property__profit_distribution__second_level_buyers',
+        )
+
     def user_display(self, obj):
-        """Display user full name"""
-        return obj.user.get_full_name()
+        full_name = obj.user.get_full_name()
+        return full_name if full_name else obj.user.email
     user_display.short_description = 'User'
-    user_display.admin_order_field = 'user__first_name'
-    
+
     def user_group_display(self, obj):
-        """Display user's group"""
-        if obj.user.user_group:
+        if getattr(obj.user, 'user_group', None):
             return f"{obj.user.user_group.name} ({obj.user.user_group.percentage}%)"
         return "No Group (0%)"
     user_group_display.short_description = 'User Group'
-    
+
+    def property_display(self, obj):
+        return obj.property.property_name if obj.property else "-"
+    property_display.short_description = 'Property'
+    # intentionally no admin_order_field => no sorting arrows
+
+    def level_of_investment_display(self, obj):
+        return obj.investment_sequence
+    level_of_investment_display.short_description = 'Level of Investment'
+
+    def amount_available_to_invest_display(self, obj):
+        return f"${Decimal(str(obj.invest_amount or 0)):,.2f}"
+    amount_available_to_invest_display.short_description = 'Amount Available to Invest ($)'
+
+    def amount_invested_display(self, obj):
+        return f"${Decimal(str(obj.contribution or 0)):,.2f}"
+    amount_invested_display.short_description = 'Amount Invested ($)'
+
+    def amount_remaining_display(self, obj):
+        return f"${Decimal(str(obj.remaining or 0)):,.2f}"
+    amount_remaining_display.short_description = 'Amount Remaining ($)'
+
     def profit_display(self, obj):
-        """Display profit with color coding"""
-        if obj.profit > 0:
-            return f"${obj.profit:,.2f}"
-        return f"${obj.profit:,.2f}"
-    profit_display.short_description = 'Profit'
-    profit_display.admin_order_field = 'profit'
-    
+        return f"${Decimal(str(obj.profit or 0)):,.2f}"
+    profit_display.short_description = '100% Profit ($)'
+
     def deduction_display(self, obj):
-        """Display deduction with percentage"""
-        if obj.deduction > 0 and obj.user.user_group:
-            return f"${obj.deduction:,.2f} ({obj.user.user_group.percentage}%)"
-        return f"${obj.deduction:,.2f}"
-    deduction_display.short_description = 'Deduction'
-    deduction_display.admin_order_field = 'deduction'
-    
+        deduction_amount = Decimal(str(obj.deduction or 0))
+        deduction_percentage = Decimal('0.00')
+
+        if getattr(obj.user, 'user_group', None):
+            deduction_percentage = Decimal(str(obj.user.user_group.percentage or 0))
+
+        return f"${deduction_amount:,.2f} ({deduction_percentage}%)"
+    deduction_display.short_description = 'Deduction from Profit'
+
     def final_profit_display(self, obj):
-        """Display final profit"""
-        return f"${obj.final_profit:,.2f}"
-    final_profit_display.short_description = 'Final Profit'
-    final_profit_display.admin_order_field = 'final_profit'
+        return f"${Decimal(str(obj.final_profit or 0)):,.2f}"
+    final_profit_display.short_description = 'Profit Received ($)'
+
+    def fixed_or_proportion_display(self, obj):
+        return 'F' if obj.is_fixed_amount else 'P'
+    fixed_or_proportion_display.short_description = 'Amount Fixed/Propotion'
+
+    def profit_propotion_display(self, obj):
+        """
+        Show only share value.
+
+        NOTE:
+        Current model stores buyer level per user/property, not per contribution row.
+        So if same user exists in both first and second buyer lists, we infer:
+        - sequence 1 => first_level_share
+        - sequence > 1 => second_level_share
+        """
+        try:
+            distribution = obj.property.profit_distribution
+        except Exception:
+            return '-'
+
+        user_id = obj.user_id
+
+        is_first = distribution.first_level_buyers.filter(id=user_id).exists()
+        is_second = distribution.second_level_buyers.filter(id=user_id).exists()
+
+        if is_first and not is_second:
+            return distribution.first_level_share
+
+        if is_second and not is_first:
+            return distribution.second_level_share
+
+        if is_first and is_second:
+            if (obj.investment_sequence or 1) == 1:
+                return distribution.first_level_share
+            return distribution.second_level_share
+
+        return '-'
+    profit_propotion_display.short_description = 'Profit propotion'
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
+
+        custom_labels = {
+            'invest_amount': 'Amount Available to Invest ($)',
+            'contribution': 'Amount Invested ($)',
+            'remaining': 'Amount Remaining ($)',
+            'investment_sequence': 'Level of Investment',
+            'profit': '100% Profit ($)',
+            'deduction': 'Deduction from Profit',
+            'final_profit': 'Profit Received ($)',
+            'is_fixed_amount': 'Amount Fixed/Propotion',
+        }
+
+        if db_field.name in custom_labels:
+            formfield.label = custom_labels[db_field.name]
+
+        return formfield
+# @admin.register(PropertyContribution)
+# class PropertyContributionAdmin(admin.ModelAdmin):
+#     list_display = [
+#         'user_display',
+#         'user_group_display',
+#         'property', 
+#         'investment_sequence',
+#         'contribution', 
+#         'invest_amount',
+#         'remaining',
+#         'investment_date',
+#         'total_days',
+#         'days_proportion',
+#         'shares',
+#         'profit_weight',
+#         'profit_display',
+#         'deduction_display',
+#         'final_profit_display',
+#         'ratio',
+
+#         'is_fixed_amount'
+#     ]
     
-    def save_model(self, request, obj, form, change):
-        """
-        Admin থেকে save করার সময় automatic calculations করে
-        """
-        super().save_model(request, obj, form, change)
+#     list_filter = [
+#         PropertyNameFilter,
+#         'is_fixed_amount',
+#         'investment_date',
+#         'created_at',
+#         'user__user_group'
+#     ]
+    
+#     search_fields = [
+#         'user__first_name',
+#         'user__last_name',
+#         'user__email',
+#         'property__property_name'
+#     ]
+    
+#     readonly_fields = [
+#         'created_at',
+#         'updated_at',
+#         'shares'
+#     ]
+    
+#     fieldsets = (
+#         ('Basic Information', {
+#             'fields': (
+#                 'user',
+#                 'property',
+#                 'investment_sequence',
+#                 'is_fixed_amount'
+#             )
+#         }),
+#         ('Investment Details', {
+#             'fields': (
+#                 'invest_amount',
+#                 'contribution',
+#                 'remaining',
+#                 'ratio'
+#             )
+#         }),
+#         ('Profit Breakdown', {
+#             'fields': (
+#                 'profit',
+#                 'deduction',
+#                 'final_profit'
+#             ),
+#             'description': 'Profit breakdown for this contribution based on user group deduction percentage'
+#         }),
+#         ('Date & Time Tracking', {
+#             'fields': (
+#                 'investment_date',
+#                 'total_days',
+#             )
+#         }),
+#         ('Shares & Weight Calculation', {
+#             'fields': (
+#                 'shares',
+#                 'days_proportion',
+#                 'investment_ratio',
+#                 'profit_weight'
+#             ),
+#             'description': 'Share-based profit calculation: Profit Weight = Days Proportion × Shares'
+#         }),
+#         ('Timestamps', {
+#             'fields': (
+#                 'created_at',
+#                 'updated_at'
+#             ),
+#             'classes': ('collapse',)
+#         })
+#     )
+    
+#     def user_display(self, obj):
+#         """Display user full name"""
+#         return obj.user.get_full_name()
+#     user_display.short_description = 'User'
+#     user_display.admin_order_field = 'user__first_name'
+    
+#     def user_group_display(self, obj):
+#         """Display user's group"""
+#         if obj.user.user_group:
+#             return f"{obj.user.user_group.name} ({obj.user.user_group.percentage}%)"
+#         return "No Group (0%)"
+#     user_group_display.short_description = 'User Group'
+    
+#     def profit_display(self, obj):
+#         """Display profit with color coding"""
+#         if obj.profit > 0:
+#             return f"${obj.profit:,.2f}"
+#         return f"${obj.profit:,.2f}"
+#     profit_display.short_description = 'Profit'
+#     profit_display.admin_order_field = 'profit'
+    
+#     def deduction_display(self, obj):
+#         """Display deduction with percentage"""
+#         if obj.deduction > 0 and obj.user.user_group:
+#             return f"${obj.deduction:,.2f} ({obj.user.user_group.percentage}%)"
+#         return f"${obj.deduction:,.2f}"
+#     deduction_display.short_description = 'Deduction'
+#     deduction_display.admin_order_field = 'deduction'
+    
+#     def final_profit_display(self, obj):
+#         """Display final profit"""
+#         return f"${obj.final_profit:,.2f}"
+#     final_profit_display.short_description = 'Final Profit'
+#     final_profit_display.admin_order_field = 'final_profit'
+    
+#     def save_model(self, request, obj, form, change):
+#         """
+#         Admin থেকে save করার সময় automatic calculations করে
+#         """
+#         super().save_model(request, obj, form, change)
         
         
-        if obj.property.selling_date and obj.investment_date:
+#         if obj.property.selling_date and obj.investment_date:
             
-            delta = obj.property.selling_date - obj.investment_date
-            obj.total_days = max(1, delta.days)
-            
-            
-            contributions = PropertyContribution.objects.filter(property=obj.property)
+#             delta = obj.property.selling_date - obj.investment_date
+#             obj.total_days = max(1, delta.days)
             
             
-            max_days = max([c.total_days for c in contributions if c.total_days > 0], default=1)
+#             contributions = PropertyContribution.objects.filter(property=obj.property)
             
             
-            if max_days > 0 and obj.total_days > 0:
-                obj.days_proportion = Decimal(str(obj.total_days)) / Decimal(str(max_days))
-            else:
-                obj.days_proportion = Decimal('0')
+#             max_days = max([c.total_days for c in contributions if c.total_days > 0], default=1)
             
             
-            total_contribution = sum([c.contribution for c in contributions]) or Decimal('1')
+#             if max_days > 0 and obj.total_days > 0:
+#                 obj.days_proportion = Decimal(str(obj.total_days)) / Decimal(str(max_days))
+#             else:
+#                 obj.days_proportion = Decimal('0')
             
             
-            obj.investment_ratio = obj.contribution / total_contribution
+#             total_contribution = sum([c.contribution for c in contributions]) or Decimal('1')
             
             
-            obj.profit_weight = obj.investment_ratio * obj.days_proportion
+#             obj.investment_ratio = obj.contribution / total_contribution
             
-            obj.save()
+            
+#             obj.profit_weight = obj.investment_ratio * obj.days_proportion
+            
+#             obj.save()
     
-    def get_queryset(self, request):
-        """Optimize queries"""
-        qs = super().get_queryset(request)
-        return qs.select_related('user', 'user__user_group', 'property')
+#     def get_queryset(self, request):
+#         """Optimize queries"""
+#         qs = super().get_queryset(request)
+#         return qs.select_related('user', 'user__user_group', 'property')
     
-    list_per_page = 50
-    ordering = ['-created_at']
+#     list_per_page = 50
+#     ordering = ['-created_at']
 
 
 

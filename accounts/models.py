@@ -1213,285 +1213,662 @@ class Property(models.Model):
         ).aggregate(models.Max('investment_sequence'))['investment_sequence__max']
         
         return (max_seq or 0) + 1
+##today test and comment 25-03-2026
+    # def calculate_profit_weights(self):
+    #     """
+    #     Share-based profit weight calculation:
+    #     Weight = Days Proportion × Number of Shares
+        
+    #     More shares + More days = Higher weight
+    #     """
+    #     if not self.selling_date:
+    #         print("❌ No selling date found!")
+    #         return False
+
+    #     contributions = PropertyContribution.objects.filter(property=self)
+    #     if not contributions.exists():
+    #         print("❌ No contributions found!")
+    #         return False
+
+    #     print("\n" + "="*80)
+    #     print(f"🏠 CALCULATING SHARE-BASED PROFIT WEIGHTS FOR: {self.property_name}")
+    #     print("="*80)
+        
+    #     share_price = SharePrice.get_current_price()
+    #     print(f"\n💰 Current Share Price: ${share_price}")
+
+    #     with transaction.atomic():
+            
+    #         print("\n📊 STEP 1: Calculating Shares")
+    #         print("-" * 80)
+    #         for contrib in contributions:
+    #             contrib.calculate_shares()
+    #             print(f"  {contrib.user.get_full_name():20} | Contribution: ${contrib.contribution:8.2f} | Shares: {float(contrib.shares):.6f}")
+    #             contrib.save(update_fields=['shares'])
+            
+           
+    #         print("\n📅 STEP 2: Calculating Total Days")
+    #         print("-" * 80)
+    #         for contrib in contributions:
+    #             if contrib.investment_date:
+    #                 delta = self.selling_date - contrib.investment_date
+    #                 contrib.total_days = max(1, delta.days)
+    #                 print(f"  {contrib.user.get_full_name():20} | Investment: {contrib.investment_date} | Selling: {self.selling_date} | Days: {contrib.total_days}")
+    #             else:
+    #                 contrib.total_days = 0
+    #                 print(f"  {contrib.user.get_full_name():20} | No investment date | Days: 0")
+    #             contrib.save(update_fields=['total_days'])
+
+           
+    #         max_days = contributions.aggregate(models.Max('total_days'))['total_days__max'] or 1
+    #         print(f"\n📊 STEP 3: Calculating Days Proportion (Max Days: {max_days})")
+    #         print("-" * 80)
+
+    #         for contrib in contributions:
+    #             if max_days > 0 and contrib.total_days > 0:
+    #                 contrib.days_proportion = (Decimal(str(contrib.total_days)) / Decimal(str(max_days))).quantize(
+    #                     Decimal('0.000001'), rounding=ROUND_HALF_UP
+    #                 )
+    #                 print(f"  {contrib.user.get_full_name():20} | Days: {contrib.total_days:3} / {max_days:3} = {float(contrib.days_proportion):.4f}")
+    #             else:
+    #                 contrib.days_proportion = Decimal('0')
+    #                 print(f"  {contrib.user.get_full_name():20} | Days: 0 | Proportion: 0.0000")
+    #             contrib.save(update_fields=['days_proportion'])
+
+            
+    #         print(f"\n⚖️  STEP 4: Calculating Profit Weight (Days Proportion × Shares)")
+    #         print("-" * 80)
+    #         total_weight = Decimal('0')
+            
+    #         for contrib in contributions:
+    #             contrib.profit_weight = (contrib.days_proportion * contrib.shares).quantize(
+    #                 Decimal('0.000001'), rounding=ROUND_HALF_UP
+    #             )
+    #             total_weight += contrib.profit_weight
+    #             print(f"  {contrib.user.get_full_name():20} | {float(contrib.days_proportion):.4f} × {float(contrib.shares):.6f} shares = {float(contrib.profit_weight):.6f}")
+    #             contrib.save(update_fields=['profit_weight'])
+            
+    #         print(f"\n  {'TOTAL WEIGHT':20} | {float(total_weight):.6f}")
+    #         print("="*80)
+
+    #     return True
+####today test and endcomment 25-03-2026
+##test check
     def calculate_profit_weights(self):
         """
         Share-based profit weight calculation:
-        Weight = Days Proportion × Number of Shares
-        
-        More shares + More days = Higher weight
+        Base Weight = Days Proportion × Number of Shares
+
+        If PropertyProfitDistribution exists:
+            Final Weight = Base Weight × Buyer Level Share
         """
+        from decimal import Decimal, ROUND_HALF_UP
+        from django.db import transaction, models
+
         if not self.selling_date:
             print("❌ No selling date found!")
-            return False
+            return Decimal("0")
 
-        contributions = PropertyContribution.objects.filter(property=self)
+        contributions = self.property_contributions.select_related("user").all().order_by(
+            "investment_date", "investment_sequence", "id"
+        )
         if not contributions.exists():
             print("❌ No contributions found!")
-            return False
+            return Decimal("0")
 
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print(f"🏠 CALCULATING SHARE-BASED PROFIT WEIGHTS FOR: {self.property_name}")
-        print("="*80)
-        
+        print("=" * 80)
+
         share_price = SharePrice.get_current_price()
         print(f"\n💰 Current Share Price: ${share_price}")
 
         with transaction.atomic():
-            
+            # STEP 1: Calculate shares
             print("\n📊 STEP 1: Calculating Shares")
             print("-" * 80)
             for contrib in contributions:
                 contrib.calculate_shares()
-                print(f"  {contrib.user.get_full_name():20} | Contribution: ${contrib.contribution:8.2f} | Shares: {float(contrib.shares):.6f}")
-                contrib.save(update_fields=['shares'])
-            
-           
+                print(
+                    f"  {contrib.user.get_full_name():20} | "
+                    f"Contribution: ${contrib.contribution:8.2f} | "
+                    f"Shares: {float(contrib.shares):.6f}"
+                )
+                contrib.save(update_fields=["shares"])
+
+            # STEP 2: Calculate total days
             print("\n📅 STEP 2: Calculating Total Days")
             print("-" * 80)
             for contrib in contributions:
                 if contrib.investment_date:
                     delta = self.selling_date - contrib.investment_date
                     contrib.total_days = max(1, delta.days)
-                    print(f"  {contrib.user.get_full_name():20} | Investment: {contrib.investment_date} | Selling: {self.selling_date} | Days: {contrib.total_days}")
+                    print(
+                        f"  {contrib.user.get_full_name():20} | "
+                        f"Investment: {contrib.investment_date} | "
+                        f"Selling: {self.selling_date} | "
+                        f"Days: {contrib.total_days}"
+                    )
                 else:
                     contrib.total_days = 0
-                    print(f"  {contrib.user.get_full_name():20} | No investment date | Days: 0")
-                contrib.save(update_fields=['total_days'])
+                    print(
+                        f"  {contrib.user.get_full_name():20} | "
+                        f"No investment date | Days: 0"
+                    )
+                contrib.save(update_fields=["total_days"])
 
-           
-            max_days = contributions.aggregate(models.Max('total_days'))['total_days__max'] or 1
+            # STEP 3: Calculate days proportion
+            max_days = contributions.aggregate(models.Max("total_days"))["total_days__max"] or 1
             print(f"\n📊 STEP 3: Calculating Days Proportion (Max Days: {max_days})")
             print("-" * 80)
 
             for contrib in contributions:
-                if max_days > 0 and contrib.total_days > 0:
-                    contrib.days_proportion = (Decimal(str(contrib.total_days)) / Decimal(str(max_days))).quantize(
-                        Decimal('0.000001'), rounding=ROUND_HALF_UP
-                    )
-                    print(f"  {contrib.user.get_full_name():20} | Days: {contrib.total_days:3} / {max_days:3} = {float(contrib.days_proportion):.4f}")
-                else:
-                    contrib.days_proportion = Decimal('0')
-                    print(f"  {contrib.user.get_full_name():20} | Days: 0 | Proportion: 0.0000")
-                contrib.save(update_fields=['days_proportion'])
+                contrib.days_proportion = (
+                    Decimal(str(contrib.total_days)) / Decimal(str(max_days))
+                ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
 
-            
-            print(f"\n⚖️  STEP 4: Calculating Profit Weight (Days Proportion × Shares)")
-            print("-" * 80)
-            total_weight = Decimal('0')
-            
-            for contrib in contributions:
-                contrib.profit_weight = (contrib.days_proportion * contrib.shares).quantize(
-                    Decimal('0.000001'), rounding=ROUND_HALF_UP
+                print(
+                    f"  {contrib.user.get_full_name():20} | "
+                    f"Days: {contrib.total_days:3} / {max_days:3} = "
+                    f"{float(contrib.days_proportion):.4f}"
                 )
-                total_weight += contrib.profit_weight
-                print(f"  {contrib.user.get_full_name():20} | {float(contrib.days_proportion):.4f} × {float(contrib.shares):.6f} shares = {float(contrib.profit_weight):.6f}")
-                contrib.save(update_fields=['profit_weight'])
+                contrib.save(update_fields=["days_proportion"])
+
+            # STEP 4: Base profit weight
+            print("\n⚖️  STEP 4: Calculating Profit Weight (Days Proportion × Shares)")
+            print("-" * 80)
+
+            for contrib in contributions:
+                contrib.profit_weight = (
+                    Decimal(str(contrib.days_proportion)) * Decimal(str(contrib.shares))
+                ).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+
+                print(
+                    f"  {contrib.user.get_full_name():20} | "
+                    f"{float(contrib.days_proportion):.4f} × "
+                    f"{float(contrib.shares):.6f} shares = "
+                    f"{float(contrib.profit_weight):.6f}"
+                )
+                contrib.save(update_fields=["profit_weight"])
+
+            # STEP 5: Apply buyer-level multiplier
+            print("\n🎯 STEP 5: Applying Buyer Level Share Multiplier")
+            print("-" * 80)
+
+            try:
+                result = self.profit_distribution.update_all_profit_weights()
+
+                if result.get("success"):
+                    print("✅ Buyer level multipliers applied successfully")
+                    for detail in result.get("details", []):
+                        print(
+                            f"  {detail['user']:20} | "
+                            f"Level: {detail['buyer_level']} | "
+                            f"Multiplier: {detail['share_multiplier']} | "
+                            f"Base: {detail['base_weight']:.6f} | "
+                            f"Adjusted: {detail['adjusted_weight']:.6f}"
+                        )
+                else:
+                    print(f"⚠️ Buyer level multiplier skipped: {result.get('message')}")
+            except Exception as e:
+                print(f"ℹ️ No profit distribution multiplier applied: {str(e)}")
+
+            # Refresh queryset after update_all_profit_weights()
+            contributions = self.property_contributions.select_related("user").all().order_by(
+                "investment_date", "investment_sequence", "id"
+            )
+
+            total_weight = contributions.aggregate(
+                total=models.Sum("profit_weight")
+            )["total"] or Decimal("0")
+
+            total_weight = Decimal(str(total_weight)).quantize(
+                Decimal("0.000001"),
+                rounding=ROUND_HALF_UP
+            )
+
+            print(f"\n  TOTAL WEIGHT         | {float(total_weight):.6f}")
+            print("=" * 80)
+
+            return total_weight
+##test emd
+
+# ###test and comment25-03-2026###
+#     def distribute_sale_proceeds(self):
+#         """
+#         Modified distribution system:
+#         - NO 15% office deduction from total profit
+#         - Individual deductions based on user groups per contribution
+#         - Deducted amounts go to office manager's balance
+#         - Track deduction history
+#         """
+#         if self.is_contribution_locked:
+#             print("🔒 Contribution already locked!")
+#             return True
+
+#         if not self.selling_price or self.selling_price <= 0:
+#             print("❌ Invalid selling price!")
+#             return False
+
+#         contributions = PropertyContribution.objects.filter(property=self)
+#         if not contributions.exists():
+#             print("❌ No contributions found!")
+#             return False
+
+#         total_contribution = sum(c.contribution for c in contributions)
+#         if total_contribution <= 0:
+#             print("❌ Total contribution is zero!")
+#             return False
+
+#         selling_price = Decimal(str(self.selling_price))
+#         total_profit = selling_price - total_contribution
+
+#         print("\n" + "="*100)
+#         print(f"💵 GROUP-BASED PROFIT DISTRIBUTION FOR: {self.property_name}")
+#         print("="*100)
+#         print(f"\n📊 FINANCIAL SUMMARY:")
+#         print(f"  Total Investment:            ${float(total_contribution):,.2f}")
+#         print(f"  Selling Price:               ${float(selling_price):,.2f}")
+#         print(f"  Total Profit:                ${float(total_profit):,.2f}")
+
+#         if total_profit <= 0:
+#             print("\n⚠️  NO PROFIT - Returning investments only")
+#             with transaction.atomic():
+#                 for contrib in contributions:
+#                     user = contrib.user
+#                     user.balance += contrib.contribution
+#                     user.save(update_fields=['balance'])
+                    
+                    
+#                     contrib.profit = Decimal('0.00')
+#                     contrib.deduction = Decimal('0.00')
+#                     contrib.final_profit = Decimal('0.00')
+#                     contrib.save(update_fields=['profit', 'deduction', 'final_profit'])
+                    
+#                     print(f"  {user.get_full_name():20} | Refund: ${float(contrib.contribution):,.2f}")
+                
+#                 self.is_contribution_locked = True
+#                 self.save(update_fields=['is_contribution_locked'])
+#             return True
+
+        
+#         print(f"\n🔢 Calculating profit weights...")
+#         self.calculate_profit_weights()
+
+#         total_weight = sum(c.profit_weight for c in contributions)
+#         if total_weight <= 0:
+#             print("❌ Total weight is zero!")
+#             return False
+
+#         print(f"  Total Weight: {float(total_weight):.6f}")
+
+#         with transaction.atomic():
+#             user_totals = {}
+#             total_deductions = Decimal('0.00')
+#             distributed_profit = Decimal('0')
             
-            print(f"\n  {'TOTAL WEIGHT':20} | {float(total_weight):.6f}")
-            print("="*80)
+#             print(f"\n💰 DISTRIBUTION DETAILS (PER CONTRIBUTION):")
+#             print("-" * 120)
+#             print(f"{'Name':20} | {'Group':15} | {'Seq':3} | {'Investment':>12} | {'Weight':>10} | "
+#                 f"{'Profit':>12} | {'Deduct%':>8} | {'Deduction':>12} | {'Final':>12}")
+#             print("-" * 120)
 
-        return True
+#             contributions_list = list(contributions)
+            
+#             for i, contrib in enumerate(contributions_list):
+#                 user = contrib.user
+#                 user_id = user.id
+#                 investment_return = contrib.contribution
+                
+                
+#                 if i == len(contributions_list) - 1:
+#                     profit_share = total_profit - distributed_profit
+#                 else:
+#                     profit_share = (
+#                         total_profit * contrib.profit_weight / total_weight
+#                     ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+#                     distributed_profit += profit_share
 
+                
+#                 deduction_percentage = Decimal('0.00')
+#                 group_name = "No Group"
+                
+#                 if user.user_group:
+#                     deduction_percentage = user.user_group.percentage
+#                     group_name = user.user_group.name
+                
+                
+#                 deduction_amount = (
+#                     profit_share * deduction_percentage / Decimal('100')
+#                 ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                
+                
+#                 final_profit = profit_share - deduction_amount
+                
+                
+#                 contrib.profit = profit_share
+#                 contrib.deduction = deduction_amount
+#                 contrib.final_profit = final_profit
+#                 contrib.save(update_fields=['profit', 'deduction', 'final_profit'])
+                
+                
+#                 office_manager = User.get_office_manager()
+#                 DeductionHistory.objects.create(
+#                     property=self,
+#                     user=user,
+#                     property_contribution=contrib,
+#                     profit_share=profit_share,
+#                     deduction_percentage=deduction_percentage,
+#                     deduction_amount=deduction_amount,
+#                     sequence_number=contrib.investment_sequence,
+#                     office_manager=office_manager
+#                 )
+                
+#                 total_deductions += deduction_amount
+#                 total_amount = investment_return + final_profit
+
+#                 print(f"{user.get_full_name():20} | {group_name:15} | #{contrib.investment_sequence:2} | "
+#                     f"${float(investment_return):>11,.2f} | {float(contrib.profit_weight):>10.6f} | "
+#                     f"${float(profit_share):>11,.2f} | {float(deduction_percentage):>7.2f}% | "
+#                     f"${float(deduction_amount):>11,.2f} | ${float(final_profit):>11,.2f}")
+
+                
+#                 if user_id not in user_totals:
+#                     user_totals[user_id] = {
+#                         'user': user,
+#                         'investment': Decimal('0'),
+#                         'profit': Decimal('0'),
+#                         'deduction': Decimal('0'),
+#                         'final_profit': Decimal('0'),
+#                         'total': Decimal('0')
+#                     }
+                
+#                 user_totals[user_id]['investment'] += investment_return
+#                 user_totals[user_id]['profit'] += profit_share
+#                 user_totals[user_id]['deduction'] += deduction_amount
+#                 user_totals[user_id]['final_profit'] += final_profit
+#                 user_totals[user_id]['total'] += total_amount
+
+#             print("-" * 120)
+#             print(f"{'TOTALS':20} | {'':15} | {'':3} | ${float(total_contribution):>11,.2f} | "
+#                 f"{float(total_weight):>10.6f} | ${float(total_profit):>11,.2f} | {'':>8} | "
+#                 f"${float(total_deductions):>11,.2f} | ${float(total_profit - total_deductions):>11,.2f}")
+
+            
+#             print(f"\n💰 UPDATING USER BALANCES:")
+#             print("-" * 100)
+#             for user_id, amounts in user_totals.items():
+#                 user = User.objects.get(id=user_id)
+#                 print(f"  {user.get_full_name():20} | Before: ${float(user.balance):>11,.2f}")
+#                 print(f"  {'':20} | Return: ${float(amounts['investment']):>11,.2f}")
+#                 print(f"  {'':20} | Profit: ${float(amounts['profit']):>11,.2f}")
+#                 print(f"  {'':20} | Deduct: ${float(amounts['deduction']):>11,.2f}")
+#                 print(f"  {'':20} | Final:  ${float(amounts['final_profit']):>11,.2f}")
+                
+             
+#                 user.balance += amounts['total']
+#                 user.save(update_fields=['balance'])
+                
+#                 print(f"  {'':20} | After:  ${float(user.balance):>11,.2f}\n")
+
+#             print(f"🏢 OFFICE MANAGEMENT:")
+#             print("-" * 100)
+#             print(f"  Total Deductions Collected: ${float(total_deductions):,.2f}")
+            
+#             office_manager = User.get_office_manager()
+#             if office_manager:
+#                 print(f"  ✅ Office Manager: {office_manager.get_full_name()}")
+#                 office_manager = User.objects.get(id=office_manager.id)
+#                 office_manager.balance += total_deductions
+#                 office_manager.save(update_fields=['balance'])
+#                 print(f"  ✅ Added ${float(total_deductions):,.2f} to office manager's balance")
+#             else:
+#                 print(f"  ⚠️  No Office Manager - Adding to OfficeCost model")
+#                 office_cost_record, _ = OfficeCost.objects.get_or_create(id=1)
+#                 office_cost_record.balance += total_deductions
+#                 office_cost_record.save(update_fields=['balance'])
+
+#             self.is_contribution_locked = True
+#             self.save(update_fields=['is_contribution_locked'])
+
+#         print("\n✅ Group-based distribution completed!")
+#         print("="*100 + "\n")
+#         return True
+#     ###test and comment end 25-03-2026###
+
+#test start
     def distribute_sale_proceeds(self):
         """
-        Modified distribution system:
-        - NO 15% office deduction from total profit
-        - Individual deductions based on user groups per contribution
-        - Deducted amounts go to office manager's balance
-        - Track deduction history
+        Distribute sale proceeds based on final profit_weight.
+
+        Final weight logic:
+        - Base: days_proportion × shares
+        - Then optional buyer-level multiplier from PropertyProfitDistribution
         """
-        if self.is_contribution_locked:
-            print("🔒 Contribution already locked!")
-            return True
+        from decimal import Decimal, ROUND_HALF_UP
+        from django.db import transaction, models
 
-        if not self.selling_price or self.selling_price <= 0:
-            print("❌ Invalid selling price!")
-            return False
-
-        contributions = PropertyContribution.objects.filter(property=self)
-        if not contributions.exists():
-            print("❌ No contributions found!")
-            return False
-
-        total_contribution = sum(c.contribution for c in contributions)
-        if total_contribution <= 0:
-            print("❌ Total contribution is zero!")
-            return False
-
-        selling_price = Decimal(str(self.selling_price))
-        total_profit = selling_price - total_contribution
-
-        print("\n" + "="*100)
+        print("\n" + "=" * 100)
         print(f"💵 GROUP-BASED PROFIT DISTRIBUTION FOR: {self.property_name}")
-        print("="*100)
-        print(f"\n📊 FINANCIAL SUMMARY:")
-        print(f"  Total Investment:            ${float(total_contribution):,.2f}")
-        print(f"  Selling Price:               ${float(selling_price):,.2f}")
-        print(f"  Total Profit:                ${float(total_profit):,.2f}")
+        print("=" * 100)
 
-        if total_profit <= 0:
+        contributions = self.property_contributions.select_related("user").all().order_by(
+            "investment_date", "investment_sequence", "id"
+        )
+
+        if not contributions.exists():
+            print("❌ No contributions found for distribution!")
+            return False
+
+        total_investment = contributions.aggregate(
+            total=models.Sum("contribution")
+        )["total"] or Decimal("0")
+
+        total_investment = Decimal(str(total_investment))
+        selling_price = Decimal(str(self.selling_price or 0))
+        total_profit = selling_price - total_investment
+
+        print("\n📊 FINANCIAL SUMMARY:")
+        print(f"  Total Investment:            ${total_investment:.2f}")
+        print(f"  Selling Price:               ${selling_price:.2f}")
+        print(f"  Total Profit:                ${total_profit:.2f}")
+
+        # No profit / loss হলে শুধু contribution ফেরত দিন
+        if total_profit <= Decimal("0"):
             print("\n⚠️  NO PROFIT - Returning investments only")
+
             with transaction.atomic():
                 for contrib in contributions:
                     user = contrib.user
-                    user.balance += contrib.contribution
-                    user.save(update_fields=['balance'])
-                    
-                    
-                    contrib.profit = Decimal('0.00')
-                    contrib.deduction = Decimal('0.00')
-                    contrib.final_profit = Decimal('0.00')
-                    contrib.save(update_fields=['profit', 'deduction', 'final_profit'])
-                    
-                    print(f"  {user.get_full_name():20} | Refund: ${float(contrib.contribution):,.2f}")
-                
+                    refund_amount = Decimal(str(contrib.contribution or 0))
+
+                    user.balance = Decimal(str(user.balance or 0)) + refund_amount
+                    user.save(update_fields=["balance"])
+
+                    contrib.profit = Decimal("0.00")
+                    contrib.deduction = Decimal("0.00")
+                    contrib.final_profit = Decimal("0.00")
+                    contrib.save(update_fields=["profit", "deduction", "final_profit"])
+
+                    print(
+                        f"  {user.get_full_name():20} | Refund: ${refund_amount:,.2f}"
+                    )
+
                 self.is_contribution_locked = True
-                self.save(update_fields=['is_contribution_locked'])
+                self.save(update_fields=["is_contribution_locked"])
+
             return True
 
-        
-        print(f"\n🔢 Calculating profit weights...")
+        print("\n🔢 Calculating profit weights...")
         self.calculate_profit_weights()
 
-        total_weight = sum(c.profit_weight for c in contributions)
-        if total_weight <= 0:
+        # refresh queryset after weight calculation
+        contributions = self.property_contributions.select_related("user").all().order_by(
+            "investment_date", "investment_sequence", "id"
+        )
+
+        total_weight = contributions.aggregate(
+            total=models.Sum("profit_weight")
+        )["total"] or Decimal("0")
+
+        total_weight = Decimal(str(total_weight)).quantize(
+            Decimal("0.000001"),
+            rounding=ROUND_HALF_UP
+        )
+
+        print(f"  Total Weight: {total_weight:.6f}")
+
+        if total_weight <= Decimal("0"):
             print("❌ Total weight is zero!")
             return False
 
-        print(f"  Total Weight: {float(total_weight):.6f}")
+        total_distributed_profit = Decimal("0.00")
+        total_deduction = Decimal("0.00")
+        total_final_profit = Decimal("0.00")
+
+        print("\n💰 DISTRIBUTION DETAILS (PER CONTRIBUTION):")
+        print("-" * 120)
+        print(
+            f"{'Name':20} | {'Group':15} | {'Seq':3} | {'Investment':>12} | "
+            f"{'Weight':>10} | {'Profit':>12} | {'Deduct%':>8} | "
+            f"{'Deduction':>12} | {'Final':>12}"
+        )
+        print("-" * 120)
 
         with transaction.atomic():
-            user_totals = {}
-            total_deductions = Decimal('0.00')
-            distributed_profit = Decimal('0')
-            
-            print(f"\n💰 DISTRIBUTION DETAILS (PER CONTRIBUTION):")
-            print("-" * 120)
-            print(f"{'Name':20} | {'Group':15} | {'Seq':3} | {'Investment':>12} | {'Weight':>10} | "
-                f"{'Profit':>12} | {'Deduct%':>8} | {'Deduction':>12} | {'Final':>12}")
-            print("-" * 120)
-
             contributions_list = list(contributions)
-            
+            distributed_profit = Decimal("0.00")
+
             for i, contrib in enumerate(contributions_list):
                 user = contrib.user
-                user_id = user.id
-                investment_return = contrib.contribution
-                
-                
-                if i == len(contributions_list) - 1:
-                    profit_share = total_profit - distributed_profit
-                else:
-                    profit_share = (
-                        total_profit * contrib.profit_weight / total_weight
-                    ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-                    distributed_profit += profit_share
+                investment_return = Decimal(str(contrib.contribution or 0))
 
-                
-                deduction_percentage = Decimal('0.00')
+                # last row gets exact remaining to avoid rounding mismatch
+                if i == len(contributions_list) - 1:
+                    gross_profit = (total_profit - distributed_profit).quantize(
+                        Decimal("0.01"),
+                        rounding=ROUND_HALF_UP
+                    )
+                else:
+                    gross_profit = (
+                        total_profit * Decimal(str(contrib.profit_weight)) / total_weight
+                    ).quantize(
+                        Decimal("0.01"),
+                        rounding=ROUND_HALF_UP
+                    )
+                    distributed_profit += gross_profit
+
+                deduction_percentage = Decimal("0.00")
                 group_name = "No Group"
-                
+
                 if user.user_group:
-                    deduction_percentage = user.user_group.percentage
+                    deduction_percentage = Decimal(str(user.user_group.percentage or 0))
                     group_name = user.user_group.name
-                
-                
+
                 deduction_amount = (
-                    profit_share * deduction_percentage / Decimal('100')
-                ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-                
-                
-                final_profit = profit_share - deduction_amount
-                
-                
-                contrib.profit = profit_share
+                    gross_profit * deduction_percentage / Decimal("100")
+                ).quantize(
+                    Decimal("0.01"),
+                    rounding=ROUND_HALF_UP
+                )
+
+                final_profit = (gross_profit - deduction_amount).quantize(
+                    Decimal("0.01"),
+                    rounding=ROUND_HALF_UP
+                )
+
+                # save to existing PropertyContribution fields
+                contrib.profit = gross_profit
                 contrib.deduction = deduction_amount
                 contrib.final_profit = final_profit
-                contrib.save(update_fields=['profit', 'deduction', 'final_profit'])
-                
-                
-                office_manager = User.get_office_manager()
-                DeductionHistory.objects.create(
-                    property=self,
-                    user=user,
-                    property_contribution=contrib,
-                    profit_share=profit_share,
-                    deduction_percentage=deduction_percentage,
-                    deduction_amount=deduction_amount,
-                    sequence_number=contrib.investment_sequence,
-                    office_manager=office_manager
+                contrib.save(update_fields=["profit", "deduction", "final_profit"])
+
+                print(
+                    f"{user.get_full_name():20} | "
+                    f"{group_name:15} | "
+                    f"#{getattr(contrib, 'investment_sequence', 1):2} | "
+                    f"${investment_return:11.2f} | "
+                    f"{Decimal(str(contrib.profit_weight)):10.6f} | "
+                    f"${gross_profit:11.2f} | "
+                    f"{deduction_percentage:7.2f}% | "
+                    f"${deduction_amount:11.2f} | "
+                    f"${final_profit:11.2f}"
                 )
-                
-                total_deductions += deduction_amount
-                total_amount = investment_return + final_profit
 
-                print(f"{user.get_full_name():20} | {group_name:15} | #{contrib.investment_sequence:2} | "
-                    f"${float(investment_return):>11,.2f} | {float(contrib.profit_weight):>10.6f} | "
-                    f"${float(profit_share):>11,.2f} | {float(deduction_percentage):>7.2f}% | "
-                    f"${float(deduction_amount):>11,.2f} | ${float(final_profit):>11,.2f}")
-
-                
-                if user_id not in user_totals:
-                    user_totals[user_id] = {
-                        'user': user,
-                        'investment': Decimal('0'),
-                        'profit': Decimal('0'),
-                        'deduction': Decimal('0'),
-                        'final_profit': Decimal('0'),
-                        'total': Decimal('0')
-                    }
-                
-                user_totals[user_id]['investment'] += investment_return
-                user_totals[user_id]['profit'] += profit_share
-                user_totals[user_id]['deduction'] += deduction_amount
-                user_totals[user_id]['final_profit'] += final_profit
-                user_totals[user_id]['total'] += total_amount
+                total_distributed_profit += gross_profit
+                total_deduction += deduction_amount
+                total_final_profit += final_profit
 
             print("-" * 120)
-            print(f"{'TOTALS':20} | {'':15} | {'':3} | ${float(total_contribution):>11,.2f} | "
-                f"{float(total_weight):>10.6f} | ${float(total_profit):>11,.2f} | {'':>8} | "
-                f"${float(total_deductions):>11,.2f} | ${float(total_profit - total_deductions):>11,.2f}")
+            print(
+                f"{'TOTALS':20} | {'':15} | {'':3} | "
+                f"${total_investment:11.2f} | "
+                f"{total_weight:10.6f} | "
+                f"${total_distributed_profit:11.2f} | "
+                f"{'':8} | "
+                f"${total_deduction:11.2f} | "
+                f"${total_final_profit:11.2f}"
+            )
 
-            
-            print(f"\n💰 UPDATING USER BALANCES:")
+            print("\n💰 UPDATING USER BALANCES:")
             print("-" * 100)
-            for user_id, amounts in user_totals.items():
-                user = User.objects.get(id=user_id)
-                print(f"  {user.get_full_name():20} | Before: ${float(user.balance):>11,.2f}")
-                print(f"  {'':20} | Return: ${float(amounts['investment']):>11,.2f}")
-                print(f"  {'':20} | Profit: ${float(amounts['profit']):>11,.2f}")
-                print(f"  {'':20} | Deduct: ${float(amounts['deduction']):>11,.2f}")
-                print(f"  {'':20} | Final:  ${float(amounts['final_profit']):>11,.2f}")
-                
-             
-                user.balance += amounts['total']
-                user.save(update_fields=['balance'])
-                
-                print(f"  {'':20} | After:  ${float(user.balance):>11,.2f}\n")
 
-            print(f"🏢 OFFICE MANAGEMENT:")
-            print("-" * 100)
-            print(f"  Total Deductions Collected: ${float(total_deductions):,.2f}")
-            
             office_manager = User.get_office_manager()
-            if office_manager:
-                print(f"  ✅ Office Manager: {office_manager.get_full_name()}")
-                office_manager = User.objects.get(id=office_manager.id)
-                office_manager.balance += total_deductions
-                office_manager.save(update_fields=['balance'])
-                print(f"  ✅ Added ${float(total_deductions):,.2f} to office manager's balance")
+            office_cost, _ = OfficeCost.objects.get_or_create(id=1)
+
+            for contrib in contributions_list:
+                user = contrib.user
+                before_balance = Decimal(str(user.balance or 0))
+                return_amount = Decimal(str(contrib.contribution or 0))
+                final_profit = Decimal(str(contrib.final_profit or 0))
+
+                user.balance = before_balance + return_amount + final_profit
+                user.save(update_fields=["balance"])
+
+                print(f"  {user.get_full_name():20} | Before: ${before_balance:10.2f}")
+                print(f"  {'':20} | Return: ${return_amount:10.2f}")
+                print(f"  {'':20} | Profit: ${Decimal(str(contrib.profit or 0)):10.2f}")
+                print(f"  {'':20} | Deduct: ${Decimal(str(contrib.deduction or 0)):10.2f}")
+                print(f"  {'':20} | Final:  ${final_profit:10.2f}")
+                print(f"  {'':20} | After:  ${Decimal(str(user.balance or 0)):10.2f}\n")
+
+                # optional deduction history
+                if Decimal(str(contrib.deduction or 0)) > 0:
+                    DeductionHistory.objects.create(
+                        property=self,
+                        user=user,
+                        property_contribution=contrib,
+                        profit_share=Decimal(str(contrib.profit or 0)),
+                        deduction_percentage=Decimal(str(user.user_group.percentage if user.user_group else 0)),
+                        deduction_amount=Decimal(str(contrib.deduction or 0)),
+                        sequence_number=contrib.investment_sequence,
+                        office_manager=office_manager if office_manager else None,
+                    )
+
+            print("🏢 OFFICE MANAGEMENT:")
+            print("-" * 100)
+            print(f"  Total Deductions Collected: ${total_deduction:.2f}")
+
+            if total_deduction > 0:
+                if office_manager:
+                    office_manager.balance = Decimal(str(office_manager.balance or 0)) + total_deduction
+                    office_manager.save(update_fields=["balance"])
+                    print(f"  ✅ Added to Office Manager: {office_manager.get_full_name()}")
+                else:
+                    office_cost.balance = Decimal(str(office_cost.balance or 0)) + total_deduction
+                    office_cost.save(update_fields=["balance"])
+                    print("  ⚠️  No Office Manager - Adding to OfficeCost model")
             else:
-                print(f"  ⚠️  No Office Manager - Adding to OfficeCost model")
-                office_cost_record, _ = OfficeCost.objects.get_or_create(id=1)
-                office_cost_record.balance += total_deductions
-                office_cost_record.save(update_fields=['balance'])
+                print("  ℹ️  No deductions collected")
 
             self.is_contribution_locked = True
-            self.save(update_fields=['is_contribution_locked'])
+            self.save(update_fields=["is_contribution_locked"])
 
-        print("\n✅ Group-based distribution completed!")
-        print("="*100 + "\n")
+        print("✅ Group-based distribution completed!")
+        print("=" * 100)
+
         return True
+#test end
 
     def refund_all_contributions(self):
         contributions = PropertyContribution.objects.filter(property=self)
