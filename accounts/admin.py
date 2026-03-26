@@ -327,6 +327,7 @@ class PropertyContributionAdmin(admin.ModelAdmin):
     ]
 
     list_filter = [
+        PropertyNameFilter,
         'is_fixed_amount',
         'investment_date',
         'user__user_group',
