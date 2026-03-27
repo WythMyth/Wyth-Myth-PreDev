@@ -305,14 +305,15 @@ from .models import PropertyContribution
 @admin.register(PropertyContribution)
 class PropertyContributionAdmin(admin.ModelAdmin):
     list_display = [
-        'profit_propotion_display',
         'user_display',
         'user_group_display',
         'property_display',
         'level_of_investment_display',
-        'amount_invested_display',
         'amount_available_to_invest_display',
+        'amount_invested_display',
         'amount_remaining_display',
+        'fixed_or_proportion_display',
+        'profit_propotion_display',
         'investment_date',
         'total_days',
         'days_proportion',
@@ -323,7 +324,7 @@ class PropertyContributionAdmin(admin.ModelAdmin):
         'deduction_display',
         'final_profit_display',
         'ratio',
-        'fixed_or_proportion_display',
+
     ]
 
     list_filter = [
