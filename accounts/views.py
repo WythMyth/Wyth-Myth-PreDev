@@ -4583,6 +4583,30 @@ NEIGHBOR_MAP = {
 # ===============================
 # Helpers
 # ===============================
+def parse_price_excel(val):
+    """
+    Excel input will be treated as K-unit.
+    Example:
+        15   -> 15000
+        15.5 -> 15500
+        15K  -> 15000
+    """
+    if not has_value(val):
+        return None
+
+    if isinstance(val, (int, float)):
+        return (Decimal(str(val)) * Decimal("1000")).quantize(Decimal("0.000001"))
+
+    s = str(val).replace("$", "").replace(",", "").strip().lower()
+
+    if s.endswith("k"):
+        s = s[:-1].strip()
+
+    try:
+        return (Decimal(s) * Decimal("1000")).quantize(Decimal("0.000001"))
+    except:
+        return None
+
 def clean(val):
     if val is None:
         return ""
@@ -4665,17 +4689,11 @@ def normalize_status(val):
 
 def normalize_neighbor(val):
     if not has_value(val):
-        return NEIGHBOR_MAP["1"]
+        return None
 
-    if isinstance(val, (int, float)):
-        val = str(int(val))
+    val = str(val).strip().lower()
 
-    val = str(val).strip()
-
-    if val in NEIGHBOR_MAP:
-        return NEIGHBOR_MAP[val]
-
-    return val
+    return NEIGHBOR_MAP.get(val, None)
 
 
 # ===============================
@@ -4743,28 +4761,28 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrPropertyMixin, Vi
                         setattr(prop, field, clean(data.get(field)))
 
                 if has_value(data.get("auction_price")):
-                    prop.auction_price = parse_decimal(data.get("auction_price"))
+                    prop.auction_price = parse_price_excel(data.get("auction_price"))
 
                 if has_value(data.get("estimated_price")):
-                    prop.estimated_price = parse_decimal(data.get("estimated_price"))
+                    prop.estimated_price = parse_price_excel(data.get("estimated_price"))
 
                 if has_value(data.get("booking_fee")):
-                    prop.booking_fee = parse_decimal(data.get("booking_fee"))
+                    prop.booking_fee = parse_price_excel(data.get("booking_fee"))
 
                 if has_value(data.get("buying_price")):
-                    prop.buying_price = parse_decimal(data.get("buying_price"))
+                    prop.buying_price = parse_price_excel(data.get("buying_price"))
 
                 if has_value(data.get("service_cost")):
-                    prop.service_cost = parse_decimal(data.get("service_cost"))
+                    prop.service_cost = parse_price_excel(data.get("service_cost"))
 
                 if has_value(data.get("acquisition_cost")):
-                    prop.acquisition_cost = parse_decimal(data.get("acquisition_cost"))
+                    prop.acquisition_cost = parse_price_excel(data.get("acquisition_cost"))
 
                 if has_value(data.get("asking_price")):
-                    prop.asking_price = parse_decimal(data.get("asking_price"))
+                    prop.asking_price = parse_price_excel(data.get("asking_price"))
 
                 if has_value(data.get("selling_price")):
-                    prop.selling_price = parse_decimal(data.get("selling_price"))
+                    prop.selling_price = parse_price_excel(data.get("selling_price"))
 
                 if has_value(data.get("bedrooms")):
                     prop.bedrooms = parse_int(data.get("bedrooms"))
