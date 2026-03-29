@@ -312,18 +312,18 @@ class PropertyContributionAdmin(admin.ModelAdmin):
         'amount_available_to_invest_display',
         'amount_invested_display',
         'amount_remaining_display',
+        'ratio',
         'fixed_or_proportion_display',
         'profit_propotion_display',
         'investment_date',
         'total_days',
         'days_proportion',
         'shares',
-        'investment_ratio',
         'profit_weight',
         'profit_display',
         'deduction_display',
         'final_profit_display',
-        'ratio',
+        
 
     ]
 

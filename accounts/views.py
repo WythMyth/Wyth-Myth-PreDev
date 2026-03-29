@@ -206,63 +206,251 @@ def download_stock_certificate(request):
         content_type='application/pdf'
     )
 
+from collections import defaultdict
+from datetime import date
+from decimal import Decimal
+from django.db.models import Prefetch, Sum
+from django.db.models.functions import Coalesce
+def _safe_decimal(value, default="0.00"):
+    if value is None:
+        return Decimal(default)
+    return Decimal(str(value))
 
+
+def _get_property_share_info(property_obj, user, sequence):
+    """
+    Decide user's buyer level/share for this property and row.
+    """
+    buyer_level = "-"
+    share_multiplier = Decimal("1.00")
+
+    distribution = getattr(property_obj, "profit_distribution", None)
+    if not distribution:
+        return buyer_level, share_multiplier
+
+    is_first = distribution.first_level_buyers.filter(id=user.id).exists()
+    is_second = distribution.second_level_buyers.filter(id=user.id).exists()
+
+    if is_first and not is_second:
+        buyer_level = "First Level Buyer"
+        share_multiplier = _safe_decimal(distribution.first_level_share, "1.00")
+    elif is_second and not is_first:
+        buyer_level = "Second Level Buyer"
+        share_multiplier = _safe_decimal(distribution.second_level_share, "1.00")
+    elif is_first and is_second:
+        if sequence == 1:
+            buyer_level = "First Level Buyer"
+            share_multiplier = _safe_decimal(distribution.first_level_share, "1.00")
+        else:
+            buyer_level = "Second Level Buyer"
+            share_multiplier = _safe_decimal(distribution.second_level_share, "1.00")
+
+    return buyer_level, share_multiplier
+
+
+def build_user_property_summary_cards(user):
+    """
+    Dashboard card summary for current user:
+    - sold properties
+    - bought/ready_to_sell properties
+    """
+
+    properties = (
+        Property.objects
+        .filter(
+            property_contributions__user=user,
+            status__in=["bought", "ready_to_sell", "sold"]
+        )
+        .prefetch_related(
+            "images",
+            "property_contributions__user",
+            "profit_distribution__first_level_buyers",
+            "profit_distribution__second_level_buyers",
+        )
+        .distinct()
+        .order_by("-selling_date", "-buying_date", "-id")
+    )
+
+    summary_cards = []
+    today = date.today()
+
+    for prop in properties:
+        user_contributions = list(
+            prop.property_contributions.filter(user=user).order_by("investment_sequence", "id")
+        )
+
+        if not user_contributions:
+            continue
+
+        primary_image = prop.images.filter(is_primary=True).first()
+        if not primary_image:
+            primary_image = prop.images.first()
+
+        buying_price = _safe_decimal(prop.buying_price)
+        service_cost = _safe_decimal(prop.service_cost)
+        acquisition_cost = _safe_decimal(prop.acquisition_cost)
+        if acquisition_cost <= 0:
+            acquisition_cost = buying_price + service_cost
+
+        selling_price = _safe_decimal(prop.selling_price)
+        property_profit = _safe_decimal(prop.profit)
+        if property_profit == Decimal("0.00") and prop.status == "sold":
+            property_profit = selling_price - acquisition_cost
+
+        total_user_invested = Decimal("0.00")
+        total_user_profit = Decimal("0.00")
+        total_user_deduction = Decimal("0.00")
+        total_user_final_profit = Decimal("0.00")
+        total_user_received = Decimal("0.00")
+
+        layer_map = defaultdict(lambda: {
+            "sequence": None,
+            "buyer_level": "-",
+            "share_multiplier": Decimal("1.00"),
+            "days": 0,
+            "invest_amount": Decimal("0.00"),
+            "contribution": Decimal("0.00"),
+            "profit": Decimal("0.00"),
+            "deduction": Decimal("0.00"),
+            "final_profit": Decimal("0.00"),
+            "received": Decimal("0.00"),
+            "investment_date": None,
+        })
+
+        contribution_rows = []
+
+        for contrib in user_contributions:
+            invest_amount = _safe_decimal(contrib.invest_amount)
+            contribution = _safe_decimal(contrib.contribution)
+            profit = _safe_decimal(contrib.profit)
+            deduction = _safe_decimal(contrib.deduction)
+            final_profit = _safe_decimal(contrib.final_profit)
+
+            if prop.status == "sold":
+                received = contribution + final_profit
+                layer_days = contrib.total_days or 0
+            else:
+                received = Decimal("0.00")
+                if contrib.investment_date:
+                    layer_days = max((today - contrib.investment_date).days, 0)
+                else:
+                    layer_days = 0
+
+            buyer_level, share_multiplier = _get_property_share_info(
+                prop, user, contrib.investment_sequence or 1
+            )
+
+            total_user_invested += contribution
+            total_user_profit += profit
+            total_user_deduction += deduction
+            total_user_final_profit += final_profit
+            total_user_received += received
+
+            layer = layer_map[contrib.investment_sequence or 1]
+            layer["sequence"] = contrib.investment_sequence or 1
+            layer["buyer_level"] = buyer_level
+            layer["share_multiplier"] = share_multiplier
+            layer["days"] = max(layer["days"], layer_days)
+            layer["invest_amount"] += invest_amount
+            layer["contribution"] += contribution
+            layer["profit"] += profit
+            layer["deduction"] += deduction
+            layer["final_profit"] += final_profit
+            layer["received"] += received
+            if not layer["investment_date"] and contrib.investment_date:
+                layer["investment_date"] = contrib.investment_date
+
+            contribution_rows.append({
+                "sequence": contrib.investment_sequence or 1,
+                "buyer_level": buyer_level,
+                "share_multiplier": share_multiplier,
+                "investment_date": contrib.investment_date,
+                "days": layer_days,
+                "invest_amount": invest_amount,
+                "contribution": contribution,
+                "profit": profit,
+                "deduction": deduction,
+                "final_profit": final_profit,
+                "received": received,
+            })
+
+        layer_rows = sorted(layer_map.values(), key=lambda x: x["sequence"] or 0)
+
+        summary_cards.append({
+            "property": prop,
+            "primary_image": primary_image,
+            "is_sold": prop.status == "sold",
+            "status": prop.status,
+            "address": prop.address,
+            "buying_price": buying_price,
+            "service_cost": service_cost,
+            "acquisition_cost": acquisition_cost,
+            "selling_price": selling_price,
+            "property_profit": property_profit,
+            "user_total_invested": total_user_invested,
+            "user_total_profit": total_user_profit,
+            "user_total_deduction": total_user_deduction,
+            "user_total_final_profit": total_user_final_profit,
+            "user_total_received": total_user_received,
+            "layer_count": len(layer_rows),
+            "layer_rows": layer_rows,
+            "contribution_rows": contribution_rows,
+        })
+
+    sold_cards = [item for item in summary_cards if item["is_sold"]]
+    active_cards = [item for item in summary_cards if not item["is_sold"]]
+
+    return sold_cards, active_cards
 @login_required
 def dashboard(request):
     summary = calculate_user_investment_summary(request.user)
+
     try:
         properties_bought = Property.objects.filter(status="bought")
         properties_wishlist = Property.objects.filter(status="wishlist")
         properties_sold = Property.objects.filter(status="sold")
-    except properties_bought.DoesNotExist:
-        properties_bought = None
-    except properties_wishlist.DoesNotExist:
-        properties_wishlist = None
-    except properties_sold.DoesNotExist:
-        properties_sold = None
+    except Property.DoesNotExist:
+        properties_bought = Property.objects.none()
+        properties_wishlist = Property.objects.none()
+        properties_sold = Property.objects.none()
 
     active_users = User.objects.filter(is_active=True, investor=True)
-    # Calculate company-wide metrics
-    total_balance = active_users.aggregate(Sum("balance"))["balance__sum"] or Decimal(
-        "0.00"
-    )
 
-    # Get properties that have been purchased
+    total_balance = active_users.aggregate(
+        balance__sum=Coalesce(Sum("balance"), Decimal("0.00"))
+    )["balance__sum"]
+
     purchased_properties = Property.objects.filter(
         status__in=["bought", "ready_to_sell", "pending", "sold"]
     )
 
-    # Calculate total invested (auction price)
     total_invested = purchased_properties.aggregate(
         total=Coalesce(Sum("buying_price"), Decimal("0.00"))
     )["total"]
 
-    # Calculate total repair costs (service cost)
     total_repair_cost = purchased_properties.aggregate(
         total=Coalesce(Sum("service_cost"), Decimal("0.00"))
     )["total"]
 
-    # Calculate total expenses not associated with properties
     additional_expenses = Expense.objects.filter(
         status="approved", property__isnull=True
-    ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
+    ).aggregate(
+        total=Coalesce(Sum("amount"), Decimal("0.00"))
+    )["total"]
 
-    # Initial total balance (before investments)
     initial_total_balance = (
         total_balance + total_invested + total_repair_cost + additional_expenses
     )
 
-    # Calculate remaining balance
     remaining_balance = total_balance
 
-    # Get current user's metrics
     user = request.user
     user_balance = user.balance
 
-    # Calculate user's contribution percentage to the total current balance
-    contribution_percentage = 0
+    contribution_percentage = Decimal("0.00")
     if total_balance > Decimal("0.00"):
         contribution_percentage = (user_balance / total_balance) * Decimal("100")
+
     if total_balance > Decimal("0.00"):
         user_already_invested = (total_invested + total_repair_cost) * (
             user_balance / total_balance
@@ -271,66 +459,70 @@ def dashboard(request):
         user_already_invested = Decimal("0.00")
 
     user_total_investment = user_balance + user_already_invested
-
     user_contribution = user_already_invested
+
     sold_properties = Property.objects.filter(status="sold")
     total_profit = Decimal("0.00")
+
     for prop in sold_properties:
         if prop.selling_price and prop.buying_price:
-            property_profit = prop.selling_price - (
-                prop.buying_price + (prop.service_cost or Decimal("0.00"))
+            property_profit = _safe_decimal(prop.selling_price) - (
+                _safe_decimal(prop.buying_price) + _safe_decimal(prop.service_cost)
             )
             total_profit += property_profit
+
     user_profit = (
         total_profit * (contribution_percentage / Decimal("100"))
         if total_profit > Decimal("0.00")
         else Decimal("0.00")
     )
+
     properties_data = []
-    for i, prop in enumerate(
-        purchased_properties, 0
-    ):  # Limit to 2 properties as in the image
+    for i, prop in enumerate(purchased_properties, 0):
         if not prop.buying_price:
             continue
 
-        total_cost = prop.buying_price + (prop.service_cost or Decimal("0.00"))
-
-        profit_loss = (prop.selling_price or Decimal("0.00")) - total_cost
+        total_cost = _safe_decimal(prop.buying_price) + _safe_decimal(prop.service_cost)
+        profit_loss = _safe_decimal(prop.selling_price) - total_cost
 
         property_data = {
             "id": prop.id,
             "title": prop.property_name,
             "number": i + 1,
-            "bought": prop.buying_price,
-            "repair_cost": prop.service_cost or Decimal("0.00"),
-            "sold": prop.selling_price or Decimal("0.00"),
+            "bought": _safe_decimal(prop.buying_price),
+            "repair_cost": _safe_decimal(prop.service_cost),
+            "sold": _safe_decimal(prop.selling_price),
             "total": profit_loss,
         }
         properties_data.append(property_data)
+
+    sold_summary_cards, active_summary_cards = build_user_property_summary_cards(request.user)
 
     context = {
         "properties_bought": properties_bought,
         "properties_wishlist": properties_wishlist,
         "properties_sold": properties_sold,
-        # Company-wide data
+
         "company_total_balance": initial_total_balance,
         "company_invested": total_invested,
         "company_repair_cost": total_repair_cost,
         "company_remaining": remaining_balance,
-        # Current user data
+
         "user_total_investment": user_total_investment,
-        "user_contribution": user_already_invested,  # This shows how much they've invested in properties
-        "user_remaining": user_balance,  # This shows their remaining balance
+        "user_contribution": user_contribution,
+        "user_remaining": user_balance,
         "user_contribution_percentage": round(contribution_percentage, 1),
         "user_profit": user_profit,
-        # Properties data
+
         "properties_data": properties_data,
-        # summary data
         "summary": summary,
+
+        # new
+        "sold_summary_cards": sold_summary_cards,
+        "active_summary_cards": active_summary_cards,
     }
 
     if request.user.is_superuser:
-        # Calculate total investment from all users
         total_investment = (
             User.objects.all().aggregate(Sum("balance"))["balance__sum"] or 0
         )
@@ -339,6 +531,139 @@ def dashboard(request):
         context["total_balance"] = request.user.balance
 
     return render(request, "dashboard.html", context)
+
+# @login_required
+# def dashboard(request):
+#     summary = calculate_user_investment_summary(request.user)
+#     try:
+#         properties_bought = Property.objects.filter(status="bought")
+#         properties_wishlist = Property.objects.filter(status="wishlist")
+#         properties_sold = Property.objects.filter(status="sold")
+#     except properties_bought.DoesNotExist:
+#         properties_bought = None
+#     except properties_wishlist.DoesNotExist:
+#         properties_wishlist = None
+#     except properties_sold.DoesNotExist:
+#         properties_sold = None
+
+#     active_users = User.objects.filter(is_active=True, investor=True)
+#     # Calculate company-wide metrics
+#     total_balance = active_users.aggregate(Sum("balance"))["balance__sum"] or Decimal(
+#         "0.00"
+#     )
+
+#     # Get properties that have been purchased
+#     purchased_properties = Property.objects.filter(
+#         status__in=["bought", "ready_to_sell", "pending", "sold"]
+#     )
+
+#     # Calculate total invested (auction price)
+#     total_invested = purchased_properties.aggregate(
+#         total=Coalesce(Sum("buying_price"), Decimal("0.00"))
+#     )["total"]
+
+#     # Calculate total repair costs (service cost)
+#     total_repair_cost = purchased_properties.aggregate(
+#         total=Coalesce(Sum("service_cost"), Decimal("0.00"))
+#     )["total"]
+
+#     # Calculate total expenses not associated with properties
+#     additional_expenses = Expense.objects.filter(
+#         status="approved", property__isnull=True
+#     ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
+
+#     # Initial total balance (before investments)
+#     initial_total_balance = (
+#         total_balance + total_invested + total_repair_cost + additional_expenses
+#     )
+
+#     # Calculate remaining balance
+#     remaining_balance = total_balance
+
+#     # Get current user's metrics
+#     user = request.user
+#     user_balance = user.balance
+
+#     # Calculate user's contribution percentage to the total current balance
+#     contribution_percentage = 0
+#     if total_balance > Decimal("0.00"):
+#         contribution_percentage = (user_balance / total_balance) * Decimal("100")
+#     if total_balance > Decimal("0.00"):
+#         user_already_invested = (total_invested + total_repair_cost) * (
+#             user_balance / total_balance
+#         )
+#     else:
+#         user_already_invested = Decimal("0.00")
+
+#     user_total_investment = user_balance + user_already_invested
+
+#     user_contribution = user_already_invested
+#     sold_properties = Property.objects.filter(status="sold")
+#     total_profit = Decimal("0.00")
+#     for prop in sold_properties:
+#         if prop.selling_price and prop.buying_price:
+#             property_profit = prop.selling_price - (
+#                 prop.buying_price + (prop.service_cost or Decimal("0.00"))
+#             )
+#             total_profit += property_profit
+#     user_profit = (
+#         total_profit * (contribution_percentage / Decimal("100"))
+#         if total_profit > Decimal("0.00")
+#         else Decimal("0.00")
+#     )
+#     properties_data = []
+#     for i, prop in enumerate(
+#         purchased_properties, 0
+#     ):  # Limit to 2 properties as in the image
+#         if not prop.buying_price:
+#             continue
+
+#         total_cost = prop.buying_price + (prop.service_cost or Decimal("0.00"))
+
+#         profit_loss = (prop.selling_price or Decimal("0.00")) - total_cost
+
+#         property_data = {
+#             "id": prop.id,
+#             "title": prop.property_name,
+#             "number": i + 1,
+#             "bought": prop.buying_price,
+#             "repair_cost": prop.service_cost or Decimal("0.00"),
+#             "sold": prop.selling_price or Decimal("0.00"),
+#             "total": profit_loss,
+#         }
+#         properties_data.append(property_data)
+
+#     context = {
+#         "properties_bought": properties_bought,
+#         "properties_wishlist": properties_wishlist,
+#         "properties_sold": properties_sold,
+#         # Company-wide data
+#         "company_total_balance": initial_total_balance,
+#         "company_invested": total_invested,
+#         "company_repair_cost": total_repair_cost,
+#         "company_remaining": remaining_balance,
+#         # Current user data
+#         "user_total_investment": user_total_investment,
+#         "user_contribution": user_already_invested,  # This shows how much they've invested in properties
+#         "user_remaining": user_balance,  # This shows their remaining balance
+#         "user_contribution_percentage": round(contribution_percentage, 1),
+#         "user_profit": user_profit,
+#         # Properties data
+#         "properties_data": properties_data,
+#         # summary data
+#         "summary": summary,
+#     }
+
+#     if request.user.is_superuser:
+#         # Calculate total investment from all users
+#         total_investment = (
+#             User.objects.all().aggregate(Sum("balance"))["balance__sum"] or 0
+#         )
+#         context["total_balance"] = total_investment
+#     else:
+#         context["total_balance"] = request.user.balance
+
+#     return render(request, "dashboard.html", context)
 
 
 @login_required
