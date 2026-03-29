@@ -1637,14 +1637,19 @@ class Property(models.Model):
 #     ###test and comment end 25-03-2026###
 
 #test start
-    def distribute_sale_proceeds(self):
+    def distribute_sale_proceeds(self, force=False):
         """
         Distribute sale proceeds based on final profit_weight.
 
         Final weight logic:
         - Base: days_proportion × shares
         - Then optional buyer-level multiplier from PropertyProfitDistribution
+
+        IMPORTANT FIXES:
+        - Balance update is done ONCE PER USER, not per contribution row
+        - Re-distribution is blocked when is_contribution_locked=True unless force=True
         """
+        from collections import defaultdict
         from decimal import Decimal, ROUND_HALF_UP
         from django.db import transaction, models
 
@@ -1652,7 +1657,12 @@ class Property(models.Model):
         print(f"💵 GROUP-BASED PROFIT DISTRIBUTION FOR: {self.property_name}")
         print("=" * 100)
 
-        contributions = self.property_contributions.select_related("user").all().order_by(
+        # prevent duplicate distribution
+        if self.is_contribution_locked and not force:
+            print("⚠️ Distribution already completed for this property. Skipping duplicate run.")
+            return False
+
+        contributions = self.property_contributions.select_related("user", "user__user_group").all().order_by(
             "investment_date", "investment_sequence", "id"
         )
 
@@ -1678,85 +1688,91 @@ class Property(models.Model):
             print("\n⚠️  NO PROFIT - Returning investments only")
 
             with transaction.atomic():
+                user_totals = defaultdict(lambda: {
+                    "user": None,
+                    "return_amount": Decimal("0.00"),
+                    "profit": Decimal("0.00"),
+                    "deduction": Decimal("0.00"),
+                    "final_profit": Decimal("0.00"),
+                })
+
                 for contrib in contributions:
                     user = contrib.user
                     refund_amount = Decimal(str(contrib.contribution or 0))
-
-                    user.balance = Decimal(str(user.balance or 0)) + refund_amount
-                    user.save(update_fields=["balance"])
 
                     contrib.profit = Decimal("0.00")
                     contrib.deduction = Decimal("0.00")
                     contrib.final_profit = Decimal("0.00")
                     contrib.save(update_fields=["profit", "deduction", "final_profit"])
 
-                    print(
-                        f"  {user.get_full_name():20} | Refund: ${refund_amount:,.2f}"
+                    user_totals[user.id]["user"] = user
+                    user_totals[user.id]["return_amount"] += refund_amount
+
+                print("\n💰 UPDATING USER BALANCES:")
+                print("-" * 100)
+
+                for _, data in user_totals.items():
+                    user = data["user"]
+                    before_balance = Decimal(str(user.balance or 0))
+                    total_return = data["return_amount"]
+
+                    user.balance = (before_balance + total_return).quantize(
+                        Decimal("0.000001"), rounding=ROUND_HALF_UP
                     )
+                    user.save(update_fields=["balance"])
+
+                    print(f"  {user.get_full_name():20} | Before: ${before_balance:10.2f}")
+                    print(f"  {'':20} | Return: ${total_return:10.2f}")
+                    print(f"  {'':20} | After:  ${Decimal(str(user.balance or 0)):10.2f}\n")
 
                 self.is_contribution_locked = True
                 self.save(update_fields=["is_contribution_locked"])
 
+            print("✅ Investment returns completed!")
+            print("=" * 100)
             return True
 
         print("\n🔢 Calculating profit weights...")
         self.calculate_profit_weights()
 
-        # refresh queryset after weight calculation
-        contributions = self.property_contributions.select_related("user").all().order_by(
-            "investment_date", "investment_sequence", "id"
+        contributions_list = list(
+            self.property_contributions.select_related("user", "user__user_group")
+            .all()
+            .order_by("investment_date", "investment_sequence", "id")
         )
 
-        total_weight = contributions.aggregate(
-            total=models.Sum("profit_weight")
-        )["total"] or Decimal("0")
-
-        total_weight = Decimal(str(total_weight)).quantize(
-            Decimal("0.000001"),
-            rounding=ROUND_HALF_UP
-        )
+        total_weight = sum(Decimal(str(c.profit_weight or 0)) for c in contributions_list)
 
         print(f"  Total Weight: {total_weight:.6f}")
 
         if total_weight <= Decimal("0"):
-            print("❌ Total weight is zero!")
+            print("❌ Total weight is zero. Cannot distribute profit.")
             return False
 
-        total_distributed_profit = Decimal("0.00")
-        total_deduction = Decimal("0.00")
-        total_final_profit = Decimal("0.00")
-
-        print("\n💰 DISTRIBUTION DETAILS (PER CONTRIBUTION):")
-        print("-" * 120)
-        print(
-            f"{'Name':20} | {'Group':15} | {'Seq':3} | {'Investment':>12} | "
-            f"{'Weight':>10} | {'Profit':>12} | {'Deduct%':>8} | "
-            f"{'Deduction':>12} | {'Final':>12}"
-        )
-        print("-" * 120)
-
         with transaction.atomic():
-            contributions_list = list(contributions)
-            distributed_profit = Decimal("0.00")
+            total_distributed_profit = Decimal("0.00")
+            total_deduction = Decimal("0.00")
+            total_final_profit = Decimal("0.00")
 
-            for i, contrib in enumerate(contributions_list):
+            print("\n💰 DISTRIBUTION DETAILS (PER CONTRIBUTION):")
+            print("-" * 120)
+            print(
+                f"{'Name':20} | {'Group':15} | {'Seq':3} | "
+                f"{'Investment':>12} | {'Weight':>10} | {'Profit':>12} | "
+                f"{'Deduct%':>8} | {'Deduction':>11} | {'Final':>12}"
+            )
+            print("-" * 120)
+
+            for contrib in contributions_list:
                 user = contrib.user
                 investment_return = Decimal(str(contrib.contribution or 0))
 
-                # last row gets exact remaining to avoid rounding mismatch
-                if i == len(contributions_list) - 1:
-                    gross_profit = (total_profit - distributed_profit).quantize(
-                        Decimal("0.01"),
-                        rounding=ROUND_HALF_UP
-                    )
-                else:
-                    gross_profit = (
-                        total_profit * Decimal(str(contrib.profit_weight)) / total_weight
-                    ).quantize(
-                        Decimal("0.01"),
-                        rounding=ROUND_HALF_UP
-                    )
-                    distributed_profit += gross_profit
+                gross_profit = (
+                    total_profit * Decimal(str(contrib.profit_weight or 0)) / total_weight
+                ).quantize(
+                    Decimal("0.01"),
+                    rounding=ROUND_HALF_UP
+                )
 
                 deduction_percentage = Decimal("0.00")
                 group_name = "No Group"
@@ -1777,7 +1793,6 @@ class Property(models.Model):
                     rounding=ROUND_HALF_UP
                 )
 
-                # save to existing PropertyContribution fields
                 contrib.profit = gross_profit
                 contrib.deduction = deduction_amount
                 contrib.final_profit = final_profit
@@ -1816,23 +1831,23 @@ class Property(models.Model):
             office_manager = User.get_office_manager()
             office_cost, _ = OfficeCost.objects.get_or_create(id=1)
 
+            # IMPORTANT FIX: aggregate per user
+            user_totals = defaultdict(lambda: {
+                "user": None,
+                "return_amount": Decimal("0.00"),
+                "profit": Decimal("0.00"),
+                "deduction": Decimal("0.00"),
+                "final_profit": Decimal("0.00"),
+            })
+
             for contrib in contributions_list:
                 user = contrib.user
-                before_balance = Decimal(str(user.balance or 0))
-                return_amount = Decimal(str(contrib.contribution or 0))
-                final_profit = Decimal(str(contrib.final_profit or 0))
+                user_totals[user.id]["user"] = user
+                user_totals[user.id]["return_amount"] += Decimal(str(contrib.contribution or 0))
+                user_totals[user.id]["profit"] += Decimal(str(contrib.profit or 0))
+                user_totals[user.id]["deduction"] += Decimal(str(contrib.deduction or 0))
+                user_totals[user.id]["final_profit"] += Decimal(str(contrib.final_profit or 0))
 
-                user.balance = before_balance + return_amount + final_profit
-                user.save(update_fields=["balance"])
-
-                print(f"  {user.get_full_name():20} | Before: ${before_balance:10.2f}")
-                print(f"  {'':20} | Return: ${return_amount:10.2f}")
-                print(f"  {'':20} | Profit: ${Decimal(str(contrib.profit or 0)):10.2f}")
-                print(f"  {'':20} | Deduct: ${Decimal(str(contrib.deduction or 0)):10.2f}")
-                print(f"  {'':20} | Final:  ${final_profit:10.2f}")
-                print(f"  {'':20} | After:  ${Decimal(str(user.balance or 0)):10.2f}\n")
-
-                # optional deduction history
                 if Decimal(str(contrib.deduction or 0)) > 0:
                     DeductionHistory.objects.create(
                         property=self,
@@ -1845,17 +1860,44 @@ class Property(models.Model):
                         office_manager=office_manager if office_manager else None,
                     )
 
+            for _, data in user_totals.items():
+                user = data["user"]
+                before_balance = Decimal(str(user.balance or 0))
+                total_return = data["return_amount"]
+                total_profit_user = data["profit"]
+                total_deduction_user = data["deduction"]
+                total_final_profit_user = data["final_profit"]
+
+                user.balance = (
+                    before_balance + total_return + total_final_profit_user
+                ).quantize(
+                    Decimal("0.000001"),
+                    rounding=ROUND_HALF_UP
+                )
+                user.save(update_fields=["balance"])
+
+                print(f"  {user.get_full_name():20} | Before: ${before_balance:10.2f}")
+                print(f"  {'':20} | Return: ${total_return:10.2f}")
+                print(f"  {'':20} | Profit: ${total_profit_user:10.2f}")
+                print(f"  {'':20} | Deduct: ${total_deduction_user:10.2f}")
+                print(f"  {'':20} | Final:  ${total_final_profit_user:10.2f}")
+                print(f"  {'':20} | After:  ${Decimal(str(user.balance or 0)):10.2f}\n")
+
             print("🏢 OFFICE MANAGEMENT:")
             print("-" * 100)
             print(f"  Total Deductions Collected: ${total_deduction:.2f}")
 
             if total_deduction > 0:
                 if office_manager:
-                    office_manager.balance = Decimal(str(office_manager.balance or 0)) + total_deduction
+                    office_manager.balance = (
+                        Decimal(str(office_manager.balance or 0)) + total_deduction
+                    ).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
                     office_manager.save(update_fields=["balance"])
                     print(f"  ✅ Added to Office Manager: {office_manager.get_full_name()}")
                 else:
-                    office_cost.balance = Decimal(str(office_cost.balance or 0)) + total_deduction
+                    office_cost.balance = (
+                        Decimal(str(office_cost.balance or 0)) + total_deduction
+                    ).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
                     office_cost.save(update_fields=["balance"])
                     print("  ⚠️  No Office Manager - Adding to OfficeCost model")
             else:
