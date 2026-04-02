@@ -216,14 +216,42 @@
                       <div class="text-gray-500 text-sm">Selling Price</div>
                     </div>
                   {% endif %}
-                  {% if  property.status == "ready_to_sell"%}
-                    <!-- Auction Price -->
+                  <!-- {% if  property.status == "ready_to_sell"%}
+                    <!-- Auction Price
                       <div class="text-center">
                         <div class="text-xl font-bold text-black">
                           $ {{ property.asking_price|format_k|intcomma|default:"-" }}
                         </div>
                         <div class="text-gray-500 text-sm">Asking Price</div>
                       </div>
+
+                  {% endif %} -->
+                  {% if property.status == "ready_to_sell" %}
+                  <div class="text-center">
+                    <div class="text-xl font-bold text-black">
+                      {% if property.acquisition_cost %}
+                      $ {{ property.acquisition_cost|format_k|intcomma }}
+                      {% else %}
+                      -
+                      {% endif %}
+                    </div>
+                    <div class="text-gray-500 text-sm">Acquisition Price</div>
+                  </div>
+                  <div class="h-10 rounded w-1 bg-orange-500"></div>
+
+                  <div class="text-center">
+                    <div class="text-xl font-bold text-black">
+                      {% if property.asking_price %}
+                      $ {{ property.asking_price|format_k|intcomma }}
+                      {% else %}
+                      -
+                      {% endif %}
+                    </div>
+                    <div class="text-gray-500 text-sm">Asking Price</div>
+                  </div>
+                  
+                 
+                  
 
                   {% endif %}
                   
