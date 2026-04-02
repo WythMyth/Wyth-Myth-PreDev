@@ -1648,7 +1648,7 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
             print("\n💵 Property sold - distributing proceeds...")
             self.object.distribute_sale_proceeds()
         
-        elif old_status == "bought" and self.object.status not in ["bought", "sold"]:
+        elif old_status == "bought" and self.object.status not in ["bought", "ready_to_sell", "sold"]:
             print("\n↩️  Status changed - refunding contributions...")
             self.object.refund_all_contributions()
         

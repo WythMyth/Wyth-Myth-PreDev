@@ -1602,7 +1602,7 @@
       function calculateContributions() {
         const status = statusField.value;
         
-        if (status !== 'bought') {
+        if (!['bought', 'ready_to_sell'].includes(status)) {
           return;
         }
 
