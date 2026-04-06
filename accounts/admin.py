@@ -278,6 +278,12 @@ class PropertyAdmin(admin.ModelAdmin):
             f'Successfully recalculated profit distribution for {count} propert{"y" if count == 1 else "ies"}.'
         )
     recalculate_profit_distribution.short_description = "Recalculate profit distribution for sold properties"
+from decimal import Decimal
+
+from django.contrib import admin
+from .models import PropertyContribution, Property
+
+
 class PropertyNameFilter(admin.SimpleListFilter):
     title = 'Property'
     parameter_name = 'property'
@@ -292,16 +298,6 @@ class PropertyNameFilter(admin.SimpleListFilter):
         return queryset
 
 
-
-
-
-
-from decimal import Decimal
-
-from django.contrib import admin
-from .models import PropertyContribution
-
-
 @admin.register(PropertyContribution)
 class PropertyContributionAdmin(admin.ModelAdmin):
     list_display = [
@@ -309,22 +305,18 @@ class PropertyContributionAdmin(admin.ModelAdmin):
         'user_group_display',
         'property_display',
         'level_of_investment_display',
-        'amount_available_to_invest_display',
         'amount_invested_display',
-        'amount_remaining_display',
         'ratio',
         'fixed_or_proportion_display',
-        'profit_propotion_display',
         'investment_date',
-        'total_days',
-        'days_proportion',
-        'shares',
-        'profit_weight',
+        'tdi_display',
+        'dp_display',
+        'pp_display',
+        'ns_display',
+        'profit_weight_display',
         'profit_display',
         'deduction_display',
         'final_profit_display',
-        
-
     ]
 
     list_filter = [
@@ -418,7 +410,6 @@ class PropertyContributionAdmin(admin.ModelAdmin):
     def property_display(self, obj):
         return obj.property.property_name if obj.property else "-"
     property_display.short_description = 'Property'
-    # intentionally no admin_order_field => no sorting arrows
 
     def level_of_investment_display(self, obj):
         return obj.investment_sequence
@@ -430,39 +421,26 @@ class PropertyContributionAdmin(admin.ModelAdmin):
 
     def amount_invested_display(self, obj):
         return f"${Decimal(str(obj.contribution or 0)):,.2f}"
-    amount_invested_display.short_description = 'Amount Invested ($)'
+    amount_invested_display.short_description = 'Amount Invested (AI) [$]'
 
     def amount_remaining_display(self, obj):
         return f"${Decimal(str(obj.remaining or 0)):,.2f}"
     amount_remaining_display.short_description = 'Amount Remaining ($)'
 
-    def profit_display(self, obj):
-        return f"${Decimal(str(obj.profit or 0)):,.2f}"
-    profit_display.short_description = '100% Profit ($)'
-
-    def deduction_display(self, obj):
-        deduction_amount = Decimal(str(obj.deduction or 0))
-        deduction_percentage = Decimal('0.00')
-
-        if getattr(obj.user, 'user_group', None):
-            deduction_percentage = Decimal(str(obj.user.user_group.percentage or 0))
-
-        return f"${deduction_amount:,.2f} ({deduction_percentage}%)"
-    deduction_display.short_description = 'Deduction from Profit'
-
-    def final_profit_display(self, obj):
-        return f"${Decimal(str(obj.final_profit or 0)):,.2f}"
-    final_profit_display.short_description = 'Profit Received ($)'
-
     def fixed_or_proportion_display(self, obj):
         return 'F' if obj.is_fixed_amount else 'P'
     fixed_or_proportion_display.short_description = 'Amount Fixed/Propotion'
 
+    def tdi_display(self, obj):
+        return obj.total_days or 0
+    tdi_display.short_description = 'Total Days Invested (TDI)'
+
+    def dp_display(self, obj):
+        return f"{Decimal(str(obj.days_proportion or 0)):,.6f}"
+    dp_display.short_description = 'Days of Proportion (DP)'
+
     def profit_propotion_display(self, obj):
         """
-        Show only share value.
-
-        NOTE:
         Current model stores buyer level per user/property, not per contribution row.
         So if same user exists in both first and second buyer lists, we infer:
         - sequence 1 => first_level_share
@@ -490,20 +468,54 @@ class PropertyContributionAdmin(admin.ModelAdmin):
             return distribution.second_level_share
 
         return '-'
-    profit_propotion_display.short_description = 'Profit propotion'
+    profit_propotion_display.short_description = 'Profit Proportion (PP)'
+
+    def pp_display(self, obj):
+        return self.profit_propotion_display(obj)
+    pp_display.short_description = 'Profit Proportion (PP)'
+
+    def ns_display(self, obj):
+        return f"{Decimal(str(obj.shares or 0)):,.6f}"
+    ns_display.short_description = 'Number of Shares (NS)'
+
+    def profit_weight_display(self, obj):
+        return f"{Decimal(str(obj.profit_weight or 0)):,.6f}"
+    profit_weight_display.short_description = 'Profit Weight (DP × PP × NS)'
+
+    def profit_display(self, obj):
+        return f"${Decimal(str(obj.profit or 0)):,.2f}"
+    profit_display.short_description = 'Profit in dollar'
+
+    def deduction_display(self, obj):
+        deduction_amount = Decimal(str(obj.deduction or 0))
+        deduction_percentage = Decimal('0.00')
+
+        if getattr(obj.user, 'user_group', None):
+            deduction_percentage = Decimal(str(obj.user.user_group.percentage or 0))
+
+        return f"${deduction_amount:,.2f} ({deduction_percentage}%)"
+    deduction_display.short_description = 'Deduction from Profit'
+
+    def final_profit_display(self, obj):
+        return f"${Decimal(str(obj.final_profit or 0)):,.2f}"
+    final_profit_display.short_description = 'Total Profit Received ($)'
 
     def formfield_for_dbfield(self, db_field, request, **kwargs):
         formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
 
         custom_labels = {
             'invest_amount': 'Amount Available to Invest ($)',
-            'contribution': 'Amount Invested ($)',
+            'contribution': 'Amount Invested (AI) [$]',
             'remaining': 'Amount Remaining ($)',
-            'investment_sequence': 'Level of Investment',
+            'investment_sequence': 'Order of Investment',
             'profit': '100% Profit ($)',
             'deduction': 'Deduction from Profit',
             'final_profit': 'Profit Received ($)',
             'is_fixed_amount': 'Amount Fixed/Propotion',
+            'total_days': 'Total Days Invested (TDI)',
+            'days_proportion': 'Days Proportion(Divided by highest TDI) (DP)',
+            'shares': 'Number of Shares(AI/5000) (NS)',
+            'profit_weight': 'Profit Weight (DP × PP × NS)',
         }
 
         if db_field.name in custom_labels:

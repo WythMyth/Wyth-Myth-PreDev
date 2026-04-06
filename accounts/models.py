@@ -379,7 +379,7 @@ class SharePrice(models.Model):
         verbose_name_plural = "Share Price"
 
     def __str__(self):
-        return f"Per Share Price: {self.price_per_share} Tk"
+        return f"Per Share Price: {self.price_per_share} $"
 
     @classmethod
     def get_current_price(cls):
