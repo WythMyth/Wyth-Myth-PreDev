@@ -418,6 +418,124 @@
 
 </div>
 {% endif %} -->
+<div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 mb-6">
+
+  <!-- header -->
+  <div class="flex justify-between items-center mb-3">
+    <h2 class="text-lg font-bold text-[#183665]">
+      Investment Summary
+    </h2>
+
+    <div class="text-sm text-gray-600">
+      Properties: {{ overall_summary.total_properties }} |
+      Invested:
+      <span class="font-semibold text-blue-700">
+        ${{ overall_summary.overall_invested|floatformat:2 }}
+      </span> |
+      Profit:
+      <span class="font-semibold text-green-700">
+        ${{ overall_summary.overall_profit|floatformat:2 }}
+      </span>
+    </div>
+  </div>
+
+  <!-- table -->
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm border border-gray-200">
+
+      <thead class="bg-[#183665] text-white">
+        <tr>
+          <th class="px-3 py-2 text-left">Property</th>
+          <th class="px-3 py-2 text-left">Status</th>
+          <th class="px-3 py-2 text-right">Invested</th>
+          <th class="px-3 py-2 text-right">Profit</th>
+          <th class="px-3 py-2 text-center">Days</th>
+        </tr>
+      </thead>
+
+      <tbody class="divide-y">
+
+        {% for item in overall_summary.properties %}
+
+        <!-- property row -->
+        <tr class="bg-gray-50 font-medium">
+          <td class="px-3 py-2">
+            {{ item.property.property_name }}
+          </td>
+
+          <td class="px-3 py-2 text-xs">
+            {% if item.property.status == "sold" %}
+            <span class="text-green-700">Sold</span>
+            {% elif item.property.status == "ready_to_sell" %}
+            <span class="text-amber-600">Ready</span>
+            {% else %}
+            <span class="text-blue-700">{{ item.property.status }}</span>
+            {% endif %}
+          </td>
+
+          <td class="px-3 py-2 text-right">
+            ${{ item.total_invested|floatformat:2 }}
+          </td>
+
+          <td class="px-3 py-2 text-right text-green-700">
+            ${{ item.total_profit|floatformat:2 }}
+          </td>
+
+          <td class="px-3 py-2 text-center">
+            {{ item.total_days }}
+          </td>
+        </tr>
+
+        <!-- investment rows -->
+        {% for inv in item.investments %}
+        <tr class="text-gray-600 text-xs">
+          <td class="px-3 py-1 pl-6">
+            ↳ {{ inv.date|date:"M d, Y"|default:"N/A" }}
+          </td>
+
+          <td class="px-3 py-1">—</td>
+
+          <td class="px-3 py-1 text-right">
+            ${{ inv.amount|floatformat:2 }}
+          </td>
+
+          <td class="px-3 py-1 text-right">—</td>
+
+          <td class="px-3 py-1 text-center">
+            {{ inv.days }}d
+          </td>
+        </tr>
+        {% endfor %}
+
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center py-4 text-gray-500">
+            No data found
+          </td>
+        </tr>
+        {% endfor %}
+
+      </tbody>
+
+      <!-- footer -->
+      <tfoot class="bg-gray-100 font-semibold">
+        <tr>
+          <td colspan="2" class="px-3 py-2 text-right">
+            Total
+          </td>
+          <td class="px-3 py-2 text-right text-blue-700">
+            ${{ overall_summary.overall_invested|floatformat:2 }}
+          </td>
+          <td class="px-3 py-2 text-right text-green-700">
+            ${{ overall_summary.overall_profit|floatformat:2 }}
+          </td>
+          <td></td>
+        </tr>
+      </tfoot>
+
+    </table>
+  </div>
+</div>
 {% if sold_summary_cards or active_summary_cards %}
 <div class="p-4 md:p-8 space-y-8">
 

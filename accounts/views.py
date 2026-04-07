@@ -401,6 +401,82 @@ def build_user_property_summary_cards(user):
     active_cards = [item for item in summary_cards if not item["is_sold"]]
 
     return sold_cards, active_cards
+
+def build_user_overall_summary(user):
+    """
+    Overall summary across ALL properties for a user
+    """
+
+    contributions = (
+        PropertyContribution.objects
+        .filter(user=user, property__status__in=["bought", "ready_to_sell", "sold"])
+        .select_related("property")
+        .order_by("property_id", "investment_sequence", "investment_date")
+    )
+
+    today = date.today()
+
+    property_map = defaultdict(lambda: {
+        "property": None,
+        "total_invested": Decimal("0.00"),
+        "total_profit": Decimal("0.00"),
+        "total_days": 0,
+        "investments": []
+    })
+
+    # ===== LOOP =====
+    for contrib in contributions:
+        prop = contrib.property
+
+        invest_amount = _safe_decimal(contrib.contribution)
+        profit = _safe_decimal(contrib.final_profit)
+
+        # days calculation
+        if prop.status == "sold":
+            days = contrib.total_days or 0
+        else:
+            if contrib.investment_date:
+                days = max((today - contrib.investment_date).days, 0)
+            else:
+                days = 0
+
+        data = property_map[prop.id]
+        data["property"] = prop
+        data["total_invested"] += invest_amount
+        data["total_profit"] += profit
+        data["total_days"] += days
+
+        data["investments"].append({
+            "date": contrib.investment_date,
+            "amount": invest_amount,
+            "days": days,
+        })
+
+    # ===== FINAL LIST =====
+    property_summaries = []
+
+    overall_invested = Decimal("0.00")
+    overall_profit = Decimal("0.00")
+
+    for item in property_map.values():
+        overall_invested += item["total_invested"]
+        overall_profit += item["total_profit"]
+
+        property_summaries.append({
+            "property": item["property"],
+            "total_invested": item["total_invested"],
+            "total_profit": item["total_profit"],
+            "total_days": item["total_days"],
+            "investments": item["investments"],
+        })
+
+    return {
+        "total_properties": len(property_summaries),
+        "overall_invested": overall_invested,
+        "overall_profit": overall_profit,
+        "properties": property_summaries,
+    }
+
 @login_required
 def dashboard(request):
     summary = calculate_user_investment_summary(request.user)
@@ -497,6 +573,7 @@ def dashboard(request):
         properties_data.append(property_data)
 
     sold_summary_cards, active_summary_cards = build_user_property_summary_cards(request.user)
+    overall_summary = build_user_overall_summary(request.user)
 
     context = {
         "properties_bought": properties_bought,
@@ -520,6 +597,7 @@ def dashboard(request):
         # new
         "sold_summary_cards": sold_summary_cards,
         "active_summary_cards": active_summary_cards,
+        "overall_summary": overall_summary,
     }
 
     if request.user.is_superuser:
