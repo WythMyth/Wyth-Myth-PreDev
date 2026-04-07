@@ -413,7 +413,7 @@ class PropertyContributionAdmin(admin.ModelAdmin):
 
     def level_of_investment_display(self, obj):
         return obj.investment_sequence
-    level_of_investment_display.short_description = 'Level of Investment'
+    level_of_investment_display.short_description = 'Order of Investment'
 
     def amount_available_to_invest_display(self, obj):
         return f"${Decimal(str(obj.invest_amount or 0)):,.2f}"
