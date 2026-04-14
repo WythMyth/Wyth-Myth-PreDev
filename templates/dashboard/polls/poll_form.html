@@ -1,0 +1,370 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+{% block content %}
+{% load widget_tweaks %}
+
+<div class="max-w-full mx-auto bg-white rounded-lg shadow-md p-6">
+
+    <div class="flex flex-col sm:flex-row justify-center md:justify-between items-center gap-3 mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold">
+          {% if mode == "edit" %}Update Poll{% else %}Create Poll{% endif %}
+        </h2>
+    </div>
+
+    <hr class="border-gray-300 mb-5" />
+
+        <form method="post" id="poll-form" class="space-y-6">
+                {% csrf_token %}
+
+                <div>
+                        <label class="block text-base font-medium mb-2">Title</label>
+                        {% render_field form.title placeholder="Enter.." class='w-full border border-black rounded-md px-3 py-2' %}
+                </div>
+
+                <div>
+                        <label class="block text-base font-medium mb-2">Message Need To Be Send</label>
+                    {% render_field form.message_need_to_be_send placeholder="Enter.." class='w-full border border-black rounded-md px-3 py-2' %}
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                         <label class="block text-base font-medium mb-2">Start Date</label>
+                        {% render_field form.start_at type="datetime-local" class='w-full border border-black rounded-md px-3 py-2' %}
+                    </div>
+                    <div>
+                         <label class="block text-base font-medium mb-2">End Date</label>
+                        {% render_field form.end_at type="datetime-local" class='w-full border border-black rounded-md px-3 py-2' %}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-base font-medium mb-2">Status</label>
+                            {% render_field form.status class='w-full border border-black rounded-md px-3 py-2' %}
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium mb-2">Vote Visibility</label>
+                            {% render_field form.vote_visibility class='w-full border border-black rounded-md px-3 py-2' %}
+                        </div>
+                </div>
+
+
+                <!-- hidden real tags field -->
+                {{ form.tags }}
+
+                <!-- Tags dual list -->
+                  <div>
+                    <div class="grid grid-cols-1 md:grid-cols-11 gap-4">
+
+                        <!-- LEFT SIDE -->
+                        <div class="md:col-span-5">
+                            <h2 class="block text-base font-medium mb-2">Available Tag</h2>
+
+                            <div class="bg-white border border-black rounded-md h-[110px] overflow-y-auto">
+                                <ul id="available-tags" class="text-sm"></ul>
+                            </div>
+                        </div>
+
+                        <!-- CENTER BUTTONS -->
+                        <div class="md:col-span-1 flex flex-row md:flex-col justify-center items-center gap-2 mt-8 md:mt-[20px]">
+                            <button type="button" id="move-right"
+                                class="cursor-pointer w-8 h-8 flex items-center justify-center border border-black bg-white hover:bg-gray-50 rounded-md text-sm">
+                                →
+                            </button>
+
+                            <button type="button" id="move-left"
+                                class="cursor-pointer w-8 h-8 flex items-center justify-center border border-black bg-white hover:bg-gray-50 rounded-md text-sm">
+                                ←
+                            </button>
+                        </div>
+
+                        <!-- RIGHT SIDE -->
+                        <div class="md:col-span-5">
+                            <h2 class="block text-base font-medium mb-2">Chosen Tag</h2>
+
+                            <div class="bg-white border border-black rounded-md h-[110px] overflow-y-auto">
+                                <ul id="selected-tags" class="text-sm"></ul>
+                            </div>
+
+                            <p class="text-xs text-gray-600 mt-2">
+                                Before start date: restricted to selected tags. After start date: public.
+                            </p>
+                        </div>
+
+                    </div>
+                </div>
+
+                {{ form.payload }}
+
+                <div class="border rounded-xl p-5">
+                        <div class="flex items-center justify-between mb-2">
+                                <h2 class="font-medium text-[20px] text-black">Questions</h2>
+                        </div>
+                    <hr class="border-gray-300 mb-5" />
+
+                        <div id="questions-container" class="space-y-6"></div>
+                     <button type="button" id="add-question" class="cursor-pointer mt-4 text-lg bg-blue-900 text-white px-6 py-2 rounded-lg"> + Add Poll </button>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex flex-wrap justify-center gap-3 mt-8">
+                    <button type="submit" class="bg-blue-900 text-white px-6 py-2 rounded-lg transition cursor-pointer w-full md:w-64">
+                         {% if mode == "edit" %}Save Changes{% else %}Save Poll{% endif %}
+                    </button>
+                    <a href="{% url 'polls:list' %}" class="bg-gray-cancel-bg text-btn-primary-bg px-6 py-2 rounded-lg border border-gray-300 cursor-pointer transition w-full md:w-64 text-center">Cancel</a>
+                </div>
+
+        </form>
+</div>
+
+<script>
+        (function () {
+                const form = document.getElementById("poll-form");
+                const payloadInput = document.getElementById("id_payload");
+                const hiddenTagsSelect = document.getElementById("id_tags_hidden");
+
+                const availableUl = document.getElementById("available-tags");
+                const selectedUl = document.getElementById("selected-tags");
+                const moveRightBtn = document.getElementById("move-right");
+                const moveLeftBtn = document.getElementById("move-left");
+
+                // --- Tag dual list ---
+                const allTags = Array.from(hiddenTagsSelect.options).map(o => ({
+                        id: o.value,
+                        name: o.text,
+                        selected: o.selected
+                }));
+
+                function liHtml(tag, checked) {
+                        return `
+      <li class="flex items-center justify-between gap-3  rounded-lg px-3 py-2">
+        <label class="flex items-center gap-2 cursor-pointer w-full">
+          <input type="checkbox" class="tag-check h-4 w-4" data-id="${tag.id}" ${checked ? "checked" : ""}>
+          <span class="font-medium">${tag.name}</span>
+        </label>
+      </li>
+    `;
+                }
+
+                function renderTags() {
+                        availableUl.innerHTML = "";
+                        selectedUl.innerHTML = "";
+                        allTags.forEach(t => {
+                                if (t.selected) selectedUl.insertAdjacentHTML("beforeend", liHtml(t, false));
+                                else availableUl.insertAdjacentHTML("beforeend", liHtml(t, false));
+                        });
+                }
+
+                function getCheckedIds(container) {
+                        return Array.from(container.querySelectorAll(".tag-check:checked")).map(i => i.dataset.id);
+                }
+
+                moveRightBtn.addEventListener("click", () => {
+                        const ids = getCheckedIds(availableUl);
+                        allTags.forEach(t => { if (ids.includes(t.id)) t.selected = true; });
+                        renderTags();
+                });
+
+                moveLeftBtn.addEventListener("click", () => {
+                        const ids = getCheckedIds(selectedUl);
+                        allTags.forEach(t => { if (ids.includes(t.id)) t.selected = false; });
+                        renderTags();
+                });
+
+                // --- Questions builder ---
+                const questionsContainer = document.getElementById("questions-container");
+                const addQuestionBtn = document.getElementById("add-question");
+
+                function optionRowHtml(val = "") {
+                        const safe = (val || "").replaceAll('"', '&quot;');
+                        return `
+                        <div class="option-row grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 items-end bg-white p-4 rounded-lg border border-black">
+                      <!-- Option -->
+                      <div class="lg:col-span-1">
+                        <label class="block text-sm font-medium mb-2">Option</label>
+                        <input type="number"
+                               class="opt-order w-full border border-black rounded-md px-3 py-2"
+                               min="1"
+                               value="1">
+                      </div>
+
+                      <!-- Name -->
+                      <div class="lg:col-span-10">
+                        <label class="block text-sm font-medium mb-2">Name</label>
+                        <input type="text"
+                               class="opt-label w-full border border-black rounded-md px-3 py-2"
+                               placeholder="Enter..."
+                               value="${safe}">
+                      </div>
+
+                      <!-- Action -->
+                      <div class="lg:col-span-1 flex flex-col sm:flex-row lg:flex-col sm:items-end lg:items-center">
+                        <label class="block text-sm font-medium mb-2 lg:text-center">Action</label>
+                        <button type="button"
+                                class=" bg-transparent text-btn-primary-bg border border-black cursor-pointer transition rounded-md w-10 h-10 flex items-center justify-center">
+                          <img class="delete-option w-5"
+                               src="{% static 'images/delete_icon_1.jpeg' %}"
+                               title="Delete"
+                               alt="Delete">
+                        </button>
+                      </div>
+
+                    </div>
+
+    `;
+                }
+
+                function questionBlockHtml(data = null) {
+                        const title = (data?.title || "").replaceAll('"', '&quot;');
+                        const type = (data?.type || "single");
+                        const allowOther = !!data?.allow_other;
+                        const options = Array.isArray(data?.options) ? data.options : ["", ""];
+
+                        const optHtml = options.map((o, index) => optionRowHtml(o).replace('value="1"', `value="${index + 1}"`)).join("");
+
+                        return `
+      <div class="question-block rounded-xl bg-white">
+      <div class="flex gap-4  justify-between">
+
+      <!-- Question Title -->
+      <div class="w-full">
+        <label class="block text-sm font-medium mb-2">Question Title</label>
+        <input type="text"
+               class="q-title w-full border border-black rounded-md px-3 py-2"
+               placeholder="Enter..."
+               value="${title}">
+      </div>
+
+      <!-- Action -->
+      <div class="flex flex-col  sm:items-center lg:items-center gap-2">
+        <label class="block text-sm font-medium lg:text-center">Action</label>
+        <button type="button"
+                class=" bg-transparent text-btn-primary-bg border border-black cursor-pointer transition rounded-md w-10 h-10 flex items-center justify-center">
+          <img class="delete-question w-5"
+               src="{% static 'images/delete_icon_1.jpeg' %}"
+               title="Delete"
+               alt="Delete">
+        </button>
+      </div>
+
+    </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-1 gap-5 mt-4">
+          <div>
+            <div class="flex flex-col sm:flex-row gap-[10px] items-center mb-[10px] sm:mb-0">
+                <label class="block text-base font-medium mb-2">Question Type</label>
+                <div >
+                    <label class="inline-flex items-center gap-2">
+                      <input type="checkbox" class="q-allow-other h-4 w-4" ${allowOther ? "checked" : ""}>
+                      <span class="text-sm font-semibold text-gray-700">Allow Other Option</span>
+                    </label>
+                </div>
+            </div>
+
+            <select class="q-type w-full border border-black rounded-md px-3 py-2">
+              <option value="single" ${type === "single" ? "selected" : ""}>Single Selection (Radio)</option>
+              <option value="multi" ${type === "multi" ? "selected" : ""}>Multiple Selection (Checkbox)</option>
+            </select>
+          </div>
+
+
+        </div>
+
+        <div class="mt-4 border border-black rounded-xl p-4 ">
+          <div class="flex flex-col sm:flex-row items-center justify-between">
+            <h3 class="font-medium text-[20px] text-black">Options</h3>
+          </div>
+          <hr class="border-gray-300 mb-5 mt-2" />
+
+          <div class="options-container space-y-3 mt-3">
+            ${optHtml}
+          </div>
+            <button type="button" class="add-option mt-4 rounded-lg cursor-pointer bg-gray-cancel-bg sm:text-lg text-btn-primary-bg px-6 py-2">
+              + Add Option
+            </button>
+        </div>
+      </div>
+    `;
+                }
+
+                function addQuestion(data = null) {
+                        const wrap = document.createElement("div");
+                        wrap.innerHTML = questionBlockHtml(data);
+                        questionsContainer.appendChild(wrap.firstElementChild);
+                }
+
+                function reorderOptions(qb) {
+                    const rows = qb.querySelectorAll(".option-row");
+                    rows.forEach((row, index) => {
+                        const orderInput = row.querySelector(".opt-order");
+                        orderInput.value = index + 1;
+                    });
+                }
+
+                addQuestionBtn.addEventListener("click", () => addQuestion(null));
+
+                questionsContainer.addEventListener("click", (e) => {
+                        const qb = e.target.closest(".question-block");
+                        if (!qb) return;
+
+                        if (e.target.classList.contains("delete-question")) {
+                                qb.remove();
+                                return;
+                        }
+
+                            if (e.target.classList.contains("add-option")) {
+                                const oc = qb.querySelector(".options-container");
+
+                                const tmp = document.createElement("div");
+                                tmp.innerHTML = optionRowHtml("");
+
+                                const newRow = tmp.firstElementChild;
+                                oc.appendChild(newRow);
+
+                                reorderOptions(qb);
+
+                                return;
+                            }
+
+                        if (e.target.classList.contains("delete-option")) {
+                        e.target.closest(".option-row").remove();
+
+                        reorderOptions(qb);
+
+                        return;
+}
+                });
+
+                function buildPayload() {
+                        const blocks = Array.from(document.querySelectorAll(".question-block"));
+                        const questions = blocks.map((qb, idx) => {
+                                const title = (qb.querySelector(".q-title")?.value || "").trim();
+                                const type = qb.querySelector(".q-type")?.value || "single";
+                                const allowOther = qb.querySelector(".q-allow-other")?.checked || false;
+
+                                const options = Array.from(qb.querySelectorAll(".opt-label"))
+                                        .map(i => (i.value || "").trim())
+                                        .filter(Boolean);
+
+                                return { title, type, allow_other: allowOther, options, order: idx + 1 };
+                        });
+                        return JSON.stringify({ questions });
+                }
+
+                const initialPayload = JSON.parse('{{ existing_payload_json|escapejs }}');
+                if (initialPayload?.questions?.length) initialPayload.questions.forEach(q => addQuestion(q));
+                else addQuestion(null);
+
+                renderTags();
+
+                form.addEventListener("submit", () => {
+                        const selectedIds = allTags.filter(t => t.selected).map(t => t.id);
+                        for (const opt of hiddenTagsSelect.options) {
+                                opt.selected = selectedIds.includes(opt.value);
+                        }
+                        payloadInput.value = buildPayload();
+                });
+        })();
+</script>
+
+{% endblock %}

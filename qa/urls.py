@@ -24,5 +24,6 @@ urlpatterns = [
     path('', include('hfallmedia.urls')),
     path('', include('schedule.urls')),
     path('', include('accounts.urls', namespace='accounts')),
+     path("", include("poll.urls", namespace="polls")),
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

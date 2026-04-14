@@ -1,0 +1,172 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+{% block content %}
+
+<div class="max-w-full mx-auto bg-white rounded-lg shadow-sm p-6">
+  <div class="flex flex-col sm:flex-row justify-center md:justify-between items-center gap-3 mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold">
+          Poll Result
+        </h2>
+      </div>
+
+      <hr class="border[.5px] border-border-black/70 mb-5" />
+      <p class="text-[20px] text-black/70 ">Total Response User <span class="ml-2 bg-btn-primary-bg text-white rounded-[10px] py-[5px] px-5">{{ total_responses }}</span></p>
+       <p class="text-[24px] text-black font-semibold mt-[10px] mb-5">Call For Nomination of Executive Committee Members.</p>
+        <hr class="border[.5px] border-border-black/70 mb-5" />
+        <div class="mt-6 space-y-6">
+                {% for item in result %}
+                <div>
+                        <div class="flex items-center justify-between gap-4">
+                                <h2 class="text-lg font-bold">Q. {{ item.question.title }}</h2>
+                        </div>
+
+                        <div class="mt-4 space-y-3">
+                                {% for c in item.choices %}
+                                <div class="">
+                                        <div class="flex items-center justify-between">
+                                                <div class="text-[18px] text-black-/70 ">Option {{ forloop.counter }}: {{ c.label }}</div>
+                                        </div>
+                                </div>
+                                {% endfor %}
+                                {% for oi in item.other_items %}
+                                <div class="">
+                                        <div class="flex items-center justify-between">
+                                                <div class="text-[18px] text-black-/70 ">Other Option {{ oi.option_num }}: {{ oi.text }}</div>
+                                        </div>
+                                </div>
+                                {% endfor %}
+
+                        <!-- for circle print -->
+                            <div class="flex flex-wrap gap-6 items-center mt-[10px]">
+
+                                {% for c in item.choices %}
+                                    <div class="flex flex-col items-center">
+
+                                        <!-- Circle -->
+                                        <div class="relative w-20 h-20 rounded-full flex items-center justify-center {% if item.show_voters and c.voters %}cursor-pointer hover:opacity-80 transition poll-circle{% endif %}"
+                                             style="background: conic-gradient(#CE9524 {{ c.percent }}%, #FAF4E9 {{ c.percent }}%);"
+                                             {% if item.show_voters and c.voters %}
+                                             data-voters="{{ c.voters_json }}"
+                                             data-option-label="{{ c.label }}"
+                                             {% endif %}>
+
+                                            <!-- Inner white circle -->
+                                            <div class="w-14 h-14 bg-white rounded-full flex items-center justify-center">
+                                                <span class="text-[14px] text-black">
+                                                    {{ c.percent }}%
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Label -->
+                                        <div class="mt-2 text-[14px] text-black font-medium">
+                                            Option {{ forloop.counter }}
+                                        </div>
+
+                                    </div>
+                                {% endfor %}
+
+                                {% for oi in item.other_items %}
+                                    <div class="flex flex-col items-center">
+                                        <div class="relative w-20 h-20 rounded-full flex items-center justify-center {% if item.show_voters %}cursor-pointer hover:opacity-80 transition poll-circle{% endif %}"
+                                             style="background: conic-gradient(#CE9524 {{ oi.percent }}%, #FAF4E9 {{ oi.percent }}%);"
+                                             {% if item.show_voters %}
+                                             data-voters="{{ oi.voters_json }}"
+                                             data-option-label="{{ oi.text }}"
+                                             {% endif %}>
+                                            <div class="w-14 h-14 bg-white rounded-full flex items-center justify-center">
+                                                <span class="text-[14px] text-black">{{ oi.percent }}%</span>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2 text-[14px] text-black font-medium">Other Option {{ oi.option_num }}</div>
+                                    </div>
+                                {% endfor %}
+
+                            </div>
+
+                        </div>
+                </div>
+                {% endfor %}
+        </div>
+</div>
+
+<!-- Voters Modal -->
+<div id="votersModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between p-4 border-b flex-shrink-0">
+            <h3 class="text-xl font-bold">Voters for <span id="modalOptionLabel"></span></h3>
+            <button onclick="closeVotersModal()" class="text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div class="p-4 overflow-y-auto flex-1">
+            <div id="votersList" class="space-y-2">
+                <!-- Voters will be inserted here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Attach click handlers to circle indicators with voters data
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.poll-circle[data-voters]').forEach(function(element) {
+        element.addEventListener('click', function() {
+            const votersJson = this.getAttribute('data-voters');
+            const optionLabel = this.getAttribute('data-option-label');
+            try {
+                const voters = JSON.parse(votersJson);
+                openVotersModal(optionLabel, voters);
+            } catch (e) {
+                console.error('Failed to parse voters data:', e);
+            }
+        });
+    });
+});
+
+function openVotersModal(optionLabel, voters) {
+    const modal = document.getElementById('votersModal');
+    const labelEl = document.getElementById('modalOptionLabel');
+    const votersListEl = document.getElementById('votersList');
+    
+    labelEl.textContent = optionLabel;
+    
+    // Clear previous voters
+    votersListEl.innerHTML = '';
+    
+    // Add voters
+    if (voters && voters.length > 0) {
+        voters.forEach((voter, index) => {
+            const voterDiv = document.createElement('div');
+            voterDiv.className = 'flex items-center gap-3 p-3 bg-gray-50 rounded-lg';
+            voterDiv.innerHTML = `
+                <div class="flex-shrink-0 w-8 h-8 bg-blue-900 text-white rounded-full flex items-center justify-center font-semibold">
+                    ${index + 1}
+                </div>
+                <div class="flex-1 text-gray-800">${voter}</div>
+            `;
+            votersListEl.appendChild(voterDiv);
+        });
+    } else {
+        votersListEl.innerHTML = '<p class="text-gray-500 text-center py-4">No voters yet</p>';
+    }
+    
+    modal.classList.remove('hidden');
+}
+
+function closeVotersModal() {
+    const modal = document.getElementById('votersModal');
+    modal.classList.add('hidden');
+}
+
+// Close modal when clicking outside
+document.getElementById('votersModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeVotersModal();
+    }
+});
+</script>
+
+{% endblock %}
