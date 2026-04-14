@@ -1,0 +1,60 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load widget_tweaks %}
+
+{% block title %}
+{% if form.instance.pk %}Edit Tag{% else %}Create Tag{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="bg-white m-5 rounded-lg p-4">
+
+    <h1 class="text-2xl font-bold">
+        {% if form.instance.pk %}Edit Tag{% else %}Create New Tag{% endif %}
+    </h1>
+
+    <hr class="my-4 border-gray-300">
+
+    <form method="POST" class="max-w-full mx-auto space-y-6">
+        {% csrf_token %}
+
+        <!-- Fields -->
+        <div class="grid grid-cols-2 gap-4">
+
+            <!-- Tag Name -->
+            <div>
+                <label class="block font-medium mb-1">Tag Name</label>
+                {% render_field form.name class="w-full border border-black rounded-md px-3 py-2" %}
+                {% if form.name.errors %}
+                    <p class="text-sm text-red-600 mt-1">{{ form.name.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Display Order -->
+            <div>
+                <label class="block font-medium mb-1">Display Order</label>
+                {% render_field form.order class="w-full border border-black rounded-md px-3 py-2" %}
+                {% if form.order.errors %}
+                    <p class="text-sm text-red-600 mt-1">{{ form.order.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex justify-center space-x-4 mt-6">
+
+            <button type="submit"
+                    class="px-6 py-2 bg-[#183665] text-white rounded-md">
+                {% if form.instance.pk %}Update Tag{% else %}Create Tag{% endif %}
+            </button>
+
+            <a href="{% url 'tag_list' %}"
+               class="px-6 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">
+                Cancel
+            </a>
+
+        </div>
+
+    </form>
+</div>
+{% endblock %}

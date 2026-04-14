@@ -242,6 +242,31 @@
                         {% endif %}
                     </div>
                 </div>
+                 <!-- Settings Dropdown -->
+                {% if request.user.is_superuser %}
+                    <div class="w-full">
+                        <!-- Dropdown Toggle -->
+                        <button data-toggle="dropdown-11" type="button"
+                            class="w-full flex items-center justify-between px-4 py-2 text-gray-700 bg-white rounded-lg hover:bg-gray-100 transition">
+                            <span class="flex items-center truncate">
+                                <i class="fas fa-handshake mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Settings</span>
+                            </span>
+                            <svg class="w-4 h-4 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+    
+                        <!-- Dropdown Content -->
+                        <div id="dropdown-11" class="mt-2 hidden ml-6 space-y-1">
+                            <a href="{% url 'tag_list' %}"
+                            class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'user_agreement_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-file-signature mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Tag List</span>
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
                 <!-- Admin Only Links -->
                 {% if request.user.is_superuser %}
                     <a href="{% url 'accounts:create_announcement' %}"

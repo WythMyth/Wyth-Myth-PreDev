@@ -1,5 +1,5 @@
 from django import forms
-from .models import MeetingSchedule, ClassRecording
+from .models import MeetingSchedule, ClassRecording, Tag
 
 class MeetingForm(forms.ModelForm):
     class Meta:
@@ -22,3 +22,13 @@ class RecordingForm(forms.ModelForm):
     class Meta:
         model = ClassRecording
         fields = ['meeting', 'recording_url', 'description']
+
+
+# -------------------- Tag --------------------
+class TagForm(forms.ModelForm):
+    class Meta:
+        model = Tag
+        fields = [
+            "name",
+            "order",
+        ]

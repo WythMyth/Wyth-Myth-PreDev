@@ -101,3 +101,11 @@ class ClassRecording(AbstractField):
         if meeting is False:
             self.meeting.is_expired = True
         return super().save()
+
+
+class Tag(models.Model):
+    name = models.CharField(max_length=80, unique=True)
+    order = models.PositiveIntegerField(default=0)
+
+    def __str__(self) -> str:
+        return self.name

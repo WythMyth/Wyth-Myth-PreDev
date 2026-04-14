@@ -1,0 +1,41 @@
+{% load static %}
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="fixed inset-0 hidden items-center justify-center bg-black/50 z-50">
+  <div class="relative bg-white text-center rounded-lg shadow p-6 w-[90%] max-w-md">
+
+    <!-- Close Button -->
+    <button onclick="closeDeleteModal()"
+      class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold">
+      &times;
+    </button>
+
+    <!-- Icon -->
+    <div class="flex justify-center mb-4">
+      <img class="w-16 h-16" src="{% static 'images/modal_img.png' %}" alt="">
+    </div>
+
+    <!-- Text -->
+    <h3 class="text-xl font-semibold text-gray-800 mb-2">Are you sure?</h3>
+    <p class="text-gray-600 mb-6">
+      You want to delete this {{ item_name|default:"item" }}?
+    </p>
+
+    <!-- Buttons -->
+    <div class="flex justify-center gap-4">
+
+      <!-- Confirm -->
+      <button id="confirmDeleteBtn"
+        class="px-6 py-2 bg-[#183665] text-white rounded-md hover:bg-blue-700 transition">
+        Yes, Delete
+      </button>
+
+      <!-- Cancel -->
+      <button onclick="closeDeleteModal()"
+        class="px-6 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition">
+        Cancel
+      </button>
+
+    </div>
+  </div>
+</div>

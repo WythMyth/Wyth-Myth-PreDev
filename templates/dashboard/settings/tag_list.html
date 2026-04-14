@@ -1,0 +1,186 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+
+{% block title %}Tags{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6 mt-5 mx-4">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+        <h1 class="text-2xl font-bold text-gray-800">Tags</h1>
+
+        <a href="{% url 'tag_add' %}" 
+           class="bg-[#183665] hover:bg-blue-700 text-white px-4 py-2 rounded font-bold">
+           Add Tag
+        </a>
+    </div>
+
+    <hr class="mb-5 px-5 border-gray-200">
+
+    <!-- Table -->
+    {% if tags %}
+        <div class="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+            <table class="min-w-[800px] w-full text-left text-sm">
+                
+                <thead class="bg-gray-100 font-semibold">
+                    <tr>
+                        <th class="p-2 text-center">No.</th>
+                        <th class="p-2 text-center">Name</th>
+                        <th class="p-2 text-center">Display Order</th>
+                        <th class="p-2 text-center">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for tag in tags %}
+                    <tr class="hover:bg-gray-50">
+                        
+                        <td class="p-2 border-2 border-gray-100 text-center">
+                            {{ forloop.counter }}
+                        </td>
+
+                        <td class="p-2 border-2 border-gray-100 text-center">
+                            {{ tag.name }}
+                        </td>
+
+                        <td class="p-2 border-2 border-gray-100 text-center">
+                            {{ tag.order }}
+                        </td>
+
+                        <td class="p-2 border-2 border-gray-100 text-center">
+                            <div class="flex justify-center gap-2 items-center">
+
+                                <!-- Edit -->
+                                <a href="{% url 'tag_edit' tag.id %}" title="Edit">
+                                    <img class="w-5" src="{% static 'images/edit.png' %}" alt="Edit">
+                                </a>
+
+                                <!-- Delete -->
+                                <button class="delete-event" data-id="{{ tag.id }}" title="Delete">
+                                    <img class="w-5" src="{% static 'images/delete.png' %}" alt="Delete">
+                                </button>
+
+                            </div>
+                        </td>
+
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+    {% else %}
+        <div class="text-center py-8 text-gray-600">
+            <p>No tags added yet.</p>
+            <a href="{% url 'tag_add' %}" class="text-blue-600 hover:underline mt-2 inline-block">
+                Create your first tag
+            </a>
+        </div>
+    {% endif %}
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+        <div class="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mt-4 gap-2">
+            <p class="text-sm text-gray-500">
+                Showing {{ page_obj.start_index }} – {{ page_obj.end_index }} of {{ paginator.count }} results
+            </p>
+
+            <div class="flex gap-2">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}"
+                       class="px-2 py-1 border rounded hover:bg-gray-100">
+                        ← Previous
+                    </a>
+                {% else %}
+                    <span class="px-2 py-1 border rounded text-gray-400">
+                        ← Previous
+                    </span>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                        <span class="px-2 py-1 border rounded bg-[#183665] text-white">
+                            {{ num }}
+                        </span>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <a href="?page={{ num }}"
+                           class="px-2 py-1 border rounded hover:bg-gray-100">
+                            {{ num }}
+                        </a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}"
+                       class="px-2 py-1 border rounded hover:bg-gray-100">
+                        Next →
+                    </a>
+                {% else %}
+                    <span class="px-2 py-1 border rounded text-gray-400">
+                        Next →
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+
+{% include "dashboard/delete_modal.html" with item_name="Tag" %}
+{% endblock %}
+
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+let deleteId = null;
+
+function openDeleteModal(id) {
+    deleteId = id;
+    $('#deleteModal').removeClass('hidden').addClass('flex');
+}
+
+function closeDeleteModal() {
+    deleteId = null;
+    $('#deleteModal').removeClass('flex').addClass('hidden');
+}
+
+$(document).ready(function () {
+
+    $('.delete-event').click(function () {
+        const id = $(this).data('id');
+        openDeleteModal(id);
+    });
+
+    $('#confirmDeleteBtn').click(function () {
+        if (!deleteId) return;
+
+        $.ajax({
+            url: "{% url 'tag_delete' 0 %}".replace('0', deleteId),
+            type: 'DELETE',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            success: function (response) {
+                if (response.success) {
+                    closeDeleteModal();
+                    location.reload();
+                } else {
+                    alert('Failed to delete.');
+                }
+            },
+            error: function () {
+                alert('An error occurred.');
+            }
+        });
+    });
+
+    $(document).click(function (e) {
+        if ($(e.target).is('#deleteModal')) {
+            closeDeleteModal();
+        }
+    });
+
+});
+</script>
+{% endblock %}

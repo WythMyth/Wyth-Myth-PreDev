@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.timezone import now
 from django.views import View
@@ -27,8 +27,8 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from accounts.models import User
 
-from .forms import MeetingForm, RecordingForm
-from .models import ClassRecording, MeetingSchedule
+from .forms import MeetingForm, RecordingForm, TagForm
+from .models import ClassRecording, MeetingSchedule, Tag
 
 
 # Meeting Views
@@ -685,3 +685,39 @@ class CalendarView(LoginRequiredMixin, View):
 
         return render(request, self.template_name, context)
 
+
+# -------------------- Tag --------------------
+
+class TagListView(LoginRequiredMixin,ListView):
+    model = Tag
+    template_name = "dashboard/settings/tag_list.html"
+    context_object_name = "tags"
+    paginate_by = 50
+    ordering = [
+        "order",
+    ]
+    
+
+
+class TagCreateView(LoginRequiredMixin,CreateView):
+    model = Tag
+    form_class = TagForm
+    template_name = "dashboard/settings/tag_form.html"
+    success_url = reverse_lazy("tag_list")
+    def form_invalid(self, form):
+        print(form.errors)
+        return super().form_invalid(form)
+
+
+class TagUpdateView(LoginRequiredMixin,UpdateView):
+    model = Tag
+    form_class = TagForm
+    template_name = "dashboard/settings/tag_form.html"
+    success_url = reverse_lazy("tag_list")
+
+
+class TagDeleteView(LoginRequiredMixin,View):
+    def delete(self, request, *args, **kwargs):
+        tag = get_object_or_404(Tag, pk=kwargs["pk"])
+        tag.delete()
+        return JsonResponse({"success": True})
