@@ -90,7 +90,7 @@
                             </a>
 
                          
-
+                            
 
                             <!-- Office Management Payments (Only for Office Manager) -->
                             {% if request.user.office_management %}
@@ -173,6 +173,51 @@
                                 <i class="fas fa-money-bill-wave mr-3 w-4 flex-shrink-0"></i> 
                                 <span class="truncate">Members Expenses PayBack</span>
                             </a>
+                        </div>
+                    </div>
+                {% endif %}
+                <!--committee -->
+                {% if request.user.is_superuser %}
+                    <div class="w-full">
+                        <!-- Dropdown Toggle -->
+                        <button data-toggle="dropdown-105" type="button"
+                            class="w-full flex items-center justify-between px-4 py-2 text-gray-700 bg-white rounded-lg hover:bg-gray-100 transition">
+                            <span class="flex items-center truncate">
+                                <i class="fa-solid fa-users-rectangle mr-2 w-4"></i> 
+                                <span class="truncate">Hfall Committee</span>
+                            </span>
+                            <svg class="w-4 h-4 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+
+                        <!-- Dropdown Content -->
+                        <div id="dropdown-105" class="mt-2 hidden ml-6 space-y-1">
+                            <!-- Committee Name -->
+                            <a href="{% url 'committee:committee_name_list' %}"
+                                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'committee_name_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fa-solid fa-plus mr-2 w-4"></i>
+                                <span class="truncate">Committee Name</span>
+                            </a>
+                            <!-- Committee year -->
+                            <a href="{% url 'committee:committee_year_list' %}"
+                                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'committee_year_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fa-solid fa-plus mr-2 w-4"></i>
+                                <span class="truncate">Committee Duration</span>
+                            </a>
+                            <!-- Member's Title -->
+                            <a href="{% url 'committee:committee_title_list' %}"
+                                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'committee_title_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fa-solid fa-plus mr-2 w-4"></i>
+                                <span class="truncate">Member's Title</span>
+                            </a>
+                            <!-- Member List -->
+                            <a href="{% url 'committee:executive_committee_list' %}"
+                                class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'executive_committee_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fa-solid fa-plus mr-2 w-4"></i>
+                                <span class="truncate">Member List</span>
+                            </a>
+                            
                         </div>
                     </div>
                 {% endif %}

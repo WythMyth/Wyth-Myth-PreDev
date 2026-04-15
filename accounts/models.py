@@ -161,6 +161,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_finnancial = models.BooleanField(default=False, verbose_name='Is Finnancial')
     is_property = models.BooleanField(default=False, verbose_name='Is Property')
     is_continue = models.BooleanField(default=True, verbose_name='Is Continue')
+    is_committee = models.BooleanField(default=False, verbose_name='Is Committee')
     office_management = models.BooleanField(
         default=False, 
         verbose_name='Office Management',
