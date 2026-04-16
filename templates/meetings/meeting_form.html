@@ -9,112 +9,380 @@
     </h1>
     <hr class="my-4 border-gray-300">
 
-    <form method="post" class="max-w-full mx-auto space-y-6">
+    <form id="meeting-form" method="post" class="max-w-full mx-auto space-y-6">
         {% csrf_token %}
 
         <!-- Title & Meeting URL -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label for="{{ form.title.id_for_label }}" class="block font-medium mb-1">Title</label>
+                <label class="block font-medium mb-1">Title</label>
                 <input type="text" name="{{ form.title.name }}" id="{{ form.title.id_for_label }}"
                        value="{{ form.title.value|default:'' }}"
                        class="w-full border border-black rounded-md px-3 py-2">
-                {% if form.title.errors %}
-                    <p class="text-sm text-red-600 mt-1">{{ form.title.errors.0 }}</p>
-                {% endif %}
+                {% if form.title.errors %}<p class="text-sm text-red-600 mt-1">{{ form.title.errors.0 }}</p>{% endif %}
             </div>
             <div>
-                <label for="{{ form.meeting_url.id_for_label }}" class="block font-medium mb-1">Meeting URL</label>
+                <label class="block font-medium mb-1">Meeting URL</label>
                 <input type="url" name="{{ form.meeting_url.name }}" id="{{ form.meeting_url.id_for_label }}"
                        value="{{ form.meeting_url.value|default:'' }}"
                        class="w-full border border-black rounded-md px-3 py-2">
-                {% if form.meeting_url.errors %}
-                    <p class="text-sm text-red-600 mt-1">{{ form.meeting_url.errors.0 }}</p>
-                {% endif %}
+                {% if form.meeting_url.errors %}<p class="text-sm text-red-600 mt-1">{{ form.meeting_url.errors.0 }}</p>{% endif %}
             </div>
         </div>
 
         <!-- Date & Password -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label for="{{ form.date.id_for_label }}" class="block font-medium mb-1">Date</label>
+                <label class="block font-medium mb-1">Date</label>
                 <input type="date" name="{{ form.date.name }}" id="{{ form.date.id_for_label }}"
                        value="{{ form.date.value|date:'Y-m-d'|default:'' }}"
                        class="w-full border border-black rounded-md px-3 py-2">
-                {% if form.date.errors %}
-                    <p class="text-sm text-red-600 mt-1">{{ form.date.errors.0 }}</p>
-                {% endif %}
+                {% if form.date.errors %}<p class="text-sm text-red-600 mt-1">{{ form.date.errors.0 }}</p>{% endif %}
             </div>
             <div>
-                <label for="{{ form.password.id_for_label }}" class="block font-medium mb-1">Password <span class="text-xs">(Optional)</span></label>
+                <label class="block font-medium mb-1">Password <span class="text-xs text-gray-500">(Optional)</span></label>
                 <input type="text" name="{{ form.password.name }}" id="{{ form.password.id_for_label }}"
                        value="{{ form.password.value|default:'' }}"
                        class="w-full border border-black rounded-md px-3 py-2">
-                {% if form.password.errors %}
-                    <p class="text-sm text-red-600 mt-1">{{ form.password.errors.0 }}</p>
-                {% endif %}
+                {% if form.password.errors %}<p class="text-sm text-red-600 mt-1">{{ form.password.errors.0 }}</p>{% endif %}
             </div>
         </div>
 
         <!-- Start Time & End Time -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label for="{{ form.start_time.id_for_label }}" class="block font-medium mb-1">Start Time</label>
+                <label class="block font-medium mb-1">Start Time</label>
                 <input type="time" name="{{ form.start_time.name }}" id="{{ form.start_time.id_for_label }}"
                        value="{% if form.start_time.value %}{{ form.start_time.value|time:'H:i' }}{% endif %}"
-                       step="60"
-                       class="w-full border border-black rounded-md px-3 py-2">
-                {% if form.start_time.errors %}
-                    <p class="text-sm text-red-600 mt-1">{{ form.start_time.errors.0 }}</p>
-                {% endif %}
+                       step="60" class="w-full border border-black rounded-md px-3 py-2">
+                {% if form.start_time.errors %}<p class="text-sm text-red-600 mt-1">{{ form.start_time.errors.0 }}</p>{% endif %}
             </div>
             <div>
-                <label for="{{ form.end_time.id_for_label }}" class="block font-medium mb-1">End Time <span class="text-xs">(Optional)</span></label>
+                <label class="block font-medium mb-1">End Time <span class="text-xs text-gray-500">(Optional)</span></label>
                 <input type="time" name="{{ form.end_time.name }}" id="{{ form.end_time.id_for_label }}"
                        value="{% if form.end_time.value %}{{ form.end_time.value|time:'H:i' }}{% endif %}"
-                       step="60"
-                       class="w-full border border-black rounded-md px-3 py-2">
-                {% if form.end_time.errors %}
-                    <p class="text-sm text-red-600 mt-1">{{ form.end_time.errors.0 }}</p>
-                {% endif %}
+                       step="60" class="w-full border border-black rounded-md px-3 py-2">
+                {% if form.end_time.errors %}<p class="text-sm text-red-600 mt-1">{{ form.end_time.errors.0 }}</p>{% endif %}
             </div>
         </div>
-
-        <!-- Enable SMS -->
-       {% comment %} <div class="flex items-center">
-            <input type="checkbox" name="{{ form.is_sms.name }}" id="{{ form.is_sms.id_for_label }}"
-                   {% if form.is_sms.value %}checked{% endif %}
-                   class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-            <label for="{{ form.is_sms.id_for_label }}" class="ml-2 font-medium">Enable SMS Notification</label>
-            {% if form.is_sms.errors %}
-                <p class="text-sm text-red-600 mt-1">{{ form.is_sms.errors.0 }}</p>
-            {% endif %}
-        </div> {% endcomment %}
 
         <!-- Description -->
         <div>
-            <label for="{{ form.description.id_for_label }}" class="block font-medium mb-1">Description <span class="text-xs">(Optional)</span></label>
+            <label class="block font-medium mb-1">Description <span class="text-xs text-gray-500">(Optional)</span></label>
             <textarea name="{{ form.description.name }}" id="{{ form.description.id_for_label }}" rows="3"
-                      class="w-full border  border-black rounded-md px-3 py-2">{{ form.description.value|default:'' }}</textarea>
-            {% if form.description.errors %}
-                <p class="text-sm text-red-600 mt-1">{{ form.description.errors.0 }}</p>
-            {% endif %}
+                      class="w-full border border-black rounded-md px-3 py-2">{{ form.description.value|default:'' }}</textarea>
+            {% if form.description.errors %}<p class="text-sm text-red-600 mt-1">{{ form.description.errors.0 }}</p>{% endif %}
+        </div>
+
+        <!-- RECURRING MEETING SECTION -->
+        <div class="border rounded-lg p-4">
+            <div class="flex items-center gap-2">
+                <input type="checkbox" name="{{ form.is_recurring.name }}" id="id_is_recurring"
+                       {% if form.is_recurring.value %}checked{% endif %}>
+                <label for="id_is_recurring" class="font-medium cursor-pointer">Recurring Meeting</label>
+            </div>
+
+            {# inline style – নো JavaScript dependency on initial render #}
+            <div id="recurring-section" class="mt-4 space-y-4"
+                 style="display:{% if form.is_recurring.value %}block{% else %}none{% endif %}">
+
+                <!-- Type + Interval -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-medium mb-1">Recurrence Type</label>
+                        <select name="{{ form.recurrence_type.name }}" id="id_recurrence_type"
+                                class="w-full border border-black rounded-md px-3 py-2">
+                            {% for val, label in form.recurrence_type.field.choices %}
+                                <option value="{{ val }}" {% if form.recurrence_type.value == val %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.recurrence_type.errors %}<p class="text-sm text-red-600 mt-1">{{ form.recurrence_type.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label class="block font-medium mb-1">Every (interval)</label>
+                        <input type="number" name="{{ form.interval.name }}" id="id_interval" min="1"
+                               value="{{ form.interval.value|default:'1' }}"
+                               class="w-full border border-black rounded-md px-3 py-2">
+                        {% if form.interval.errors %}<p class="text-sm text-red-600 mt-1">{{ form.interval.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+
+                <!-- Weekly days -->
+                <div id="weekly-days"
+                     style="display:{% if form.recurrence_type.value == 'weekly' %}block{% else %}none{% endif %}">
+                    <label class="block font-medium mb-2">On (days)</label>
+                    <div class="flex flex-wrap gap-3">
+                        {% for checkbox in form.days_of_week %}
+                            <label class="flex items-center gap-2 border rounded px-3 py-1 cursor-pointer">
+                                {{ checkbox.tag }}<span>{{ checkbox.choice_label }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                    {% if form.days_of_week.errors %}<p class="text-sm text-red-600 mt-1">{{ form.days_of_week.errors.0 }}</p>{% endif %}
+                </div>
+
+                <!-- Monthly options -->
+                <div id="monthly-options" class="border-t pt-4"
+                     style="display:{% if form.recurrence_type.value == 'monthly' %}block{% else %}none{% endif %}">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-medium mb-1">Monthly Mode</label>
+                            <select name="{{ form.monthly_mode.name }}" id="id_monthly_mode"
+                                    class="w-full border border-black rounded-md px-3 py-2">
+                                {% for val, lbl in form.monthly_mode.field.choices %}
+                                    <option value="{{ val }}" {% if form.monthly_mode.value == val %}selected{% endif %}>{{ lbl }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.monthly_mode.errors %}<p class="text-sm text-red-600 mt-1">{{ form.monthly_mode.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div id="monthly-day"
+                             style="display:{% if form.monthly_mode.value == 'day_of_month' %}block{% else %}none{% endif %}">
+                            <label class="block font-medium mb-1">Day of Month (1-31)</label>
+                            <input type="number" name="{{ form.monthly_day_of_month.name }}" min="1" max="31"
+                                   value="{{ form.monthly_day_of_month.value|default:'' }}"
+                                   class="w-full border border-black rounded-md px-3 py-2">
+                            {% if form.monthly_day_of_month.errors %}<p class="text-sm text-red-600 mt-1">{{ form.monthly_day_of_month.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div id="monthly-nth"
+                             style="display:{% if form.monthly_mode.value == 'nth_weekday' %}block{% else %}none{% endif %}">
+                            <label class="block font-medium mb-1">Nth</label>
+                            <select name="{{ form.monthly_nth.name }}" id="id_monthly_nth"
+                                    class="w-full border border-black rounded-md px-3 py-2">
+                                {% for val, lbl in form.monthly_nth.field.choices %}
+                                    <option value="{{ val }}" {% if form.monthly_nth.value|stringformat:"s" == val|stringformat:"s" %}selected{% endif %}>{{ lbl }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.monthly_nth.errors %}<p class="text-sm text-red-600 mt-1">{{ form.monthly_nth.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div id="monthly-weekday"
+                             style="display:{% if form.monthly_mode.value == 'nth_weekday' %}block{% else %}none{% endif %}">
+                            <label class="block font-medium mb-1">Weekday</label>
+                            <select name="{{ form.monthly_weekday.name }}" id="id_monthly_weekday"
+                                    class="w-full border border-black rounded-md px-3 py-2">
+                                {% for val, lbl in form.monthly_weekday.field.choices %}
+                                    <option value="{{ val }}" {% if form.monthly_weekday.value|stringformat:"s" == val|stringformat:"s" %}selected{% endif %}>{{ lbl }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.monthly_weekday.errors %}<p class="text-sm text-red-600 mt-1">{{ form.monthly_weekday.errors.0 }}</p>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Yearly options -->
+                <div id="yearly-options" class="border-t pt-4"
+                     style="display:{% if form.recurrence_type.value == 'yearly' %}block{% else %}none{% endif %}">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-medium mb-1">Month</label>
+                            <select name="{{ form.yearly_month.name }}" id="id_yearly_month"
+                                    class="w-full border border-black rounded-md px-3 py-2">
+                                {% for val, lbl in form.yearly_month.field.choices %}
+                                    <option value="{{ val }}" {% if form.yearly_month.value|stringformat:"s" == val|stringformat:"s" %}selected{% endif %}>{{ lbl }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.yearly_month.errors %}<p class="text-sm text-red-600 mt-1">{{ form.yearly_month.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label class="block font-medium mb-1">Yearly Mode</label>
+                            <select name="{{ form.yearly_mode.name }}" id="id_yearly_mode"
+                                    class="w-full border border-black rounded-md px-3 py-2">
+                                {% for val, lbl in form.yearly_mode.field.choices %}
+                                    <option value="{{ val }}" {% if form.yearly_mode.value == val %}selected{% endif %}>{{ lbl }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.yearly_mode.errors %}<p class="text-sm text-red-600 mt-1">{{ form.yearly_mode.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div id="yearly-day"
+                             style="display:{% if form.yearly_mode.value == 'day_of_month' %}block{% else %}none{% endif %}">
+                            <label class="block font-medium mb-1">Day of Month (1-31)</label>
+                            <input type="number" name="{{ form.yearly_day_of_month.name }}" min="1" max="31"
+                                   value="{{ form.yearly_day_of_month.value|default:'' }}"
+                                   class="w-full border border-black rounded-md px-3 py-2">
+                            {% if form.yearly_day_of_month.errors %}<p class="text-sm text-red-600 mt-1">{{ form.yearly_day_of_month.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div id="yearly-nth"
+                             style="display:{% if form.yearly_mode.value == 'nth_weekday' %}block{% else %}none{% endif %}">
+                            <label class="block font-medium mb-1">Nth</label>
+                            <select name="{{ form.yearly_nth.name }}" id="id_yearly_nth"
+                                    class="w-full border border-black rounded-md px-3 py-2">
+                                {% for val, lbl in form.yearly_nth.field.choices %}
+                                    <option value="{{ val }}" {% if form.yearly_nth.value|stringformat:"s" == val|stringformat:"s" %}selected{% endif %}>{{ lbl }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.yearly_nth.errors %}<p class="text-sm text-red-600 mt-1">{{ form.yearly_nth.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div id="yearly-weekday"
+                             style="display:{% if form.yearly_mode.value == 'nth_weekday' %}block{% else %}none{% endif %}">
+                            <label class="block font-medium mb-1">Weekday</label>
+                            <select name="{{ form.yearly_weekday.name }}" id="id_yearly_weekday"
+                                    class="w-full border border-black rounded-md px-3 py-2">
+                                {% for val, lbl in form.yearly_weekday.field.choices %}
+                                    <option value="{{ val }}" {% if form.yearly_weekday.value|stringformat:"s" == val|stringformat:"s" %}selected{% endif %}>{{ lbl }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.yearly_weekday.errors %}<p class="text-sm text-red-600 mt-1">{{ form.yearly_weekday.errors.0 }}</p>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- End mode -->
+                <div class="border-t pt-4">
+                    <label class="block font-medium mb-2">End</label>
+                    <div class="flex flex-wrap gap-6 mb-3">
+                        {% for radio in form.end_mode %}
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                {{ radio.tag }}<span>{{ radio.choice_label }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                    {% if form.end_mode.errors %}<p class="text-sm text-red-600 mb-2">{{ form.end_mode.errors.0 }}</p>{% endif %}
+
+                    <div id="end-on-date"
+                         style="display:{% if form.end_mode.value == 'on' %}block{% else %}none{% endif %}">
+                        <label class="block font-medium mb-1">End On Date</label>
+                        <input type="date" name="{{ form.end_on_date.name }}"
+                               value="{{ form.end_on_date.value|date:'Y-m-d'|default:'' }}"
+                               class="w-full md:w-64 border border-black rounded-md px-3 py-2">
+                        {% if form.end_on_date.errors %}<p class="text-sm text-red-600 mt-1">{{ form.end_on_date.errors.0 }}</p>{% endif %}
+                    </div>
+
+                    <div id="end-after"
+                         style="display:{% if form.end_mode.value == 'after' %}block{% else %}none{% endif %}">
+                        <label class="block font-medium mb-1">End After (occurrences)</label>
+                        <input type="number" name="{{ form.end_after_occurrences.name }}" min="1"
+                               value="{{ form.end_after_occurrences.value|default:'' }}"
+                               class="w-full md:w-64 border border-black rounded-md px-3 py-2">
+                        {% if form.end_after_occurrences.errors %}<p class="text-sm text-red-600 mt-1">{{ form.end_after_occurrences.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+
+            </div><!-- /recurring-section -->
+        </div>
+
+        <!-- EMAIL NOTIFICATION SECTION -->
+        <div class="border rounded-lg p-4 space-y-3">
+            <h2 class="font-semibold text-gray-800">Email Notifications</h2>
+            <div class="flex items-center gap-2">
+                <input type="checkbox"
+                       name="{{ form.enable_all_email_notification.name }}"
+                       id="id_enable_all_email_notification"
+                       {% if form.enable_all_email_notification.value %}checked{% endif %}>
+                <label for="id_enable_all_email_notification" class="font-medium cursor-pointer">
+                    Enable Email Notifications
+                </label>
+            </div>
+
+            <div id="notice-options" class="flex flex-wrap gap-3"
+                 style="display:{% if form.enable_all_email_notification.value %}flex{% else %}none{% endif %}">
+                <label class="inline-flex items-center gap-2 border rounded px-3 py-1 cursor-pointer">
+                    <input type="checkbox" name="{{ form.notice_3_weeks.name }}"
+                           {% if form.notice_3_weeks.value %}checked{% endif %}>
+                    <span>3 Week Notice</span>
+                </label>
+                <label class="inline-flex items-center gap-2 border rounded px-3 py-1 cursor-pointer">
+                    <input type="checkbox" name="{{ form.notice_2_weeks.name }}"
+                           {% if form.notice_2_weeks.value %}checked{% endif %}>
+                    <span>2 Week Notice</span>
+                </label>
+                <label class="inline-flex items-center gap-2 border rounded px-3 py-1 cursor-pointer">
+                    <input type="checkbox" name="{{ form.notice_1_week.name }}"
+                           {% if form.notice_1_week.value %}checked{% endif %}>
+                    <span>1 Week Notice</span>
+                </label>
+                <label class="inline-flex items-center gap-2 border rounded px-3 py-1 cursor-pointer">
+                    <input type="checkbox" name="{{ form.notice_1_day.name }}"
+                           {% if form.notice_1_day.value %}checked{% endif %}>
+                    <span>1 Day Notice</span>
+                </label>
+                <label class="inline-flex items-center gap-2 border rounded px-3 py-1 cursor-pointer">
+                    <input type="checkbox" name="{{ form.notice_10_min.name }}"
+                           {% if form.notice_10_min.value %}checked{% endif %}>
+                    <span>10 Minute Notice</span>
+                </label>
+            </div>
         </div>
 
         <!-- Buttons -->
-        <div class="p-6 bg-white rounded-lg shadow-md mx-auto">
-            <div class="flex justify-center space-x-4 mt-6">
-                <button type="submit"
-                        class="px-6 py-2 bg-[#183665] text-white rounded-md transition">
-                    {% if form.instance.pk %}Update{% else %}Create Meeting{% endif %}
-                </button>
-                <a href="{% url 'meeting-list' %}"
-                   class="px-6 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition">
-                    Cancel
-                </a>
-                
-            </div>
+        <div class="flex justify-center gap-4 mt-6">
+            <button type="submit" class="px-6 py-2 bg-[#183665] text-white rounded-md transition">
+                {% if form.instance.pk %}Update{% else %}Create Meeting{% endif %}
+            </button>
+            <a href="{% url 'meeting-list' %}"
+               class="px-6 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition">
+                Cancel
+            </a>
         </div>
     </form>
 </div>
+
+{# Script inside {% block content %} — runs after DOM is painted, no timing issues #}
+<script>
+(function () {
+    var recurringCb      = document.getElementById("id_is_recurring");
+    var recurringSection = document.getElementById("recurring-section");
+    var typeSelect       = document.getElementById("id_recurrence_type");
+    var weeklyDays       = document.getElementById("weekly-days");
+    var monthlyOptions   = document.getElementById("monthly-options");
+    var yearlyOptions    = document.getElementById("yearly-options");
+    var monthlyMode      = document.getElementById("id_monthly_mode");
+    var monthlyDay       = document.getElementById("monthly-day");
+    var monthlyNth       = document.getElementById("monthly-nth");
+    var monthlyWeekday   = document.getElementById("monthly-weekday");
+    var yearlyMode       = document.getElementById("id_yearly_mode");
+    var yearlyDay        = document.getElementById("yearly-day");
+    var yearlyNth        = document.getElementById("yearly-nth");
+    var yearlyWeekday    = document.getElementById("yearly-weekday");
+    var endOnBox         = document.getElementById("end-on-date");
+    var endAfterBox      = document.getElementById("end-after");
+    var masterCb         = document.getElementById("id_enable_all_email_notification");
+    var noticeOptions    = document.getElementById("notice-options");
+
+    function show(el)     { if (el) el.style.display = "block"; }
+    function showFlex(el) { if (el) el.style.display = "flex";  }
+    function hide(el)     { if (el) el.style.display = "none";  }
+
+    function toggleRecurring() {
+        recurringCb.checked ? show(recurringSection) : hide(recurringSection);
+    }
+    function handleType() {
+        hide(weeklyDays); hide(monthlyOptions); hide(yearlyOptions);
+        var v = typeSelect ? typeSelect.value : "";
+        if (v === "weekly")  show(weeklyDays);
+        if (v === "monthly") { show(monthlyOptions); handleMonthlyMode(); }
+        if (v === "yearly")  { show(yearlyOptions);  handleYearlyMode(); }
+    }
+    function handleMonthlyMode() {
+        hide(monthlyDay); hide(monthlyNth); hide(monthlyWeekday);
+        var v = monthlyMode ? monthlyMode.value : "";
+        if (v === "day_of_month") show(monthlyDay);
+        if (v === "nth_weekday")  { show(monthlyNth); show(monthlyWeekday); }
+    }
+    function handleYearlyMode() {
+        hide(yearlyDay); hide(yearlyNth); hide(yearlyWeekday);
+        var v = yearlyMode ? yearlyMode.value : "";
+        if (v === "day_of_month") show(yearlyDay);
+        if (v === "nth_weekday")  { show(yearlyNth); show(yearlyWeekday); }
+    }
+    function handleEndMode() {
+        hide(endOnBox); hide(endAfterBox);
+        var checked = document.querySelector('input[name="end_mode"]:checked');
+        if (!checked) return;
+        if (checked.value === "on")    show(endOnBox);
+        if (checked.value === "after") show(endAfterBox);
+    }
+    function toggleNotice() {
+        masterCb && masterCb.checked ? showFlex(noticeOptions) : hide(noticeOptions);
+    }
+
+    recurringCb.addEventListener("change", toggleRecurring);
+    if (typeSelect)  typeSelect.addEventListener("change", handleType);
+    if (monthlyMode) monthlyMode.addEventListener("change", handleMonthlyMode);
+    if (yearlyMode)  yearlyMode.addEventListener("change", handleYearlyMode);
+    document.querySelectorAll('input[name="end_mode"]').forEach(function(r) {
+        r.addEventListener("change", handleEndMode);
+    });
+    if (masterCb) masterCb.addEventListener("change", toggleNotice);
+}());
+</script>
+
 {% endblock %}

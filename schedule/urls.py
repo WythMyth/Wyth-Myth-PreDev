@@ -1,6 +1,7 @@
 from django.urls import path
 
-from schedule import views
+from . import views
+
 
 urlpatterns = [
     path("meetings/", views.MeetingListView.as_view(), name="meeting-list"),
@@ -18,9 +19,7 @@ urlpatterns = [
         views.MeetingDeleteView.as_view(),
         name="meeting-delete",
     ),
-    path(
-        "meeting/<int:pk>/copy/", views.MeetingCopyView.as_view(), name="meeting-copy"
-    ),
+    path("meeting/<int:pk>/copy/", views.MeetingCopyView.as_view(), name="meeting-copy"),
     path("recordings/", views.RecordingListView.as_view(), name="recording-list"),
     path(
         "recordings/<int:pk>/",
@@ -49,7 +48,7 @@ urlpatterns = [
         name="download-meeting-template",
     ),
     path("calendar/", views.CalendarView.as_view(), name="calendar"),
-    #====================tags======================
+    # ====================tags======================
     path(
         "dashboard/tag/",
         views.TagListView.as_view(),
