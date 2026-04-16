@@ -1,0 +1,100 @@
+{% extends 'dashboard/layout/dashboardLayout.html' %}
+{% block content %}
+  {% if poll_ended %}
+    <!-- Poll Ended Modal (auto-opens) -->
+    <div id="pollEndedModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-8 text-center">
+        <div class="flex justify-center mb-4">
+          <span class="text-5xl">🔒</span>
+        </div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Poll Closed</h2>
+        <p class="text-gray-500 mb-1 text-sm">"{{ poll.title }}"</p>
+        <p class="text-gray-500 mb-6 text-sm">This poll has ended and is no longer accepting responses.</p>
+        {% if poll.end_at %}
+          <p class="text-xs text-gray-400 mb-6">Closed on {{ poll.end_at }}</p>
+        {% endif %}
+        <a href="{% url 'polls:list' %}" class="inline-block bg-blue-900 text-white px-6 py-2 rounded-lg font-medium transition">Back to Polls</a>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="max-w-full mx-auto bg-white rounded-lg shadow-sm p-6">
+    <div class="flex flex-col sm:flex-row justify-center md:justify-between items-center gap-3 mb-4">
+      <h2 class="text-2xl md:text-3xl font-bold">Submit Poll</h2>
+    </div>
+
+    <hr class="border[.5px] border-border-black mb-5" />
+
+    {# <h1 class="text-2xl font-bold">{{ poll.title }}</h1> #}
+    {# <p class="text-gray-600 mt-2">{{ poll.message_need_to_be_send }}</p> #}
+
+    {% if not poll_ended %}
+      <form method="post" class="mt-6 space-y-6">
+        {% csrf_token %}
+
+        {% for q in questions %}
+          <div>
+            <h2 class="text-lg font-bold mb-3">{{ forloop.counter }}. {{ q.title }}</h2>
+
+            <div class="space-y-2">
+              {% if q.qtype == 'single' %}
+                {% for c in q.choices.all %}
+                  <label class="flex items-center gap-3 bg-white border p-3 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input type="radio" name="q_{{ q.id }}_choice" value="{{ c.id }}" class="h-4 w-4" />
+                    <span class="font-medium">{{ c.label }}</span>
+                  </label>
+                {% endfor %}
+              {% else %}
+                {% for c in q.choices.all %}
+                  <div class="flex items-center gap-3">
+                    <input type="checkbox" name="q_{{ q.id }}_choice" value="{{ c.id }}" class="h-4 w-4" />
+                    <label class="flex-1 items-center gap-3 bg-white border p-3 rounded-lg cursor-pointer hover:bg-gray-50"><span class="font-medium">{{ c.label }}</span></label>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            </div>
+
+            {% if q.allow_other %}
+              <div class="mt-4">
+                <div class="flex items-center gap-3">
+                  <input type="checkbox" id="other_check_{{ q.id }}" name="q_{{ q.id }}_use_other" value="1" class="h-4 w-4" />
+
+                  <label class="flex-1 bg-white border p-3 rounded-lg cursor-pointer hover:bg-gray-50"><span class="font-semibold">Other</span></label>
+                </div>
+
+                <!-- Hidden by default -->
+                <div id="other_input_{{ q.id }}" class="pl-7 hidden">
+                  <input type="text" name="q_{{ q.id }}_other_text" class="mt-3 w-full rounded-lg border px-3 py-2" placeholder="Type your answer..." />
+                </div>
+              </div>
+
+            {% endif %}
+          </div>
+        {% endfor %}
+
+        <div class="flex flex-wrap justify-center gap-3 mt-8">
+          <button type="submit" class="bg-blue-900 text-white px-6 py-2 rounded-lg transition cursor-pointer w-full md:w-64">Submit</button>
+          <a href="{% url 'polls:list' %}" class="bg-gray-cancel-bg text-btn-primary-bg px-6 py-2 rounded-lg border border-gray-300 cursor-pointer transition w-full md:w-64 text-center">Cancel</a>
+        </div>
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}
+{% block scripts %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll("input[type='checkbox'][id^='other_check_']").forEach(function (checkbox) {
+        checkbox.addEventListener('change', function () {
+          const id = this.id.replace('other_check_', '')
+          const inputDiv = document.getElementById('other_input_' + id)
+    
+          if (this.checked) {
+            inputDiv.classList.remove('hidden')
+          } else {
+            inputDiv.classList.add('hidden')
+          }
+        })
+      })
+    })
+  </script>
+{% endblock %}

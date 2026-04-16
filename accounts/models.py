@@ -152,6 +152,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     member_since = models.DateTimeField(verbose_name='Member Since', auto_now_add=True)
     balance = models.DecimalField(max_digits=100, decimal_places=6, default=0.00, verbose_name='Balance')
     total_invest_balance = models.DecimalField(max_digits=100, decimal_places=6, default=0.00, verbose_name='Invest Balance')
+
+    tags = models.ManyToManyField("schedule.Tag", blank=True, related_name="users")
     
     is_active = models.BooleanField(default=True, verbose_name='Is Active')
     is_agree = models.BooleanField(default=False, verbose_name='Is Agree')
@@ -159,6 +161,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_finnancial = models.BooleanField(default=False, verbose_name='Is Finnancial')
     is_property = models.BooleanField(default=False, verbose_name='Is Property')
     is_continue = models.BooleanField(default=True, verbose_name='Is Continue')
+    is_committee = models.BooleanField(default=False, verbose_name='Is Committee')
     office_management = models.BooleanField(
         default=False, 
         verbose_name='Office Management',

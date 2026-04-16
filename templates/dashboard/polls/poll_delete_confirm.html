@@ -1,0 +1,22 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% block content %}
+<div class="max-w-xl mx-auto bg-white rounded-lg shadow-sm p-6">
+        <h1 class="text-2xl font-bold text-red-700">Delete Poll</h1>
+        <p class="mt-3 text-gray-700">
+                Are you sure you want to delete: <span class="font-semibold">{{ poll.title }}</span> ?
+        </p>
+        <p class="mt-2 text-sm text-gray-600">
+                This will remove questions, choices, responses, and votes.
+        </p>
+        <form method="post" class="mt-6 flex gap-3">
+                {% csrf_token %}
+                <button class="px-6 py-3 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700">
+                        Yes, Delete
+                </button>
+                <a href="{% url 'polls:list' %}" class="px-6 py-3 rounded-lg border bg-gray-100 hover:bg-gray-200">
+                        Cancel
+                </a>
+        </form>
+</div>
+
+{% endblock %}

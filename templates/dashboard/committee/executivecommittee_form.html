@@ -1,0 +1,180 @@
+{% extends 'dashboard/layout/dashboardLayout.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block css %}
+  <!-- Choices.js CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+  <style>
+    /* Custom styling for Choices.js to match input fields */
+    .choices {
+      margin-bottom: 0;
+    }
+    .choices__inner {
+      border: 1px solid #000000;
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      min-height: 41px;
+      height: 41px;
+      background-color: #fff;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      font-size: 1rem;
+      line-height: 1.5rem;
+    }
+    .choices__inner:focus-within {
+      border-color: var(--color-primary, #183665);
+      outline: none;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
+    .choices__input {
+      background-color: transparent;
+      padding: 0;
+      margin-bottom: 0;
+      font-size: 1rem;
+    }
+    .choices__list--single .choices__item {
+      padding: 0;
+    }
+    .choices__list--dropdown {
+      border: 1px solid rgb(209, 213, 219);
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      margin-top: 4px;
+    }
+    .choices__list--dropdown .choices__item--selectable.is-highlighted {
+      background-color: #f3f4f6;
+    }
+    .choices__placeholder {
+      opacity: 0.6;
+    }
+    /* Click / focus state */
+    .choices.is-focused .choices__inner,
+    .choices.is-open .choices__inner {
+      border-color: #00000026;
+      border-radius: 10px;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="space-y-5 md:space-y-8 max-w-full mx-auto rounded-lg">
+    <!-- content -->
+    <div class="bg-white p-5 rounded-lg">
+      <div class="flex flex-col sm:flex-row justify-center md:justify-between items-center gap-3 mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold">
+          {% if form.instance.pk %}
+            Update
+          {% else %}
+            Add
+          {% endif %}Member
+        </h2>
+      </div>
+
+      <hr class="border[.5px] border-border-black mb-5" />
+
+      <div>
+        <form method="POST" class="space-y-5">
+          {% csrf_token %}
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-base font-medium mb-2">Name</label>
+              {% render_field form.user class='w-full' id='userSelect' %}
+            </div>
+            <div>
+              <label class="block text-base font-medium mb-2">Committee Name</label>
+              {% render_field form.committee class='w-full' id='committeeSelect' %}
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-base font-medium mb-2">Title</label>
+              {% render_field form.position id='titleSelect' class='w-full border border-black rounded-lg px-3 py-2' %}
+            </div>
+            <div>
+              <label class="block text-base font-medium mb-2">Years</label>
+              {% render_field form.executive_year class='w-full border border-black rounded-lg px-3 py-2' %}
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex flex-wrap justify-center gap-3 mt-8">
+            <button type="submit" class="bg-[#183665] hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition cursor-pointer w-full md:w-64">
+              {% if form.instance.pk %}
+                Update Member
+              {% else %}
+                Add Member
+              {% endif %}
+            </button>
+            <a href="{% url 'committee:executive_committee_list' %}" class="bg-gray-100 text-[#183665] px-6 py-2 rounded-lg border border-gray-300 cursor-pointer transition w-full md:w-64 text-center">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <!-- Choices.js Library -->
+  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Initialize Choices.js for User/Name field
+      const userSelect = document.getElementById('userSelect')
+      if (userSelect) {
+        new Choices(userSelect, {
+          searchEnabled: true,
+          searchPlaceholderValue: 'Search member...',
+          placeholderValue: 'Select member',
+          noResultsText: 'No members found',
+          noChoicesText: 'No members available',
+          itemSelectText: 'Click to select',
+          searchResultLimit: 10,
+          shouldSort: true,
+          searchFields: ['label'],
+          fuseOptions: {
+            threshold: 0.3
+          }
+        })
+      }
+    
+      // Initialize Choices.js for Committee field
+      const committeeSelect = document.getElementById('committeeSelect')
+      if (committeeSelect) {
+        new Choices(committeeSelect, {
+          searchEnabled: true,
+          searchPlaceholderValue: 'Search committee...',
+          placeholderValue: 'Select committee',
+          noResultsText: 'No committees found',
+          noChoicesText: 'No committees available',
+          itemSelectText: 'Click to select',
+          searchResultLimit: 10,
+          shouldSort: true,
+          searchFields: ['label'],
+          fuseOptions: {
+            threshold: 0.3
+          }
+        })
+      }
+    
+      // Initialize Choices.js for titleSelect field
+      const titleSelect = document.getElementById('titleSelect')
+      if (titleSelect) {
+        new Choices(titleSelect, {
+          searchEnabled: true,
+          searchPlaceholderValue: 'Search title...',
+          placeholderValue: 'Select title',
+          noResultsText: 'No title found',
+          noChoicesText: 'No title available',
+          itemSelectText: 'Click to select',
+          searchResultLimit: 10,
+          shouldSort: true,
+          searchFields: ['label'],
+          fuseOptions: {
+            threshold: 0.3
+          }
+        })
+      }
+    })
+  </script>
+{% endblock %}

@@ -1,0 +1,192 @@
+{% extends 'dashboard/layout/dashboardLayout.html' %}
+{% block title %}
+  SSMCAAA | Dashboard | Committee Title
+{% endblock %}
+{% load static %}
+{% block content %}
+  <div class="space-y-5 md:space-y-8 max-w-full mx-auto rounded-lg">
+    <div class="bg-white rounded-lg p-5">
+      <div class="flex flex-col sm:flex-row justify-center md:justify-between items-center gap-3 mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold">Member's Title</h2>
+        <div class="text-center flex gap-2 justify-center sm:gap-5 flex-wrap-reverse md:flex-nowrap">
+          <a href="{% url 'committee:committee_title_add' %}"><button class="text-xs cursor-pointer sm:text-base border border-border-black px-6 sm:px-12 py-1 sm:py-2 font-semibold rounded-lg bg-[#183665] hover:bg-blue-700 text-white transition-colors duration-300 ease-in-out">Add Member's Title</button></a>
+        </div>
+      </div>
+
+      <hr class="border[.5px] border-border-black mb-5" />
+
+      <div class="overflow-x-auto">
+        <div class="min-w-[900px]">
+          <!-- Table -->
+          <table class="w-full border border-gray-300 rounded-lg">
+            <thead class="bg-border">
+              <tr>
+                <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">No.</th>
+                <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">Title</th>
+                <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">Display Order</th>
+                <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {% for committee_title in committee_titles %}
+                <tr>
+                  <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap">{{ forloop.counter }}</td>
+                  <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap" title="{{ content.title }}">{{ committee_title.title|truncatewords:6|default:'N/A' }}</td>
+                  <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap">{{ committee_title.display_order|default:'N/A' }}</td>
+
+                  <td class="px-1 py-2 text-center border-2 border-border whitespace-nowrap">
+                    <a href="{% url 'committee:committee_title_edit' committee_title.id %}"><button class="cursor-pointer"><img src="{% static 'images/edit_ico.png' %}" class="w-5 h-5 object-cover" title="Edit" alt="Edit" /></button></a>
+
+                    <button class="cursor-pointer delete-event" data-id="{{ committee_title.pk }}"><img src="{% static 'images/trash_red_ico.png' %}" title="Delete" class="w-5 h-5 object-cover" alt="Delete" /></button>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="4" class="text-center py-4 text-gray-500">No title added.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+          <!-- Pagination -->
+          {% if is_paginated %}
+            <div class="flex items-center justify-between mt-3 text-sm text-gray-500 whitespace-nowrap mb-5 lg:mb-0">
+              <p>Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+                results</p>
+              <div class="flex items-center space-x-2">
+                {% if page_obj.has_previous %}
+                  <a href="?page={{ page_obj.previous_page_number }}" class="px-2 py-1 text-gray-600"><i class="fas fa-arrow-left"></i> Previous</a>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                  {% if page_obj.number == num %}
+                    <span class="w-8 h-8 flex items-center justify-center border border-border-black rounded-full bg-[#183665] text-white">{{ num }}</span>
+                  {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?page={{ num }}" class="w-8 h-8 flex items-center justify-center border border-border-black rounded-full hover:bg-gray-100">{{ num }}</a>
+                  {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                  <a href="?page={{ page_obj.next_page_number }}" class="px-2 py-1 text-gray-600">Next <i class="fas fa-arrow-right"></i></a>
+                {% endif %}
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- delete confirmation modal -->
+  {% include 'dashboard/delete_modal.html' with item_name='Committee Title' %}
+  <!-- Modal -->
+  <div id="agreementModal" class="fixed inset-0 bg-black/50 hidden justify-center items-center z-50" onclick="closeModal(event)">
+    <div class="bg-white rounded-lg w-11/12 md:w-2/3 lg:w-1/2 max-h-[90vh] p-6 relative shadow-lg flex flex-col" onclick="event.stopPropagation()">
+      <h2 id="modalTitle" class="text-xl font-bold mb-4"></h2>
+
+      <!-- Scrollable Content -->
+      <div id="modalContent" class="text-gray-700 mb-6 overflow-y-auto border border-gray-200 rounded-lg p-3 flex-1" style="max-height: 70vh;"></div>
+
+      <div class="flex justify-end">
+        <button onclick="hideAgreementModal()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">Close</button>
+      </div>
+    </div>
+  </div>
+  <!-- Delete Confirmation Modal -->
+  <div id="deleteModal" class="fixed inset-0 hidden items-center justify-center bg-black/50 z-50">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+      <h3 class="text-xl font-semibold text-gray-800 mb-4">Confirm Delete</h3>
+      <p class="text-gray-600 mb-6">Are you sure you want to delete this committee title?</p>
+      <div class="flex justify-end gap-3">
+        <button onclick="closeDeleteModal()" class="px-4 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300">Cancel</button>
+        <button id="confirmDeleteBtn" class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 cursor-pointer">Delete</button>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>
+    function openAgreementModal(element) {
+      const title = element.getAttribute('data-title')
+      const content = element.getAttribute('data-content')
+    
+      document.getElementById('modalTitle').innerText = title
+      document.getElementById('modalContent').innerHTML = content.replace(/\n/g, '<br>')
+    
+      const modal = document.getElementById('agreementModal')
+      modal.classList.remove('hidden')
+      modal.classList.add('flex')
+    
+      // Prevent background scrolling
+      document.body.style.overflow = 'hidden'
+    }
+    
+    function hideAgreementModal() {
+      const modal = document.getElementById('agreementModal')
+      modal.classList.add('hidden')
+    
+      // Restore scrolling
+      document.body.style.overflow = 'auto'
+    }
+    
+    function closeModal(event) {
+      if (event.target.id === 'agreementModal') {
+        hideAgreementModal()
+      }
+    }
+  </script>
+
+  <script>
+    let deleteId = null
+    
+    function openDeleteModal(id) {
+      deleteId = id
+      $('#deleteModal').removeClass('hidden').addClass('flex')
+    }
+    
+    function closeDeleteModal() {
+      deleteId = null
+      $('#deleteModal').removeClass('flex').addClass('hidden')
+    }
+    
+    $(document).ready(function () {
+      // Open modal on trash click
+      $('.delete-event').click(function () {
+        const id = $(this).data('id')
+        openDeleteModal(id)
+      })
+    
+      // Confirm deletion
+      $('#confirmDeleteBtn').click(function () {
+        if (!deleteId) return
+    
+        $.ajax({
+          url: "{% url 'committee:committee_title_delete' 0 %}".replace('0', deleteId),
+          type: 'DELETE',
+          headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+          success: function (response) {
+            if (response.success) {
+              $('#event-' + deleteId).remove()
+              closeDeleteModal()
+              location.reload()
+            } else {
+              alert('Failed to delete recording.')
+            }
+          },
+          error: function () {
+            alert('An error occurred while deleting the recording.')
+          }
+        })
+      })
+    
+      // Close modal when clicking outside
+      $(document).click(function (e) {
+        if ($(e.target).is('#deleteModal')) {
+          closeDeleteModal()
+        }
+      })
+    })
+  </script>
+{% endblock %}

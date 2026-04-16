@@ -1,0 +1,156 @@
+{% extends 'dashboard/layout/dashboardLayout.html' %}
+{% block title %} SSMCAAA | Dashboard | Committee{% endblock %}
+{% load static %}
+{% block content %}
+  <div class="space-y-5 md:space-y-8 max-w-full mx-auto rounded-lg">
+    <div class="bg-white rounded-lg p-5">
+      <!-- Header -->
+      <div class="flex flex-col sm:flex-row justify-center md:justify-between items-center gap-3 mb-4">
+        <h2 class="text-2xl md:text-3xl font-bold">Committee List</h2>
+
+        <div class="text-center flex gap-2 justify-center sm:gap-5 flex-wrap-reverse md:flex-nowrap">
+          <a href="{% url 'committee:committee_create' %}">
+            <button class="text-xs cursor-pointer lg:text-base border border-border-black px-6 lg:px-12 py-1 lg:py-2 font-semibold rounded-lg bg-[#183665] hover:bg-blue-700 text-white transition-colors duration-300 ease-in-out">
+              Add Committee
+            </button>
+          </a>
+        </div>
+      </div>
+
+      <hr class="border[.5px] border-border-black mb-5" />
+
+      <!-- Filter Form -->
+      <div class="w-full my-5">
+        <form method="get" class="flex flex-wrap items-end gap-4">
+          <!-- Full Name -->
+          <div class="flex-1 min-w-[150px]">
+            <label class="block text-base font-medium text-gray-700 mb-2">Full Name</label>
+            <input
+              type="text"
+              name="name"
+              value="{{ name_filter }}"
+              placeholder="Search by name"
+              class="w-full border border-black rounded-lg px-3 py-2 "
+            />
+          </div>
+
+          <!-- Committee -->
+          <div class="flex-1 min-w-[150px]">
+            <label class="block text-base font-medium text-gray-700 mb-2">Committee</label>
+            <select
+              name="committee"
+              class="w-full border border-black rounded-lg px-3 py-2 "
+            >
+              <option value="">All Committees</option>
+              {% for key, label in committee_choices %}
+                <option value="{{ key }}" {% if key == committee_filter %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Position -->
+          <div class="flex-1 min-w-[150px]">
+            <label class="block text-base font-medium text-gray-700 mb-2">Position</label>
+            <select
+              name="position"
+              class="w-full border border-black rounded-lg px-3 py-2 "
+            >
+              <option value="">All Positions</option>
+              {% for key, label in position_choices %}
+                <option value="{{ key }}" {% if key == position_filter %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Executive Year -->
+          <div class="flex-1 min-w-[150px]">
+            <label class="block text-base font-medium text-gray-700 mb-2">Executive Year</label>
+            <select
+              name="executive_year"
+              class="w-full border border-black rounded-lg px-3 py-2 "
+            >
+              <option value="">All Years</option>
+              {% for key, label in executive_year_choices %}
+                <option value="{{ key }}" {% if key == executive_year_filter %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex gap-3 w-full md:w-auto">
+            <button
+              type="submit"
+              class="bg-[#183665] hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors duration-300 cursor-pointer"
+            >
+              Filter
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Table -->
+      <div class="overflow-x-auto">
+        <div class="min-w-[900px]">
+            <table class="w-full border border-gray-300 rounded-lg">
+                <thead class="bg-border">
+                    <tr>
+                        <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">No.</th>
+                        <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">Full Name</th>
+                        <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">Committee</th>
+                        <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">Position</th>
+                        <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">Executive Year</th>
+                        <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if committees %}
+                        {% for committee in committees %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap">{{ forloop.counter }}</td>
+                                <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap">{{ committee.user.full_name|truncatewords:6 }}</td>
+                                <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap">{{ committee.get_committee_display }}</td>
+                                <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap">{{ committee.get_position_display }}</td>
+                                <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap">{{ committee.executive_year }}</td>
+                                <td class="px-1 py-2 text-center items-center justify-center border-2 border-border whitespace-nowrap">
+                                    <button title="View" class="px-4 py-1 text-base cursor-pointer text-primary bg-gray rounded">View</button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap text-gray-500">
+                                No committee records found.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+      <!-- Pagination & Info -->
+        {% if is_paginated %}
+            <div class="flex items-center justify-between mt-3 text-sm text-gray-500 whitespace-nowrap mb-5 lg:mb-0">
+            <p>Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} Results</p>
+            <div class="flex items-center space-x-2">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}" class="px-2 py-1 text-gray-600"><i class="fas fa-arrow-left"></i> Previous</a>
+                {% endif %}
+
+                {% for page_num in page_obj.paginator.page_range %}
+                {% if page_obj.number == page_num %}
+                    <span class="w-8 h-8 border border-border-black rounded-full flex items-center justify-center font-semibold bg-[#183665] text-white">{{ page_num }}</span>
+                {% else %}
+                    <a href="?page={{ page_num }}" class="w-8 h-8 border border-border-black rounded-full flex items-center justify-center">{{ page_num }}</a>
+                {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}" class="px-2 py-1 text-gray-600">Next <i class="fas fa-arrow-right"></i></a>
+                {% endif %}
+            </div>
+            </div>
+        {% endif %}
+    </div>
+  </div>
+{% endblock %}
