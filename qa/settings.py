@@ -194,7 +194,7 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'hfallrealty@gmail.com'
-EMAIL_HOST_PASSWORD = 'rbnp wwfb dndl jyeb'
+EMAIL_HOST_PASSWORD = 'qxyp uklp bgor sorb'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 CAPTCHA_CHALLENGE_FUNCT = 'accounts.captcha_generators.random_numeric_challenge'
