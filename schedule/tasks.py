@@ -8,14 +8,14 @@ from django.template.loader import render_to_string
 
 from .models import MeetingEmailSchedule, MeetingSchedule
 
-User   = get_user_model()
+User = get_user_model()
 logger = logging.getLogger(__name__)
 
 NOTICE_LABELS = {
-    "3w":  "3 Weeks",
-    "2w":  "2 Weeks",
-    "1w":  "1 Week",
-    "1d":  "1 Day",
+    "3w": "3 Weeks",
+    "2w": "2 Weeks",
+    "1w": "1 Week",
+    "1d": "1 Day",
     "10m": "10 Minutes",
 }
 
@@ -49,16 +49,19 @@ def send_meeting_notice(self, meeting_id: int, notice_type: str):
     if schedule and schedule.is_sent:
         return
 
+    tags = meeting.guests.all()
+    if not tags.exists():
+        return
     recipients = (
-        User.objects.filter(is_active=True)
+        User.objects.filter(is_active=True, tags__in=tags)
         .exclude(email__isnull=True)
-        .exclude(email__exact='')
+        .exclude(email__exact="")
+        .distinct()
     )
     if not recipients.exists():
         logger.info(f"No recipients for meeting {meeting_id}.")
         return
 
-   
     for user in recipients:
         send_individual_notice.delay(user.id, meeting_id, notice_type)
 
@@ -80,7 +83,7 @@ def send_individual_notice(self, user_id: int, meeting_id: int, notice_type: str
     SMTPServerDisconnected errors when many emails fire at once.
     """
     try:
-        user    = User.objects.get(pk=user_id)
+        user = User.objects.get(pk=user_id)
         meeting = MeetingSchedule.objects.get(pk=meeting_id)
     except (User.DoesNotExist, MeetingSchedule.DoesNotExist) as e:
         logger.warning(f"send_individual_notice: {e}")
@@ -89,13 +92,13 @@ def send_individual_notice(self, user_id: int, meeting_id: int, notice_type: str
     if not user.email:
         return
 
-    label   = NOTICE_LABELS.get(notice_type, notice_type)
+    label = NOTICE_LABELS.get(notice_type, notice_type)
     subject = f"[{label} Reminder] {meeting.title} – {meeting.date}"
 
     ctx = {
-        "user":         user,
-        "meeting":      meeting,
-        "notice_type":  notice_type,
+        "user": user,
+        "meeting": meeting,
+        "notice_type": notice_type,
         "notice_label": label,
     }
 
@@ -114,9 +117,9 @@ def send_individual_notice(self, user_id: int, meeting_id: int, notice_type: str
         html_body = None
 
     try:
-        
+
         connection = get_connection(
-            backend='django.core.mail.backends.smtp.EmailBackend',
+            backend="django.core.mail.backends.smtp.EmailBackend",
             host=settings.EMAIL_HOST,
             port=settings.EMAIL_PORT,
             username=settings.EMAIL_HOST_USER,
@@ -141,6 +144,7 @@ def send_individual_notice(self, user_id: int, meeting_id: int, notice_type: str
     except Exception as exc:
         logger.error(f"Failed to send to {user.email}: {exc}")
         raise self.retry(exc=exc)
+
 
 ##last comment code
 # import logging
@@ -198,7 +202,7 @@ def send_individual_notice(self, user_id: int, meeting_id: int, notice_type: str
 #         logger.info(f"No recipients for meeting {meeting_id}.")
 #         return
 
-   
+
 #     for user in recipients:
 #         send_individual_notice.delay(user.id, meeting_id, notice_type)
 
@@ -257,7 +261,7 @@ def send_individual_notice(self, user_id: int, meeting_id: int, notice_type: str
 #             subject=subject,
 #             body=text_body,
 #             from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
-#             to=[user.email],  
+#             to=[user.email],
 #         )
 #         if html_body:
 #             msg.attach_alternative(html_body, "text/html")
@@ -271,53 +275,7 @@ def send_individual_notice(self, user_id: int, meeting_id: int, notice_type: str
 ##last comment
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#second comment start
+# second comment start
 # tasks.py
 # ────────
 # Celery tasks for meeting email notifications.
@@ -576,12 +534,6 @@ def send_individual_notice(self, user_id: int, meeting_id: int, notice_type: str
 # ###second comment end
 
 
-
-
-
-
-
-
 ##first comment
 # from celery import shared_task
 # from django.core.mail import send_mail
@@ -704,7 +656,7 @@ def send_individual_notice(self, user_id: int, meeting_id: int, notice_type: str
 
 # This is your {'10-minute' if reminder_minutes == 10 else '24-hour'} reminder.
 
-# Best regards,  
+# Best regards,
 # HFall Team
 # ---
 # Automated Email. Please do not reply.
@@ -724,7 +676,3 @@ def send_individual_notice(self, user_id: int, meeting_id: int, notice_type: str
 #     except Exception as e:
 #         logger.error(f"Error sending {reminder_minutes}-min reminder to user {user_id}: {e}")
 #         return f"Error: {e}"
-
-
-
-

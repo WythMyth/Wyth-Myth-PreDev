@@ -1,7 +1,7 @@
 {% extends "dashboard//layout/dashboardLayout.html" %}
 
 {% block title %}{% if form.instance.pk %}Edit Meeting{% else %}Create Meeting{% endif %}{% endblock %}
-
+{% load widget_tweaks %}
 {% block content %}
 <div class="bg-white m-5 rounded-lg p-4">
     <h1 class="text-2xl font-bold">
@@ -258,6 +258,45 @@
 
             </div><!-- /recurring-section -->
         </div>
+        <!-- Guests -->
+        {{ form.guests|attr:"id:id_guests_hidden" }}
+
+        <div class="mt-6">
+            <label class="block font-medium mb-2">
+                Guests
+            </label>
+
+            <div class="grid grid-cols-1 md:grid-cols-11 gap-4">
+
+                <!-- Available -->
+                <div class="md:col-span-5">
+                    <div class="border rounded-lg h-[140px] overflow-y-auto">
+                        <ul id="available-guests" class="text-sm"></ul>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="md:col-span-1 flex flex-row md:flex-col items-center justify-center gap-3">
+                    <button type="button" id="move-right"
+                        class="w-8 h-8 border rounded bg-white hover:bg-gray-100">
+                        →
+                    </button>
+
+                    <button type="button" id="move-left"
+                        class="w-8 h-8 border rounded bg-white hover:bg-gray-100">
+                        ←
+                    </button>
+                </div>
+
+                <!-- Selected -->
+                <div class="md:col-span-5">
+                    <div class="border rounded-lg h-[140px] overflow-y-auto">
+                        <ul id="selected-guests" class="text-sm"></ul>
+                    </div>
+                </div>
+
+            </div>
+        </div>
 
         <!-- EMAIL NOTIFICATION SECTION -->
         <div class="border rounded-lg p-4 space-y-3">
@@ -384,5 +423,76 @@
     if (masterCb) masterCb.addEventListener("change", toggleNotice);
 }());
 </script>
+<script>
+(function () {
+    const form = document.getElementById("meeting-form");
+    const hiddenSelect = document.getElementById("id_guests_hidden");
 
+    if (!hiddenSelect) return;
+
+    const availableUl = document.getElementById("available-guests");
+    const selectedUl = document.getElementById("selected-guests");
+    const moveRightBtn = document.getElementById("move-right");
+    const moveLeftBtn = document.getElementById("move-left");
+
+    const allGuests = Array.from(hiddenSelect.options).map(o => ({
+        id: o.value,
+        name: o.text,
+        selected: o.selected
+    }));
+
+    function render() {
+        availableUl.innerHTML = "";
+        selectedUl.innerHTML = "";
+
+        allGuests.forEach(g => {
+            const html = `
+                <li class="px-3 py-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" data-id="${g.id}">
+                        <span>${g.name}</span>
+                    </label>
+                </li>
+            `;
+
+            if (g.selected) {
+                selectedUl.insertAdjacentHTML("beforeend", html);
+            } else {
+                availableUl.insertAdjacentHTML("beforeend", html);
+            }
+        });
+    }
+
+    function getChecked(container) {
+        return Array.from(container.querySelectorAll("input:checked"))
+            .map(i => i.dataset.id);
+    }
+
+    moveRightBtn.addEventListener("click", () => {
+        const ids = getChecked(availableUl);
+        allGuests.forEach(g => {
+            if (ids.includes(g.id)) g.selected = true;
+        });
+        render();
+    });
+
+    moveLeftBtn.addEventListener("click", () => {
+        const ids = getChecked(selectedUl);
+        allGuests.forEach(g => {
+            if (ids.includes(g.id)) g.selected = false;
+        });
+        render();
+    });
+
+    form.addEventListener("submit", () => {
+        const selectedIds = allGuests.filter(g => g.selected).map(g => g.id);
+
+        for (const opt of hiddenSelect.options) {
+            opt.selected = selectedIds.includes(opt.value);
+        }
+    });
+
+    render();
+})();
+</script>
 {% endblock %}

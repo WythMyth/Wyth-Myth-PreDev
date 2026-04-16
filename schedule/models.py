@@ -62,6 +62,12 @@ class MeetingSchedule(AbstractField):
         related_name='meeting_schedule_holder',
         null=True,
     )
+    guests = models.ManyToManyField(
+        "schedule.Tag",
+        blank=True,
+        related_name="meetings",
+        help_text="Users who have any of these tags will receive email.",
+    )
     title = models.CharField(max_length=255, null=True)
     description = models.TextField(null=True, blank=True)
     date = models.DateField(null=True)

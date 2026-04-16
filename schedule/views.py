@@ -4,6 +4,7 @@ views.py  (meetings app)
 Only the views that changed are shown below. Copy-paste them over the
 matching classes / functions in your existing views.py.
 """
+
 import json
 import uuid
 from datetime import datetime, timedelta
@@ -22,7 +23,11 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import View
 from django.views.generic import (
-    CreateView, DeleteView, DetailView, ListView, UpdateView,
+    CreateView,
+    DeleteView,
+    DetailView,
+    ListView,
+    UpdateView,
 )
 from openpyxl import load_workbook
 
@@ -36,6 +41,7 @@ User = get_user_model()
 
 # ── Shared context helper ──────────────────────────────────────────────────
 
+
 def _balance_context(user: object) -> dict:
     if user.is_superuser:
         total = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
@@ -44,44 +50,70 @@ def _balance_context(user: object) -> dict:
     return {"total_balance": total}
 
 
+def _parse_time(time_value):
+    """Convert time value to datetime.time object."""
+    from datetime import time as time_cls
+
+    if time_value is None:
+        return None
+    if isinstance(time_value, time_cls):
+        return time_value
+    if isinstance(time_value, str):
+        try:
+            parts = time_value.split(":")
+            if len(parts) >= 2:
+                return time_cls(int(parts[0]), int(parts[1]))
+        except (ValueError, IndexError):
+            pass
+    return None
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # MEETING VIEWS
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class MeetingListView(LoginRequiredMixin, ListView):
-    model              = MeetingSchedule
-    template_name      = "meetings/meeting_list.html"
+    model = MeetingSchedule
+    template_name = "meetings/meeting_list.html"
     context_object_name = "meetings"
-    paginate_by        = 20
+    paginate_by = 20
 
     def get_queryset(self):
-        qs = MeetingSchedule.objects.all().order_by('is_expired', '-date', '-start_time')
+        qs = MeetingSchedule.objects.all().order_by(
+            "is_expired", "-date", "-start_time"
+        )
 
-        title     = self.request.GET.get('title', '').strip()
-        from_date = self.request.GET.get('from_date')
-        to_date   = self.request.GET.get('to_date')
-        status    = self.request.GET.get('status')
+        title = self.request.GET.get("title", "").strip()
+        from_date = self.request.GET.get("from_date")
+        to_date = self.request.GET.get("to_date")
+        status = self.request.GET.get("status")
 
-        if title:     qs = qs.filter(title__icontains=title)
-        if from_date: qs = qs.filter(date__gte=from_date)
-        if to_date:   qs = qs.filter(date__lte=to_date)
-        if status == "active":  qs = qs.filter(is_expired=False)
-        elif status == "expired": qs = qs.filter(is_expired=True)
+        if title:
+            qs = qs.filter(title__icontains=title)
+        if from_date:
+            qs = qs.filter(date__gte=from_date)
+        if to_date:
+            qs = qs.filter(date__lte=to_date)
+        if status == "active":
+            qs = qs.filter(is_expired=False)
+        elif status == "expired":
+            qs = qs.filter(is_expired=True)
         return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.update(_balance_context(self.request.user))
         ctx["status_filter"] = self.request.GET.get("status", "")
-        ctx["title_filter"]  = self.request.GET.get("title", "")
-        ctx["from_date"]     = self.request.GET.get("from_date", "")
-        ctx["to_date"]       = self.request.GET.get("to_date", "")
+        ctx["title_filter"] = self.request.GET.get("title", "")
+        ctx["from_date"] = self.request.GET.get("from_date", "")
+        ctx["to_date"] = self.request.GET.get("to_date", "")
         return ctx
 
 
 class MeetingDetailView(LoginRequiredMixin, DetailView):
-    model               = MeetingSchedule
-    template_name       = "meetings/meeting_detail.html"
+    model = MeetingSchedule
+    template_name = "meetings/meeting_detail.html"
     context_object_name = "meeting"
 
     def get_context_data(self, **kwargs):
@@ -96,11 +128,12 @@ class MeetingCreateView(LoginRequiredMixin, View):
     Handles both single and recurring meetings.
     Recurring: generates multiple MeetingSchedule objects sharing a series_id.
     """
+
     template_name = "meetings/meeting_form.html"
 
     def get(self, request, *args, **kwargs):
         form = MeetingForm()
-        ctx  = {"form": form}
+        ctx = {"form": form}
         ctx.update(_balance_context(request.user))
         return render(request, self.template_name, ctx)
 
@@ -117,55 +150,68 @@ class MeetingCreateView(LoginRequiredMixin, View):
             series_id = uuid.uuid4()
 
             # ── Determine dates to create ──────────────────────────────────
-            if cd.get('is_recurring'):
+            if cd.get("is_recurring"):
                 spec = RecurrenceSpec(
-                    start_date       = cd['date'],
-                    recurrence_type  = cd['recurrence_type'],
-                    interval         = cd['interval'],
-                    days_of_week     = [int(x) for x in cd.get('days_of_week', [])] or None,
-
-                    monthly_mode         = cd.get('monthly_mode') or None,
-                    monthly_day_of_month = cd.get('monthly_day_of_month') or None,
-                    monthly_nth  = int(cd['monthly_nth'])  if cd.get('monthly_nth')  else None,
-                    monthly_weekday = int(cd['monthly_weekday']) if cd.get('monthly_weekday') not in (None, '') else None,
-
-                    yearly_mode          = cd.get('yearly_mode') or None,
-                    yearly_month         = int(cd['yearly_month']) if cd.get('yearly_month') else None,
-                    yearly_day_of_month  = cd.get('yearly_day_of_month') or None,
-                    yearly_nth   = int(cd['yearly_nth'])   if cd.get('yearly_nth')   else None,
-                    yearly_weekday = int(cd['yearly_weekday']) if cd.get('yearly_weekday') not in (None, '') else None,
-
-                    end_mode             = cd.get('end_mode'),
-                    end_on_date          = cd.get('end_on_date'),
-                    end_after_occurrences = cd.get('end_after_occurrences'),
+                    start_date=cd["date"],
+                    recurrence_type=cd["recurrence_type"],
+                    interval=cd["interval"],
+                    days_of_week=[int(x) for x in cd.get("days_of_week", [])] or None,
+                    monthly_mode=cd.get("monthly_mode") or None,
+                    monthly_day_of_month=cd.get("monthly_day_of_month") or None,
+                    monthly_nth=(
+                        int(cd["monthly_nth"]) if cd.get("monthly_nth") else None
+                    ),
+                    monthly_weekday=(
+                        int(cd["monthly_weekday"])
+                        if cd.get("monthly_weekday") not in (None, "")
+                        else None
+                    ),
+                    yearly_mode=cd.get("yearly_mode") or None,
+                    yearly_month=(
+                        int(cd["yearly_month"]) if cd.get("yearly_month") else None
+                    ),
+                    yearly_day_of_month=cd.get("yearly_day_of_month") or None,
+                    yearly_nth=int(cd["yearly_nth"]) if cd.get("yearly_nth") else None,
+                    yearly_weekday=(
+                        int(cd["yearly_weekday"])
+                        if cd.get("yearly_weekday") not in (None, "")
+                        else None
+                    ),
+                    end_mode=cd.get("end_mode"),
+                    end_on_date=cd.get("end_on_date"),
+                    end_after_occurrences=cd.get("end_after_occurrences"),
                 )
                 dates = generate_occurrence_dates(spec)
                 if not dates:
-                    messages.error(request, "No meetings could be generated with those settings.")
+                    messages.error(
+                        request, "No meetings could be generated with those settings."
+                    )
                     ctx = {"form": form}
                     ctx.update(_balance_context(request.user))
                     return render(request, self.template_name, ctx)
             else:
-                dates = [cd['date']]
+                dates = [cd["date"]]
 
             # ── Common field values ────────────────────────────────────────
             common = dict(
-                meeting_user                = request.user,
-                title                       = cd['title'],
-                description                 = cd.get('description', ''),
-                meeting_url                 = cd.get('meeting_url', ''),
-                password                    = cd.get('password', ''),
-                start_time                  = cd['start_time'],
-                end_time                    = cd.get('end_time'),
-                is_sms                      = cd.get('is_sms', False),
-                enable_all_email_notification = cd.get('enable_all_email_notification', False),
-                notice_3_weeks              = cd.get('notice_3_weeks', False),
-                notice_2_weeks              = cd.get('notice_2_weeks', False),
-                notice_1_week               = cd.get('notice_1_week', False),
-                notice_1_day                = cd.get('notice_1_day', False),
-                notice_10_min               = cd.get('notice_10_min', False),
-                series_id                   = series_id,
-                is_recurring                = False,  # individual occurrences are not recurring
+                meeting_user=request.user,
+                title=cd["title"],
+                description=cd.get("description", ""),
+                meeting_url=cd.get("meeting_url", ""),
+                password=cd.get("password", ""),
+                start_time=cd["start_time"],
+                end_time=cd.get("end_time"),
+                is_sms=cd.get("is_sms", False),
+                enable_all_email_notification=cd.get(
+                    "enable_all_email_notification", False
+                ),
+                notice_3_weeks=cd.get("notice_3_weeks", False),
+                notice_2_weeks=cd.get("notice_2_weeks", False),
+                notice_1_week=cd.get("notice_1_week", False),
+                notice_1_day=cd.get("notice_1_day", False),
+                notice_10_min=cd.get("notice_10_min", False),
+                series_id=series_id,
+                is_recurring=False,  # individual occurrences are not recurring
             )
 
             # ── Create one MeetingSchedule per date ────────────────────────
@@ -179,18 +225,23 @@ class MeetingCreateView(LoginRequiredMixin, View):
                 created_meetings.append(meeting)
 
             # Mark the first occurrence as the series root
-            if cd.get('is_recurring') and created_meetings:
+            if cd.get("is_recurring") and created_meetings:
                 first = created_meetings[0]
                 first.is_recurring = True
-                first.save(update_fields=['is_recurring'])
+                first.save(update_fields=["is_recurring"])
+
+            # ── Handle tags for all meetings ────────────────────────────────
+            tags = cd.get("guests")
+            if tags:
+                for m in created_meetings:
+                    m.guests.set(tags)
 
             # ── Schedule email notifications for every occurrence ──────────
             for m in created_meetings:
                 schedule_meeting_notifications(m)
 
         messages.success(
-            request,
-            f"{len(created_meetings)} meeting(s) created successfully."
+            request, f"{len(created_meetings)} meeting(s) created successfully."
         )
         return redirect("meeting-list")
 
@@ -200,10 +251,11 @@ class MeetingUpdateView(LoginRequiredMixin, UpdateView):
     Edits a single MeetingSchedule occurrence (not the whole series).
     Re-schedules notifications after save.
     """
-    model         = MeetingSchedule
-    form_class    = MeetingForm
+
+    model = MeetingSchedule
+    form_class = MeetingForm
     template_name = "meetings/meeting_form.html"
-    success_url   = reverse_lazy("meeting-list")
+    success_url = reverse_lazy("meeting-list")
 
     def form_valid(self, form):
         # Save first
@@ -220,20 +272,22 @@ class MeetingUpdateView(LoginRequiredMixin, UpdateView):
 
 
 class MeetingDeleteView(LoginRequiredMixin, DeleteView):
-    model         = MeetingSchedule
+    model = MeetingSchedule
     template_name = "meetings/meeting_confirm_delete.html"
-    success_url   = reverse_lazy("meeting-list")
+    success_url = reverse_lazy("meeting-list")
 
     def delete(self, request, *args, **kwargs):
-        meeting      = self.get_object()
+        meeting = self.get_object()
         meeting_title = meeting.title
-        meeting_date  = meeting.date
-        meeting_time  = meeting.start_time
-        deleted_by    = request.user.get_full_name() or request.user.username
+        meeting_date = meeting.date
+        meeting_time = meeting.start_time
+        deleted_by = request.user.get_full_name() or request.user.username
 
         if request.user.is_superuser:
-            users = User.objects.filter(email__isnull=False).exclude(email='')
-            self._send_deletion_email(users, meeting_title, meeting_date, meeting_time, deleted_by)
+            users = User.objects.filter(email__isnull=False).exclude(email="")
+            self._send_deletion_email(
+                users, meeting_title, meeting_date, meeting_time, deleted_by
+            )
 
         messages.success(request, "Meeting deleted successfully!")
         return super().delete(request, *args, **kwargs)
@@ -241,11 +295,13 @@ class MeetingDeleteView(LoginRequiredMixin, DeleteView):
     def _send_deletion_email(self, users, title, date, time, deleted_by):
         subject = f"Meeting Cancelled: {title}"
         ctx = {
-            'meeting_title': title, 'meeting_date': date,
-            'meeting_time':  time,  'deleted_by':   deleted_by,
+            "meeting_title": title,
+            "meeting_date": date,
+            "meeting_time": time,
+            "deleted_by": deleted_by,
         }
         try:
-            html_content = render_to_string('emails/meeting_deleted_email.html', ctx)
+            html_content = render_to_string("emails/meeting_deleted_email.html", ctx)
         except Exception:
             html_content = None
 
@@ -275,62 +331,66 @@ class MeetingDeleteView(LoginRequiredMixin, DeleteView):
 class MeetingCopyView(LoginRequiredMixin, View):
     def post(self, request, pk, *args, **kwargs):
         original = get_object_or_404(MeetingSchedule, pk=pk)
-        copied   = MeetingSchedule.objects.create(
-            meeting_user  = request.user,
-            title         = f"{original.title} (Copy)",
-            description   = original.description,
-            date          = original.date,
-            start_time    = original.start_time,
-            end_time      = original.end_time,
-            meeting_url   = original.meeting_url,
-            password      = original.password,
-            is_sms        = original.is_sms,
-            series_id     = uuid.uuid4(),
-            occurrence_index = 1,
+        copied = MeetingSchedule.objects.create(
+            meeting_user=request.user,
+            title=f"{original.title} (Copy)",
+            description=original.description,
+            date=original.date,
+            start_time=original.start_time,
+            end_time=original.end_time,
+            meeting_url=original.meeting_url,
+            password=original.password,
+            is_sms=original.is_sms,
+            series_id=uuid.uuid4(),
+            occurrence_index=1,
             # Copy notification settings
-            enable_all_email_notification = original.enable_all_email_notification,
-            notice_3_weeks = original.notice_3_weeks,
-            notice_2_weeks = original.notice_2_weeks,
-            notice_1_week  = original.notice_1_week,
-            notice_1_day   = original.notice_1_day,
-            notice_10_min  = original.notice_10_min,
+            enable_all_email_notification=original.enable_all_email_notification,
+            notice_3_weeks=original.notice_3_weeks,
+            notice_2_weeks=original.notice_2_weeks,
+            notice_1_week=original.notice_1_week,
+            notice_1_day=original.notice_1_day,
+            notice_10_min=original.notice_10_min,
         )
         schedule_meeting_notifications(copied)
-        return JsonResponse({'status': 'success', 'copied_id': copied.pk})
+        return JsonResponse({"status": "success", "copied_id": copied.pk})
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # RECORDING VIEWS  (unchanged – copied for completeness)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class RecordingListView(LoginRequiredMixin, ListView):
-    model               = ClassRecording
-    template_name       = "recordings/recording_list.html"
+    model = ClassRecording
+    template_name = "recordings/recording_list.html"
     context_object_name = "recordings"
-    paginate_by         = 20
+    paginate_by = 20
 
     def get_queryset(self):
-        qs    = ClassRecording.objects.select_related('meeting').order_by('-meeting__date')
-        title     = self.request.GET.get('title', '').strip()
-        from_date = self.request.GET.get('from_date', '').strip()
-        to_date   = self.request.GET.get('to_date', '').strip()
-        if title:     qs = qs.filter(meeting__title__icontains=title)
-        if from_date: qs = qs.filter(meeting__date__gte=from_date)
-        if to_date:   qs = qs.filter(meeting__date__lte=to_date)
+        qs = ClassRecording.objects.select_related("meeting").order_by("-meeting__date")
+        title = self.request.GET.get("title", "").strip()
+        from_date = self.request.GET.get("from_date", "").strip()
+        to_date = self.request.GET.get("to_date", "").strip()
+        if title:
+            qs = qs.filter(meeting__title__icontains=title)
+        if from_date:
+            qs = qs.filter(meeting__date__gte=from_date)
+        if to_date:
+            qs = qs.filter(meeting__date__lte=to_date)
         return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.update(_balance_context(self.request.user))
-        ctx['title_filter']     = self.request.GET.get('title', '')
-        ctx['from_date_filter'] = self.request.GET.get('from_date', '')
-        ctx['to_date_filter']   = self.request.GET.get('to_date', '')
+        ctx["title_filter"] = self.request.GET.get("title", "")
+        ctx["from_date_filter"] = self.request.GET.get("from_date", "")
+        ctx["to_date_filter"] = self.request.GET.get("to_date", "")
         return ctx
 
 
 class RecordingDetailView(LoginRequiredMixin, DetailView):
-    model               = ClassRecording
-    template_name       = "recordings/recording_detail.html"
+    model = ClassRecording
+    template_name = "recordings/recording_detail.html"
     context_object_name = "recording"
 
     def get_context_data(self, **kwargs):
@@ -340,10 +400,10 @@ class RecordingDetailView(LoginRequiredMixin, DetailView):
 
 
 class RecordingCreateView(LoginRequiredMixin, CreateView):
-    model         = ClassRecording
-    form_class    = RecordingForm
+    model = ClassRecording
+    form_class = RecordingForm
     template_name = "recordings/recording_form.html"
-    success_url   = reverse_lazy("recording-list")
+    success_url = reverse_lazy("recording-list")
 
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
@@ -363,10 +423,10 @@ class RecordingCreateView(LoginRequiredMixin, CreateView):
 
 
 class RecordingUpdateView(LoginRequiredMixin, UpdateView):
-    model         = ClassRecording
-    form_class    = RecordingForm
+    model = ClassRecording
+    form_class = RecordingForm
     template_name = "recordings/recording_form.html"
-    success_url   = reverse_lazy("recording-list")
+    success_url = reverse_lazy("recording-list")
 
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
@@ -386,9 +446,9 @@ class RecordingUpdateView(LoginRequiredMixin, UpdateView):
 
 
 class RecordingDeleteView(LoginRequiredMixin, DeleteView):
-    model         = ClassRecording
+    model = ClassRecording
     template_name = "recordings/recording_confirm_delete.html"
-    success_url   = reverse_lazy("recording-list")
+    success_url = reverse_lazy("recording-list")
 
     def delete(self, request, *args, **kwargs):
         messages.success(request, "Recording deleted successfully!")
@@ -399,6 +459,7 @@ class RecordingDeleteView(LoginRequiredMixin, DeleteView):
 # UPLOAD / DOWNLOAD / CALENDAR  (unchanged)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @login_required
 def meeting_upload(request):
     template = "meetings/meeting_upload.html"
@@ -407,26 +468,28 @@ def meeting_upload(request):
         file = request.FILES["file"]
         if file.name.endswith(".xlsx"):
             try:
-                wb    = load_workbook(file)
+                wb = load_workbook(file)
                 sheet = wb.active
                 success_count = error_count = 0
                 errors = []
 
                 for row in range(2, sheet.max_row + 1):
                     try:
-                        title       = sheet.cell(row=row, column=1).value
+                        title = sheet.cell(row=row, column=1).value
                         description = sheet.cell(row=row, column=2).value
-                        date_value  = sheet.cell(row=row, column=3).value
-                        start_time  = str(sheet.cell(row=row, column=4).value)
-                        end_time    = str(sheet.cell(row=row, column=5).value)
+                        date_value = sheet.cell(row=row, column=3).value
+                        start_time = str(sheet.cell(row=row, column=4).value)
+                        end_time = str(sheet.cell(row=row, column=5).value)
                         meeting_url = sheet.cell(row=row, column=6).value
-                        password    = sheet.cell(row=row, column=7).value
+                        password = sheet.cell(row=row, column=7).value
 
                         is_sms = False
                         if sheet.max_column >= 8:
                             v = sheet.cell(row=row, column=8).value
-                            if isinstance(v, bool):   is_sms = v
-                            elif isinstance(v, str):  is_sms = v.lower() in ["true", "yes", "1"]
+                            if isinstance(v, bool):
+                                is_sms = v
+                            elif isinstance(v, str):
+                                is_sms = v.lower() in ["true", "yes", "1"]
 
                         if not title:
                             continue
@@ -436,10 +499,15 @@ def meeting_upload(request):
                         ).delete()
 
                         MeetingSchedule.objects.create(
-                            meeting_user=request.user, title=title,
-                            description=description, date=date_value,
-                            start_time=start_time, end_time=end_time,
-                            meeting_url=meeting_url, password=password, is_sms=is_sms,
+                            meeting_user=request.user,
+                            title=title,
+                            description=description,
+                            date=date_value,
+                            start_time=start_time,
+                            end_time=end_time,
+                            meeting_url=meeting_url,
+                            password=password,
+                            is_sms=is_sms,
                         )
                         success_count += 1
                     except Exception as e:
@@ -449,7 +517,9 @@ def meeting_upload(request):
                 if success_count:
                     messages.success(request, f"{success_count} meetings uploaded.")
                 if error_count:
-                    messages.error(request, f"{error_count} failed. {errors[0] if errors else ''}")
+                    messages.error(
+                        request, f"{error_count} failed. {errors[0] if errors else ''}"
+                    )
                 return redirect("meeting-list")
             except Exception as e:
                 messages.error(request, f"Error processing file: {e}")
@@ -468,19 +538,37 @@ def download_meeting_template(request):
     wb, ws = Workbook(), None
     wb.active.title = "Meetings"
     ws = wb.active
-    headers = ["Title", "Description", "Date (YYYY-MM-DD)", "Start Time",
-               "End Time", "Meeting URL", "Password", "Send SMS (True/False)"]
+    headers = [
+        "Title",
+        "Description",
+        "Date (YYYY-MM-DD)",
+        "Start Time",
+        "End Time",
+        "Meeting URL",
+        "Password",
+        "Send SMS (True/False)",
+    ]
     for col, h in enumerate(headers, 1):
         ws.cell(row=1, column=col).value = h
-    example = ["Weekly Team Meeting", "Regular sync-up", "2025-05-27",
-                "10:00", "11:00", "https://example.com/meeting", "pass123", "False"]
+    example = [
+        "Weekly Team Meeting",
+        "Regular sync-up",
+        "2025-05-27",
+        "10:00",
+        "11:00",
+        "https://example.com/meeting",
+        "pass123",
+        "False",
+    ]
     for col, v in enumerate(example, 1):
         ws.cell(row=2, column=col).value = v
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response["Content-Disposition"] = 'attachment; filename="meeting_upload_template.xlsx"'
+    response["Content-Disposition"] = (
+        'attachment; filename="meeting_upload_template.xlsx"'
+    )
     wb.save(response)
     return response
 
@@ -489,33 +577,49 @@ class CalendarView(LoginRequiredMixin, View):
     template_name = "meetings/calendar.html"
 
     def get(self, request, *args, **kwargs):
-        today    = timezone.localdate()
-        meetings = MeetingSchedule.objects.filter(date__gte=today).order_by("date", "start_time")
+        today = timezone.localdate()
+        meetings = MeetingSchedule.objects.filter(date__gte=today).order_by(
+            "date", "start_time"
+        )
 
         event_data = []
         for meeting in meetings:
             try:
-                if not meeting.start_time or not meeting.end_time:
+                # Parse times safely
+                start_time = _parse_time(meeting.start_time)
+                end_time = _parse_time(meeting.end_time)
+
+                if not start_time or not end_time or not meeting.date:
                     continue
-                start_dt = datetime.combine(meeting.date, meeting.start_time)
-                end_dt   = datetime.combine(meeting.date, meeting.end_time)
-                if timezone.is_naive(start_dt): start_dt = timezone.make_aware(start_dt)
-                if timezone.is_naive(end_dt):   end_dt   = timezone.make_aware(end_dt)
-                if end_dt < start_dt: end_dt += timedelta(days=1)
-                event_data.append({
-                    "id": meeting.id, "title": meeting.title,
-                    "start": start_dt.isoformat(), "end": end_dt.isoformat(),
-                })
+
+                start_dt = datetime.combine(meeting.date, start_time)
+                end_dt = datetime.combine(meeting.date, end_time)
+                if timezone.is_naive(start_dt):
+                    start_dt = timezone.make_aware(start_dt)
+                if timezone.is_naive(end_dt):
+                    end_dt = timezone.make_aware(end_dt)
+                if end_dt < start_dt:
+                    end_dt += timedelta(days=1)
+                event_data.append(
+                    {
+                        "id": meeting.id,
+                        "title": meeting.title,
+                        "start": start_dt.isoformat(),
+                        "end": end_dt.isoformat(),
+                    }
+                )
             except Exception as e:
                 print(f"Error processing meeting {meeting.id}: {e}")
 
         ctx = {"event_data": json.dumps(event_data)}
         ctx.update(_balance_context(request.user))
         return render(request, self.template_name, ctx)
-    
+
+
 # -------------------- Tag --------------------
 
-class TagListView(LoginRequiredMixin,ListView):
+
+class TagListView(LoginRequiredMixin, ListView):
     model = Tag
     template_name = "dashboard/settings/tag_list.html"
     context_object_name = "tags"
@@ -523,31 +627,32 @@ class TagListView(LoginRequiredMixin,ListView):
     ordering = [
         "order",
     ]
-    
 
 
-class TagCreateView(LoginRequiredMixin,CreateView):
+class TagCreateView(LoginRequiredMixin, CreateView):
     model = Tag
     form_class = TagForm
     template_name = "dashboard/settings/tag_form.html"
     success_url = reverse_lazy("tag_list")
+
     def form_invalid(self, form):
         print(form.errors)
         return super().form_invalid(form)
 
 
-class TagUpdateView(LoginRequiredMixin,UpdateView):
+class TagUpdateView(LoginRequiredMixin, UpdateView):
     model = Tag
     form_class = TagForm
     template_name = "dashboard/settings/tag_form.html"
     success_url = reverse_lazy("tag_list")
 
 
-class TagDeleteView(LoginRequiredMixin,View):
+class TagDeleteView(LoginRequiredMixin, View):
     def delete(self, request, *args, **kwargs):
         tag = get_object_or_404(Tag, pk=kwargs["pk"])
         tag.delete()
         return JsonResponse({"success": True})
+
 
 # from datetime import datetime, timedelta
 # import json
@@ -712,24 +817,24 @@ class TagDeleteView(LoginRequiredMixin,View):
 #         meeting_date = meeting.date
 #         meeting_time = meeting.start_time
 #         deleted_by = request.user.get_full_name() or request.user.username
-        
+
 #         # Check if the user is a superuser
 #         if request.user.is_superuser:
 #             # Get all users with valid email addresses
 #             users = User.objects.filter(email__isnull=False).exclude(email='')
-            
+
 #             # Send email to all users
 #             self.send_deletion_notification_email(
 #                 users, meeting_title, meeting_date, meeting_time, deleted_by
 #             )
-        
+
 #         messages.success(request, "Meeting deleted successfully!")
 #         return super().delete(request, *args, **kwargs)
-    
+
 #     def send_deletion_notification_email(self, users, meeting_title, meeting_date, meeting_time, deleted_by):
 #         """Send HTML email notification to all users about meeting deletion"""
 #         subject = f"Meeting Cancelled: {meeting_title}"
-        
+
 #         # Context data for the template
 #         context = {
 #             'meeting_title': meeting_title,
@@ -737,10 +842,10 @@ class TagDeleteView(LoginRequiredMixin,View):
 #             'meeting_time': meeting_time,
 #             'deleted_by': deleted_by,
 #         }
-        
+
 #         # Render HTML template
 #         html_content = render_to_string('emails/meeting_deleted_email.html', context)
-        
+
 #         # Optional: Create a plain text version as fallback
 #         text_content = f"""
 # Dear User,
@@ -758,10 +863,10 @@ class TagDeleteView(LoginRequiredMixin,View):
 # Best regards,
 # Meeting Management Team
 #         """
-        
+
 #         # Get recipient email addresses
 #         recipient_emails = [user.email for user in users if user.email]
-        
+
 #         if recipient_emails:
 #             try:
 #                 # Create EmailMultiAlternatives instance
@@ -771,13 +876,13 @@ class TagDeleteView(LoginRequiredMixin,View):
 #                     from_email=settings.DEFAULT_FROM_EMAIL,
 #                     to=recipient_emails,
 #                 )
-                
+
 #                 # Attach HTML version
 #                 email.attach_alternative(html_content, "text/html")
-                
+
 #                 # Send the email
 #                 email.send(fail_silently=False)
-                
+
 #                 print(f"Meeting deletion notification sent to {len(recipient_emails)} users")
 #             except Exception as e:
 #                 print(f"Error sending meeting deletion notification: {str(e)}")
@@ -1133,7 +1238,7 @@ class TagDeleteView(LoginRequiredMixin,View):
 #                 if timezone.is_naive(start_datetime):
 #                     start_datetime = timezone.make_aware(start_datetime)
 #                 if timezone.is_naive(end_datetime):
-#                     end_datetime = timezone.make_aware(end_datetime)  
+#                     end_datetime = timezone.make_aware(end_datetime)
 
 #                 # Handle crossing midnight
 #                 if end_datetime < start_datetime:
@@ -1160,4 +1265,3 @@ class TagDeleteView(LoginRequiredMixin,View):
 #             context["total_balance"] = request.user.balance
 
 #         return render(request, self.template_name, context)
-
