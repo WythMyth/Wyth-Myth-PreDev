@@ -5,6 +5,11 @@ from committee import views
 app_name = "committee"
 
 urlpatterns = [
+    path(
+        "dashboard/executives/",
+        views.ExecutivePageView.as_view(),
+        name="executives",
+    ),
     # ===================committee name url ==========================
     path(
         "dashboard/committee-name/",

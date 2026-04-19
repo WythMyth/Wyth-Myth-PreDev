@@ -1,0 +1,282 @@
+{% extends 'dashboard/layout/dashboardLayout.html' %}
+{% block title %}
+  Hfall | Dashboard | Committee
+{% endblock %}
+{% load static %}
+{% load widget_tweaks %}
+{% block content %}
+<div >
+{% for section in committee_sections %}
+
+    {% if section.type == "former_leaders" %}
+    <section class="max-w-7xl mx-auto px-6">
+        <div>
+            <h2 class="text-center text-xl sm:text-2xl lg:text-[32px] text-black-text font-semibold">
+                {{ section.committee.committee_name }}
+            </h2>
+            <p class="text-center my-5 text-black-text/70 text-sm sm:text-base lg:text-lg font-medium">
+                We honor {{ section.committee.committee_name }} whose leadership and vision built a strong alumni network, supported students, and strengthened our institution. Their legacy continues to inspire our community.
+            </p>
+        </div>
+
+        <div class="py-5 md:p-5">
+            <div class="swiper mySwiper"
+                 data-breakpoints='{"320":{"slidesPerView":1},"768":{"slidesPerView":2},"1200":{"slidesPerView":4}}'>
+
+                <div class="swiper-wrapper">
+                    {% for item in section.former_presidents %}
+                    {% with user=item.user %}
+                    <div class="swiper-slide flex">
+                        <div class="h-[330px] bg-[#F5F5F5] rounded-xl flex flex-col items-center text-center flex-1 py-2 md:py-[10px] relative overflow-hidden">
+
+                            <div class="relative w-52 h-52">
+                                {% if user.personal_image %}
+                                    <img src="{{ user.personal_image.url }}" class="object-cover rounded-full w-full h-full">
+                                {% else %}
+                                    <img src="{% static 'images/guided-1.png' %}" class="object-cover rounded-full w-full h-full">
+                                {% endif %}
+                            </div>
+
+                            <div class="px-1">
+                                <h3 class="text-sm md:text-[18px] font-roboto font-medium text-[#2B2B2B] mt-[10px]">
+                                    {{ user.get_full_name|default:"-" }}
+                                </h3>
+
+                                {% for position, year in item.position_year_pairs %}
+                                    <p class="text-xs md:text-[16px] text-black/70">
+                                        {{ year }}
+                                    </p>
+                                {% endfor %}
+
+                                {% if request.user.is_authenticated %}
+                                <div class="flex justify-center space-x-3 text-gray-600 mt-auto">
+                                    <a href="tel:{{ user.phone_number }}"><i class="fa-solid fa-phone"></i></a>
+                                    <a href="mailto:{{ user.email }}"><i class="fa-solid fa-envelope"></i></a>
+                                    <a href="#"><i class="fa-solid fa-location-dot"></i></a>
+
+                                    {% if user.linkedin %}
+                                        <a href="{{ user.linkedin }}" target="_blank"><i class="fa-brands fa-linkedin-in"></i></a>
+                                    {% endif %}
+                                    {% if user.facebook %}
+                                        <a href="{{ user.facebook }}" target="_blank"><i class="fa-brands fa-facebook-f"></i></a>
+                                    {% endif %}
+                                    {% if user.twitter %}
+                                        <a href="{{ user.twitter }}" target="_blank"><i class="fa-brands fa-x-twitter"></i></a>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+
+                        </div>
+                    </div>
+                    {% endwith %}
+                    {% endfor %}
+                </div>
+
+                <!-- Navigation -->
+                <div class="flex justify-center items-center md:mt-10 gap-4">
+                    <button class="swiper-button-prev-custom text-btn-primary-bg border border-btn-primary-bg w-10 h-10 flex items-center justify-center hover:bg-btn-primary-bg hover:text-white duration-400 rounded-full">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <button class="swiper-button-next-custom text-btn-primary-bg border border-btn-primary-bg w-10 h-10 flex items-center justify-center hover:bg-btn-primary-bg hover:text-white duration-400 rounded-full">
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </section>
+    {% endif %}
+        {% if section.type == "grid" %}
+    <section class="max-w-7xl mx-auto px-6">
+        <div class="mt-20">
+            <h2 class="text-center text-xl sm:text-2xl lg:text-[32px] text-black-text font-semibold">
+                {{ section.committee.committee_name }}
+                {% if section.year %}
+                    {{ section.year }}
+                {% endif %}
+            </h2>
+
+            <p class="text-center my-5 text-black-text/70 text-sm sm:text-base lg:text-lg font-medium">
+                Leads with dedication, guiding programs, events, and initiatives that connect alumni and strengthen our community.
+            </p>
+        </div>
+
+        <div class="py-5 md:p-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {% for member in section.members %}
+                <div class="bg-border rounded-xl flex flex-col items-center text-center py-5 relative overflow-hidden">
+
+                    <div class="relative w-52 h-52">
+                        {% if member.user.personal_image %}
+                            <img src="{{ member.user.personal_image.url }}" class="object-cover rounded-full w-full h-full">
+                        {% else %}
+                            <img src="{% static 'images/guided-1.png' %}" class="object-cover rounded-full w-full h-full">
+                        {% endif %}
+                    </div>
+
+                    <div class="px-1 mt-[10px]">
+                        <h3 class="text-sm md:text-[18px] font-roboto font-medium text-black">
+                            {{ member.user.get_full_name|default:"-" }}
+                        </h3>
+
+                        <p class="font-semibold text-xs md:text-[16px] text-black/70 mb-[10px]">
+                            {% for p in member.position.all %}
+                                {{ p.title }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        </p>
+
+                        {% if request.user.is_authenticated %}
+                        <div class="flex justify-center space-x-3 text-gray-600 mt-auto">
+                            <a href="tel:{{ member.user.phone_number }}"><i class="fa-solid fa-phone"></i></a>
+                            <a href="mailto:{{ member.user.email }}"><i class="fa-solid fa-envelope"></i></a>
+                            <a href="#"><i class="fa-solid fa-location-dot"></i></a>
+
+                            {% if member.user.linkedin %}
+                                <a href="{{ member.user.linkedin }}" target="_blank"><i class="fa-brands fa-linkedin-in"></i></a>
+                            {% endif %}
+                            {% if member.user.facebook %}
+                                <a href="{{ member.user.facebook }}" target="_blank"><i class="fa-brands fa-facebook-f"></i></a>
+                            {% endif %}
+                            {% if member.user.twitter %}
+                                <a href="{{ member.user.twitter }}" target="_blank"><i class="fa-brands fa-x-twitter"></i></a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+{% endfor %}
+
+
+    <!-- Hfall Past Executive Committee  -->
+    {% if past_executive_committee_years %}
+        <section class="w-full px-4 py-8 bg-white">
+            <div class="max-w-7xl mx-auto">
+                {% if latest_executive %}
+                <div class="grid  grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                    <!-- Left Side (7 columns) -->
+                    <div class="md:col-span-7  p-4 rounded-lg ">
+
+                        <div class="max-w-5xl mx-auto space-y-8">
+                            <!-- Title & Description -->
+                            <div class="text-center md:text-left space-y-2">
+                                <h2 class="text-2xl md:text-3xl font-bold text-gray-900 line-clamp-1">{{latest_executive.title|default:" "}}
+                                </h2>
+                                <p class="text-gray-600 text-sm md:text-base max-w-3xl">
+                                    {{latest_executive.description|default:" "}}
+                                </p>
+                            </div>
+
+                            <!-- Committee List -->
+                            <div class="space-y-4">
+                                {% for year in past_executive_committee_years %}
+                                    <!-- Single Item -->
+                                    <div
+                                        class="flex justify-between items-center border border-gray-200 rounded-xl p-4  transition cursor-pointer">
+                                        <div>
+                                            <h3 class="text-base md:text-2xl font-semibold text-gray-900 line-clamp-1">Committee
+                                                {{year}}
+                                            </h3>
+                                            {% comment %} <p class="text-base text-gray-600 line-clamp-1">
+                                                Lorem ipsum dolor sit amet consectetur adipisicing elit. Numquam, omnis
+                                                quibusdam est possimus impedit voluptas optio aliquid sequi dolor excepturi
+                                                tempore aliquam ad quisquam ullam placeat mollitia quod nostrum. At.
+                                            </p> {% endcomment %}
+                                        </div>
+                                        <div class="ml-4 flex-shrink-0">
+                                            <a href="{% url 'page:past_executive_committee' year %}">
+                                                <button
+                                                    class="w-8 h-8 flex items-center cursor-pointer justify-center rounded-full bg-gray-100 transition">
+                                                    <i class="fa-solid fa-arrow-right text-btn-primary-bg"></i>
+                                                </button>
+                                            </a>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- View More Button -->
+
+                            <a href="{% url 'page:past_executive_years' %}">
+
+                                <div class="flex items-center gap-2 text-gray-800 font-semibold cursor-pointer">
+                                    <span>View More Committee</span>
+                                    <div
+                                        class="w-8 h-8 ml-5 flex items-center justify-center rounded-full bg-gray-100 transition">
+                                        <i class="  fa-solid fa-arrow-right text-btn-primary-bg"></i>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+
+
+                    </div>
+
+                    <!-- Right Side (5 columns) -->
+                    <div class="md:col-span-5 p-4 rounded-lg">
+                        <div class="rounded-xl lg:rounded-none lg:rounded-tr-[120px] lg:rounded-bl-[120px] overflow-hidden">
+                            {% if latest_executive.images %}
+                        <img class="w-full h-72 md:h-[600px] object-cover" src="{{latest_executive.images.url}}"
+                            alt="Mission Image">
+                        {% else %}
+                        <img class="w-full h-72 md:h-[600px] object-cover" src="{% static 'images/bg.jpeg' %}"
+                            alt="Mission Image">
+                        {% endif %}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            {% endif %}
+        </section>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Dynamic swiper configuration
+        document.querySelectorAll('.mySwiper').forEach((swiperEl) => {
+            const breakpoints = swiperEl.dataset.breakpoints
+                ? JSON.parse(swiperEl.dataset.breakpoints)
+                : {};
+
+            // Count total slides
+            const totalSlides = swiperEl.querySelectorAll('.swiper-slide').length;
+            const navButtonContainer = swiperEl.querySelector('.flex.justify-center.items-center');
+            
+            // Show/hide navigation buttons based on slide count
+            if (totalSlides <= 4) {
+                if (navButtonContainer) {
+                    navButtonContainer.style.display = 'none';
+                }
+            }
+
+            new Swiper(swiperEl, {
+                loop: totalSlides > 4 ? true : false,
+                spaceBetween: 30,
+                breakpoints: breakpoints,
+                autoplay: totalSlides > 4 ? {
+                    delay: 2000,
+                    disableOnInteraction: false,
+                    pauseOnMouseEnter: true,
+                } : false,
+                pagination: {
+                    el: swiperEl.querySelector('.swiper-pagination'),
+                    clickable: true
+                },
+                navigation: totalSlides > 4 ? {
+                    nextEl: swiperEl.querySelector('.swiper-button-next-custom'),
+                    prevEl: swiperEl.querySelector('.swiper-button-prev-custom')
+                } : false
+            });
+        });
+</script>
+{% endblock scripts %}

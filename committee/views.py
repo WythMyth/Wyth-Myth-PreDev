@@ -1,12 +1,17 @@
+from collections import defaultdict
+from itertools import groupby
+from operator import attrgetter
+
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Max
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.urls import reverse_lazy
+from django.views import View
 from django.views.generic import (
     CreateView,
     ListView,
     UpdateView,
-    View,
 )
 
 from accounts.models import User
@@ -22,7 +27,167 @@ from committee.models import (
     CommitteeYear,
     ExecutiveCommittee,
 )
+from committee.utils import merge_year_ranges
 from poll.permission import PermissionRequiredMixin
+
+
+class ExecutivePageView(View):
+    template_name = "dashboard/committee/executive_page.html"
+
+    def get(self, request):
+
+        committees = CommitteeName.objects.filter(is_show_executive=True).order_by(
+            "display_order", "committee_name"
+        )
+
+        latest_year = CommitteeYear.objects.aggregate(latest=Max("from_date"))["latest"]
+
+        committee_sections = []
+
+        # queryset
+        base_qs = ExecutiveCommittee.objects.select_related(
+            "user", "committee", "executive_year"
+        ).prefetch_related("position")
+
+        for committee in committees:
+            code = (committee.code or "").strip()
+
+            # ==============================
+            # Former Presidents (FP)
+            # ==============================
+            if code == "FP":
+
+                ecs = base_qs.filter(committee__code="FP").order_by("user_id")
+
+                grouped = []
+
+                for user_id, rows in groupby(ecs, key=attrgetter("user_id")):
+                    rows = list(rows)
+                    user = rows[0].user
+
+                    position_map = defaultdict(list)
+
+                    for r in rows:
+                        if not r.executive_year:
+                            continue
+
+                        #positions (ManyToMany)
+                        for pos in r.position.all():
+                            position_map[pos.title].append(
+                                {
+                                    "from_date": r.executive_year.from_date,
+                                    "to_date": r.executive_year.to_date,
+                                    "display_order": pos.display_order or 999,
+                                }
+                            )
+
+                    pairs = []
+
+                    for title, items in position_map.items():
+
+                        # Merge continuous ranges
+                        merged_ranges = merge_year_ranges(items)
+
+                        year_strings = []
+                        latest_to_date = None
+
+                        for start, end in reversed(merged_ranges):
+                            year_strings.append(f"{start.year}-{end.year}")
+
+                            if not latest_to_date or end > latest_to_date:
+                                latest_to_date = end
+
+                        pairs.append(
+                            {
+                                "title": title,
+                                "year": ", ".join(year_strings),
+                                "latest_to_date": latest_to_date,
+                                "display_order": items[0]["display_order"],
+                            }
+                        )
+
+                    if not pairs:
+                        continue
+
+                    # Sort by latest year first
+                    pairs.sort(
+                        key=lambda p: (-p["latest_to_date"].year, p["display_order"])
+                    )
+
+                    top_display_order = min(p["display_order"] for p in pairs)
+
+                    grouped.append(
+                        {
+                            "user": user,
+                            "position_year_pairs": [
+                                (p["title"], p["year"]) for p in pairs
+                            ],
+                            "top_display_order": top_display_order,
+                        }
+                    )
+
+                grouped.sort(key=lambda x: x["top_display_order"])
+
+                if grouped:
+                    committee_sections.append(
+                        {
+                            "committee": committee,
+                            "type": "former_leaders",
+                            "former_presidents": grouped,
+                        }
+                    )
+
+                continue
+
+            # ==============================
+            # Latest Executive Committee
+            # ==============================
+            members = list(
+                base_qs.filter(
+                    committee=committee,
+                    executive_year__from_date=latest_year,
+                )
+            )
+
+            # Python-side sorting (since ManyToMany)
+            members.sort(
+                key=lambda m: min(
+                    [p.display_order or 999 for p in m.position.all()] or [999]
+                )
+            )
+
+            if members:
+                committee_sections.append(
+                    {
+                        "committee": committee,
+                        "type": "grid",
+                        "members": members,
+                        "year": members[0].executive_year.year_range,
+                    }
+                )
+
+        # ==============================
+        # Past 3 Executive Years
+        # ==============================
+        past_years_qs = CommitteeYear.objects.exclude(from_date=latest_year).order_by(
+            "-from_date"
+        )[:3]
+
+        past_committee_years = [year.year_range for year in past_years_qs]
+
+        # latest_executive = (
+        #     PastExecutiveCommittee.objects.filter(is_active=True)
+        #     .order_by("-id")
+        #     .first()
+        # )
+
+        context = {
+            "committee_sections": committee_sections,
+            "past_executive_committee_years": past_committee_years,
+            # "latest_executive": latest_executive,
+        }
+
+        return render(request, self.template_name, context)
 
 
 # ----------------------
