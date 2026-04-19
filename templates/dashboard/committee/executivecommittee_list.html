@@ -189,7 +189,15 @@
                                 <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap">{{ forloop.counter }}</td>
                                 <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap">{{ executive_committee.user.get_full_name }}</td>
                                 <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap">{{ executive_committee.committee }}</td>
-                                <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap">{{ executive_committee.position }}</td>
+                                <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap">
+                                    {% if executive_committee.position.all %}
+                                        {% for pos in executive_committee.position.all %}
+                                            {{ pos.title }}{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="text-gray-400">No Position</span>
+                                    {% endif %}
+                                </td>
                                 <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap">{{ executive_committee.executive_year }}</td>
                                 <td class="px-1 py-2 text-center items-center justify-center border-2 border-border whitespace-nowrap">
                                     <a href="{% url 'committee:executive_committee_edit' executive_committee.id %}">

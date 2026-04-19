@@ -25,7 +25,6 @@ from committee.models import (
 from poll.permission import PermissionRequiredMixin
 
 
-
 # ----------------------
 # CommitteeName Views
 # ----------------------
@@ -153,9 +152,17 @@ class ExecutiveCommitteeListView(LoginRequiredMixin, PermissionRequiredMixin, Li
     permission_flags = ["is_superuser", "is_committee"]
 
     def get_queryset(self):
-        queryset = ExecutiveCommittee.objects.select_related(
-            "user", "committee", "position", "executive_year"
-        ).order_by("position__display_order", "executive_year__from_date")
+        queryset = (
+            ExecutiveCommittee.objects.select_related(
+                "user", "committee", "executive_year"
+            )
+            .prefetch_related("position")
+            .order_by(
+                "committee__display_order",
+                "executive_year__from_date",
+                "user__first_name",
+            )
+        )
 
         user_id = self.request.GET.get("user", "").strip()
 
@@ -168,7 +175,7 @@ class ExecutiveCommitteeListView(LoginRequiredMixin, PermissionRequiredMixin, Li
         if committee_id.isdigit():
             queryset = queryset.filter(committee_id=committee_id)
         if position_id.isdigit():
-            queryset = queryset.filter(position_id=position_id)
+            queryset = queryset.filter(position__id=position_id)
         if executive_year_id.isdigit():
             queryset = queryset.filter(executive_year_id=executive_year_id)
 
@@ -183,8 +190,7 @@ class ExecutiveCommitteeListView(LoginRequiredMixin, PermissionRequiredMixin, Li
         context["position_filter"] = self.request.GET.get("position", "")
         context["executive_year_filter"] = self.request.GET.get("executive_year", "")
         context["user_choices"] = (
-            User.objects
-            .only("id", "first_name", "middle_name", "last_name")
+            User.objects.only("id", "first_name", "middle_name", "last_name")
             .filter(is_active=True)
             .order_by("first_name")
         )

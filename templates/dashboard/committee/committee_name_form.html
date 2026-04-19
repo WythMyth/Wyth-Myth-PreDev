@@ -44,6 +44,20 @@
                             </option>
                         </select>
                     </div>
+                     <div>
+                        <label class="block text-base font-medium mb-2">Show in Past Sub Committee</label>
+                        <select
+                            name="is_show_past_sub_committee"
+                            class="w-full border border-black rounded-lg px-3 py-2"
+                        >
+                            <option value="True" {% if form.instance.is_show_past_sub_committee %}selected{% endif %}>
+                                Yes
+                            </option>
+                            <option value="False" {% if not form.instance.is_show_past_sub_committee %}selected{% endif %}>
+                                No
+                            </option>
+                        </select>
+                    </div>
                     <div>
                     <label class="block text-base font-medium mb-2">Executive Display Order</label>
                     {% render_field form.display_order placeholder="Display Order" class='w-full border border-black rounded-lg px-3 py-2' %}

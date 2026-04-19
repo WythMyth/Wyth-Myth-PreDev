@@ -25,6 +25,7 @@
                 <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">Committee Name</th>
                 <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">Committee Code</th>
                 <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">Executive Page</th>
+                <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">Past Sub Committee</th>
                 <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">Display Order</th>
                 <th class="px-4 py-2 text-center font-semibold border-2 border-border whitespace-nowrap">Actions</th>
               </tr>
@@ -38,6 +39,13 @@
                   <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap" title="{{ committee_name.code }}">{{ committee_name.code|default:'N/A' }}</td>
                   <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap align-middle">
                     {% if committee_name.is_show_executive %}
+                      <span class="text-green-600 py-1 px-2 rounded-xl bg-green-100">Active</span>
+                    {% else %}
+                      <span class="text-yellow-600 py-1 px-2 rounded-xl bg-yellow-100">Inactive</span>
+                    {% endif %}
+                  </td>
+                  <td class="px-1 py-2 text-center text-base border-2 border-border whitespace-nowrap align-middle">
+                    {% if committee_name.is_show_past_sub_committee %}
                       <span class="text-green-600 py-1 px-2 rounded-xl bg-green-100">Active</span>
                     {% else %}
                       <span class="text-yellow-600 py-1 px-2 rounded-xl bg-yellow-100">Inactive</span>

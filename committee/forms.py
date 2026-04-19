@@ -18,6 +18,7 @@ class CommitteeNameForm(forms.ModelForm):
             "committee_name",
             "code",
             "is_show_executive",
+            "is_show_past_sub_committee",
             "display_order",
         ]
 
@@ -44,6 +45,13 @@ class CommitteeTitleForm(forms.ModelForm):
 # ExecutiveCommittee Form
 # ----------------------
 class ExecutiveCommitteeForm(forms.ModelForm):
+    position = forms.ModelMultipleChoiceField(
+        queryset=CommitteeTitle.objects.all().order_by("display_order"),
+        widget=forms.SelectMultiple,
+        required=False,
+        label="Positions",
+    )
+
     class Meta:
         model = ExecutiveCommittee
         fields = ["user", "committee", "position", "executive_year"]
@@ -57,10 +65,20 @@ class ExecutiveCommitteeForm(forms.ModelForm):
             .order_by("committee_name")
         )
 
-        # Order users by name (choose the field you use)
+        # Order users by name
         self.fields["user"].queryset = self.fields["user"].queryset.order_by(
             "first_name"
         )
         self.fields["executive_year"].queryset = self.fields[
             "executive_year"
         ].queryset.order_by("from_date")
+
+        # Add custom CSS classes to fields
+        self.fields["user"].widget.attrs.update({"class": "w-full"})
+        self.fields["committee"].widget.attrs.update({"class": "w-full"})
+        self.fields["position"].widget.attrs.update(
+            {"class": "w-full", "id": "positionSelect"}
+        )
+        self.fields["executive_year"].widget.attrs.update(
+            {"class": "w-full border border-gray-300 rounded-lg px-3 py-2"}
+        )

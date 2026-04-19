@@ -9,49 +9,127 @@
     /* Custom styling for Choices.js to match input fields */
     .choices {
       margin-bottom: 0;
+      position: relative;
     }
     .choices__inner {
-      border: 1px solid #000000;
+      border: 1.5px solid #d1d5db;
       border-radius: 0.5rem;
-      padding: 0.5rem 0.75rem;
-      min-height: 41px;
-      height: 41px;
+      padding: 0.625rem 0.75rem;
+      min-height: 42px;
       background-color: #fff;
-      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-      font-size: 1rem;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+      font-size: 0.95rem;
       line-height: 1.5rem;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
     }
     .choices__inner:focus-within {
-      border-color: var(--color-primary, #183665);
+      border-color: #183665;
       outline: none;
-      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      box-shadow: 0 0 0 3px rgba(24, 54, 101, 0.1);
+      background-color: #fafbff;
     }
     .choices__input {
       background-color: transparent;
       padding: 0;
       margin-bottom: 0;
-      font-size: 1rem;
+      font-size: 0.95rem;
+      color: #1f2937;
+      flex: 1;
+      min-width: 150px;
+    }
+    .choices__input::placeholder {
+      color: #9ca3af;
     }
     .choices__list--single .choices__item {
       padding: 0;
+      background-color: transparent;
+      color: #1f2937;
+      font-weight: 500;
     }
     .choices__list--dropdown {
-      border: 1px solid rgb(209, 213, 219);
+      border: 1px solid #e5e7eb;
       border-radius: 0.5rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      margin-top: 4px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      margin-top: 6px;
+      max-height: 500px;
+      z-index: 1001;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      min-width: 100%;
+    }
+    .choices__list--dropdown .choices__item {
+      padding: 0.625rem 0.875rem;
+      color: #374151;
+      font-size: 0.9rem;
+    }
+    .choices__list--dropdown .choices__item--selectable {
+      cursor: pointer;
+    }
+    .choices__list--dropdown .choices__item--selectable:hover {
+      background-color: #f3f4f6;
     }
     .choices__list--dropdown .choices__item--selectable.is-highlighted {
-      background-color: #f3f4f6;
+      background-color: #e0e7ff;
+      color: #183665;
+    }
+    .choices__list--dropdown .choices__item--selected {
+      background-color: #dbeafe;
+      color: #183665;
+      font-weight: 600;
     }
     .choices__placeholder {
       opacity: 0.6;
+      color: #9ca3af;
     }
-    /* Click / focus state */
+    /* Focus state */
     .choices.is-focused .choices__inner,
     .choices.is-open .choices__inner {
-      border-color: #00000026;
-      border-radius: 10px;
+      border-color: #183665;
+      box-shadow: 0 0 0 3px rgba(24, 54, 101, 0.1);
+    }
+    /* Error state */
+    .choices.error .choices__inner {
+      border-color: #ef4444;
+    }
+    /* Multi-select styling */
+    .choices__list--multiple {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .choices__list--multiple .choices__item {
+      background-color: #e0e7ff;
+      border: 1px solid #183665;
+      color: #183665;
+      font-weight: 500;
+      padding: 0.375rem 0.625rem;
+      border-radius: 0.375rem;
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.875rem;
+    }
+    .choices__list--multiple .choices__button {
+      background-color: #183665;
+      margin-left: 0.375rem;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Position field multi-select dropdown fix */
+    #positionSelect-choices {
+      z-index: 1001;
+    }
+    .form-container {
+      overflow: visible;
     }
   </style>
 {% endblock %}
@@ -60,53 +138,71 @@
   <div class="space-y-5 md:space-y-8 max-w-full mx-auto rounded-lg">
     <!-- content -->
     <div class="bg-white p-5 rounded-lg">
-      <div class="flex flex-col sm:flex-row justify-center md:justify-between items-center gap-3 mb-4">
-        <h2 class="text-2xl md:text-3xl font-bold">
-          {% if form.instance.pk %}
-            Update
-          {% else %}
-            Add
-          {% endif %}Member
-        </h2>
+      <div class="flex flex-col sm:flex-row justify-center md:justify-between items-center gap-3 mb-6">
+        <div>
+          <h2 class="text-2xl md:text-3xl font-bold text-[#183665]">
+            {% if form.instance.pk %}
+              Update Executive Committee Member
+            {% else %}
+              Add Executive Committee Member
+            {% endif %}
+          </h2>
+          <p class="text-sm text-gray-600 mt-2">
+            {% if form.instance.pk %}
+              Modify committee assignment details
+            {% else %}
+              Create a new committee member assignment
+            {% endif %}
+          </p>
+        </div>
       </div>
 
-      <hr class="border[.5px] border-border-black mb-5" />
+      <hr class="border-[1px] border-gray-200 mb-6" />
 
-      <div>
+      <div class="form-container">
         <form method="POST" class="space-y-5">
           {% csrf_token %}
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label class="block text-base font-medium mb-2">Name</label>
+              <label class="block text-base font-semibold text-[#183665] mb-3">Member Name <span class="text-red-500">*</span></label>
               {% render_field form.user class='w-full' id='userSelect' %}
             </div>
             <div>
-              <label class="block text-base font-medium mb-2">Committee Name</label>
+              <label class="block text-base font-semibold text-[#183665] mb-3">Committee <span class="text-red-500">*</span></label>
               {% render_field form.committee class='w-full' id='committeeSelect' %}
             </div>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <div>
+            <label class="block text-base font-semibold text-[#183665] mb-3">Positions (Select Multiple)</label>
+            {% render_field form.position class='w-full' id='positionSelect' %}
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
             <div>
-              <label class="block text-base font-medium mb-2">Title</label>
-              {% render_field form.position id='titleSelect' class='w-full border border-black rounded-lg px-3 py-2' %}
-            </div>
-            <div>
-              <label class="block text-base font-medium mb-2">Years</label>
-              {% render_field form.executive_year class='w-full border border-black rounded-lg px-3 py-2' %}
+              <label class="block text-base font-semibold text-[#183665] mb-3">Term Year <span class="text-red-500">*</span></label>
+              {% render_field form.executive_year class='w-full border border-gray-300 rounded-lg px-3 py-2' %}
             </div>
           </div>
 
           <!-- Buttons -->
-          <div class="flex flex-wrap justify-center gap-3 mt-8">
-            <button type="submit" class="bg-[#183665] hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition cursor-pointer w-full md:w-64">
+          <div class="flex flex-wrap justify-center gap-4 mt-10 pt-6 border-t border-gray-200">
+            <button type="submit" class="bg-[#183665] hover:bg-[#122847] text-white font-semibold px-8 py-3 rounded-lg transition-all cursor-pointer duration-200 shadow-md hover:shadow-lg w-full md:w-auto md:min-w-[200px] flex items-center justify-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
               {% if form.instance.pk %}
                 Update Member
               {% else %}
                 Add Member
               {% endif %}
             </button>
-            <a href="{% url 'committee:executive_committee_list' %}" class="bg-gray-100 text-[#183665] px-6 py-2 rounded-lg border border-gray-300 cursor-pointer transition w-full md:w-64 text-center">Cancel</a>
+            <a href="{% url 'committee:executive_committee_list' %}" class="bg-gray-50 hover:bg-gray-100 text-[#183665] font-semibold px-8 py-3 rounded-lg border-2 border-[#183665] cursor-pointer transition-all duration-200 w-full md:w-auto md:min-w-[200px] text-center flex items-center justify-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>Cancel
+            </a>
           </div>
         </form>
       </div>
@@ -119,22 +215,26 @@
   <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
+      const choicesConfig = {
+        searchEnabled: true,
+        itemSelectText: 'Click to select',
+        searchResultLimit: 10,
+        shouldSort: true,
+        searchFields: ['label'],
+        fuseOptions: {
+          threshold: 0.3
+        }
+      }
+    
       // Initialize Choices.js for User/Name field
       const userSelect = document.getElementById('userSelect')
       if (userSelect) {
         new Choices(userSelect, {
-          searchEnabled: true,
+          ...choicesConfig,
           searchPlaceholderValue: 'Search member...',
-          placeholderValue: 'Select member',
+          placeholderValue: 'Select a member',
           noResultsText: 'No members found',
-          noChoicesText: 'No members available',
-          itemSelectText: 'Click to select',
-          searchResultLimit: 10,
-          shouldSort: true,
-          searchFields: ['label'],
-          fuseOptions: {
-            threshold: 0.3
-          }
+          noChoicesText: 'No members available'
         })
       }
     
@@ -142,37 +242,36 @@
       const committeeSelect = document.getElementById('committeeSelect')
       if (committeeSelect) {
         new Choices(committeeSelect, {
-          searchEnabled: true,
+          ...choicesConfig,
           searchPlaceholderValue: 'Search committee...',
-          placeholderValue: 'Select committee',
+          placeholderValue: 'Select a committee',
           noResultsText: 'No committees found',
-          noChoicesText: 'No committees available',
-          itemSelectText: 'Click to select',
-          searchResultLimit: 10,
-          shouldSort: true,
-          searchFields: ['label'],
-          fuseOptions: {
-            threshold: 0.3
-          }
+          noChoicesText: 'No committees available'
         })
       }
     
-      // Initialize Choices.js for titleSelect field
-      const titleSelect = document.getElementById('titleSelect')
-      if (titleSelect) {
-        new Choices(titleSelect, {
-          searchEnabled: true,
-          searchPlaceholderValue: 'Search title...',
-          placeholderValue: 'Select title',
-          noResultsText: 'No title found',
-          noChoicesText: 'No title available',
-          itemSelectText: 'Click to select',
-          searchResultLimit: 10,
-          shouldSort: true,
-          searchFields: ['label'],
-          fuseOptions: {
-            threshold: 0.3
-          }
+      // Initialize Choices.js for executive_year field
+      const executiveYearSelect = document.getElementById('id_executive_year')
+      if (executiveYearSelect) {
+        new Choices(executiveYearSelect, {
+          ...choicesConfig,
+          searchPlaceholderValue: 'Search year...',
+          placeholderValue: 'Select a term year',
+          noResultsText: 'No years found',
+          noChoicesText: 'No years available'
+        })
+      }
+    
+      // Initialize Choices.js for Position field (multi-select)
+      const positionSelect = document.getElementById('positionSelect')
+      if (positionSelect) {
+        new Choices(positionSelect, {
+          ...choicesConfig,
+          searchPlaceholderValue: 'Search positions...',
+          placeholderValue: 'Select positions (optional)',
+          noResultsText: 'No positions found',
+          noChoicesText: 'No positions available',
+          removeItemButton: true
         })
       }
     })

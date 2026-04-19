@@ -39,7 +39,7 @@
                     </a>                    
                 {% endif %}
                 <a href="{% url 'polls:list' %}"
-                    class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'member_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                    class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
                         <i class="fa-solid fa-sliders mr-2 w-4"></i>
                         <span class="truncate">Poll</span>
                     </a>  

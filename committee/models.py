@@ -1,9 +1,9 @@
 from django.conf import settings
 from django.db import models
-
-
+from django.db.models import Q
 
 User = settings.AUTH_USER_MODEL
+
 
 # =====================base model =========================
 class BaseModel(models.Model):
@@ -13,6 +13,7 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
 
+
 # ----------------------
 # CommitteeName Model
 # ----------------------
@@ -20,6 +21,7 @@ class CommitteeName(BaseModel):
     committee_name = models.CharField(max_length=255, blank=True, null=True)
     code = models.CharField(max_length=10, blank=True, null=True)
     is_show_executive = models.BooleanField(default=True)
+    is_show_past_sub_committee = models.BooleanField(default=False)
     display_order = models.PositiveIntegerField(default=0)
 
     def __str__(self):
@@ -68,15 +70,22 @@ class CommitteeTitle(BaseModel):
 # UserCommitteePosition Model
 # ----------------------
 class ExecutiveCommittee(BaseModel):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    committee = models.ForeignKey(CommitteeName, on_delete=models.CASCADE)
-    position = models.ForeignKey(CommitteeTitle, on_delete=models.CASCADE)
-    executive_year = models.ForeignKey(CommitteeYear, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE,related_name="executive_committees")
+    committee = models.ForeignKey(CommitteeName, on_delete=models.CASCADE, related_name="executive_committees")
+    position = models.ManyToManyField(
+        CommitteeTitle, blank=True, related_name="executive_committees"
+    )
+    executive_year = models.ForeignKey(CommitteeYear, on_delete=models.CASCADE, related_name="executive_committees")
 
     class Meta:
-        unique_together = ("user", "committee", "position", "executive_year")
+        constraints = [
+            # Unique constraint for user, committee, and executive_year
+            models.UniqueConstraint(
+                fields=["user", "committee", "executive_year"],
+                name="unique_user_committee_year",
+            ),
+        ]
 
     def __str__(self):
-        return (
-            f"{self.user} - {self.position} - {self.committee} - {self.executive_year}"
-        )
+        positions = ", ".join([p.title for p in self.position.all()]) if self.position.exists() else "No Position"
+        return f"{self.user.get_full_name()} - {self.committee.committee_name} ({positions})"
