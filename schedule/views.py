@@ -31,6 +31,8 @@ from django.views.generic import (
 )
 from openpyxl import load_workbook
 
+from poll.permission import PermissionRequiredMixin
+
 from .forms import MeetingForm, RecordingForm, TagForm
 from .models import ClassRecording, MeetingSchedule, Tag
 from .notifications import schedule_meeting_notifications
@@ -84,6 +86,11 @@ class MeetingListView(LoginRequiredMixin, ListView):
             "is_expired", "-date", "-start_time"
         )
 
+        user = self.request.user
+        # Only restrict non-superusers
+        if not user.is_superuser:
+            qs = qs.filter(guests__in=user.tags.all()).distinct()
+
         title = self.request.GET.get("title", "").strip()
         from_date = self.request.GET.get("from_date")
         to_date = self.request.GET.get("to_date")
@@ -123,13 +130,14 @@ class MeetingDetailView(LoginRequiredMixin, DetailView):
         return ctx
 
 
-class MeetingCreateView(LoginRequiredMixin, View):
+class MeetingCreateView(LoginRequiredMixin,PermissionRequiredMixin, View):
     """
     Handles both single and recurring meetings.
     Recurring: generates multiple MeetingSchedule objects sharing a series_id.
     """
 
     template_name = "meetings/meeting_form.html"
+    permission_flags = ["is_superuser"]
 
     def get(self, request, *args, **kwargs):
         form = MeetingForm()
@@ -368,6 +376,10 @@ class RecordingListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         qs = ClassRecording.objects.select_related("meeting").order_by("-meeting__date")
+        user = self.request.user
+        # Apply tag restriction
+        if not user.is_superuser:
+            qs = qs.filter(meeting__guests__in=user.tags.all()).distinct()
         title = self.request.GET.get("title", "").strip()
         from_date = self.request.GET.get("from_date", "").strip()
         to_date = self.request.GET.get("to_date", "").strip()
@@ -581,7 +593,12 @@ class CalendarView(LoginRequiredMixin, View):
         meetings = MeetingSchedule.objects.filter(date__gte=today).order_by(
             "date", "start_time"
         )
-
+        user = request.user
+         #  Apply tag-based restriction
+        if not user.is_superuser:
+            meetings = meetings.filter(
+                guests__in=user.tags.all()
+            ).distinct()
         event_data = []
         for meeting in meetings:
             try:

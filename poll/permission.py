@@ -1,7 +1,6 @@
 from functools import wraps
 
-from django.shortcuts import redirect
-from django.urls import reverse
+from django.core.exceptions import PermissionDenied
 
 
 def require_permission(*flag_names):
@@ -14,7 +13,7 @@ def require_permission(*flag_names):
         @wraps(view_func)
         def _wrapped_view(request, *args, **kwargs):
             if not any(getattr(request.user, flag, False) for flag in flag_names):
-                return redirect(reverse("core:no_access"))
+                raise PermissionDenied
             return view_func(request, *args, **kwargs)
 
         return _wrapped_view
@@ -29,5 +28,5 @@ class PermissionRequiredMixin:
         if self.permission_flags and not any(
             getattr(request.user, flag, False) for flag in self.permission_flags
         ):
-            return redirect(reverse("core:no_access"))
+            raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
