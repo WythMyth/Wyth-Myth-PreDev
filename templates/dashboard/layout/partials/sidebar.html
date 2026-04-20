@@ -319,6 +319,16 @@
                                 <i class="fas fa-file-signature mr-3 w-4 flex-shrink-0"></i> 
                                 <span class="truncate">Tag List</span>
                             </a>
+                            <a href="{% url 'committee:past_executive_list' %}"
+                            class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'past_executive_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-file-signature mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Past Executive Committee</span>
+                            </a>
+                            <a href="{% url 'committee:past_sub_list' %}"
+                            class="flex items-center px-4 py-2 rounded-lg transition duration-200 {% if request.resolver_match.url_name == 'past_sub_list' %}bg-[#183665] text-white font-semibold{% else %}hover:bg-gray-100 text-gray-700{% endif %}">
+                                <i class="fas fa-file-signature mr-3 w-4 flex-shrink-0"></i> 
+                                <span class="truncate">Past Sub Committee</span>
+                            </a>
                         </div>
                     </div>
                 {% endif %}

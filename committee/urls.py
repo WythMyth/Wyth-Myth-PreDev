@@ -94,4 +94,47 @@ urlpatterns = [
         views.ExecutiveCommitteeDeleteView.as_view(),
         name="executive_committee_delete",
     ),
+
+    # Executive Committee
+    path(
+        "past-executive/",
+        views.PastExecutiveCommitteeListView.as_view(),
+        name="past_executive_list",
+    ),
+    path(
+        "past-executive/create/",
+        views.PastExecutiveCommitteeCreateView.as_view(),
+        name="past_executive_create",
+    ),
+    path(
+        "past-executive/update/<int:pk>/",
+        views.PastExecutiveCommitteeUpdateView.as_view(),
+        name="past_executive_update",
+    ),
+    path(
+        "past-executive/delete/<int:pk>/",
+        views.PastExecutiveCommitteeDeleteView.as_view(),
+        name="past_executive_delete",
+    ),
+    # past sub Committee
+    path(
+        "past-subcommittee/",
+        views.PastSubCommitteeListView.as_view(),
+        name="past_sub_list",
+    ),
+    path(
+        "past-subcommittee/create/",
+        views.PastSubCommitteeCreateView.as_view(),
+        name="past_sub_create",
+    ),
+    path(
+        "past-subcommittee/update/<int:pk>/",
+        views.PastSubCommitteeUpdateView.as_view(),
+        name="past_sub_update",
+    ),
+    path(
+        "past-subcommittee/delete/<int:pk>/",
+        views.PastSubCommitteeDeleteView.as_view(),
+        name="past_sub_delete",
+    ),
 ]

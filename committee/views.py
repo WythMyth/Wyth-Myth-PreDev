@@ -20,12 +20,16 @@ from committee.forms import (
     CommitteeTitleForm,
     CommitteeYearForm,
     ExecutiveCommitteeForm,
+    PastExecutiveCommitteeForm,
+    PastSubCommitteeForm,
 )
 from committee.models import (
     CommitteeName,
     CommitteeTitle,
     CommitteeYear,
     ExecutiveCommittee,
+    PastExecutiveCommittee,
+    PastSubCommittee,
 )
 from committee.utils import merge_year_ranges
 from poll.permission import PermissionRequiredMixin
@@ -400,4 +404,84 @@ class ExecutiveCommitteeDeleteView(LoginRequiredMixin, PermissionRequiredMixin, 
     def delete(self, request, *args, **kwargs):
         executive_committee = get_object_or_404(ExecutiveCommittee, pk=kwargs["pk"])
         executive_committee.delete()
+        return JsonResponse({"success": True})
+
+
+# -------------------- Past Executive Committee --------------------
+class PastExecutiveCommitteeListView(
+    LoginRequiredMixin, PermissionRequiredMixin, ListView
+):
+    model = PastExecutiveCommittee
+    template_name = "dashboard/page/past_executive_list.html"
+    context_object_name = "committees"
+    ordering = ["title"]
+    permission_flags = ["is_superuser"]
+
+
+class PastExecutiveCommitteeCreateView(
+    LoginRequiredMixin, PermissionRequiredMixin, CreateView
+):
+    model = PastExecutiveCommittee
+    form_class = PastExecutiveCommitteeForm
+    template_name = "dashboard/page/past_executive_form.html"
+    success_url = reverse_lazy("committee:past_executive_list")
+    permission_flags = ["is_superuser"]
+
+
+class PastExecutiveCommitteeUpdateView(
+    LoginRequiredMixin, PermissionRequiredMixin, UpdateView
+):
+    model = PastExecutiveCommittee
+    form_class = PastExecutiveCommitteeForm
+    template_name = "dashboard/page/past_executive_form.html"
+    success_url = reverse_lazy("committee:past_executive_list")
+    permission_flags = ["is_superuser"]
+
+
+class PastExecutiveCommitteeDeleteView(
+    LoginRequiredMixin, PermissionRequiredMixin, View
+):
+    permission_flags = ["is_superuser"]
+
+    def delete(self, request, *args, **kwargs):
+        committee = get_object_or_404(PastExecutiveCommittee, pk=kwargs["pk"])
+        committee.delete()
+        return JsonResponse({"success": True})
+
+
+# -------------------- Past Sub Committee --------------------
+class PastSubCommitteeListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+    model = PastSubCommittee
+    template_name = "dashboard/page/past_sub_list.html"
+    context_object_name = "subcommittees"
+    ordering = ["title"]
+    permission_flags = ["is_superuser"]
+
+
+class PastSubCommitteeCreateView(
+    LoginRequiredMixin, PermissionRequiredMixin, CreateView
+):
+    model = PastSubCommittee
+    form_class = PastSubCommitteeForm
+    template_name = "dashboard/page/past_sub_form.html"
+    success_url = reverse_lazy("committee:past_sub_list")
+    permission_flags = ["is_superuser"]
+
+
+class PastSubCommitteeUpdateView(
+    LoginRequiredMixin, PermissionRequiredMixin, UpdateView
+):
+    model = PastSubCommittee
+    form_class = PastSubCommitteeForm
+    template_name = "dashboard/page/past_sub_form.html"
+    success_url = reverse_lazy("committee:past_sub_list")
+    permission_flags = ["is_superuser"]
+
+
+class PastSubCommitteeDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_flags = ["is_superuser"]
+
+    def delete(self, request, *args, **kwargs):
+        subcommittee = get_object_or_404(PastSubCommittee, pk=kwargs["pk"])
+        subcommittee.delete()
         return JsonResponse({"success": True})

@@ -1,0 +1,142 @@
+{% extends 'dashboard/layout/dashboardLayout.html' %}
+{% load static %}
+{% block content %}
+<div class="space-y-5 md:space-y-8 max-w-full mx-auto rounded-lg">
+    <div class="bg-white rounded-lg p-5">
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mb-4">
+            <h2 class="text-2xl font-bold text-gray-800">Past Executive Committees</h2>
+            <div class="text-center flex gap-2 justify-center sm:gap-5 flex-wrap-reverse md:flex-nowrap">
+                <a href="{% url 'committee:past_executive_create' %}">
+                    <button class="text-xs cursor-pointer sm:text-base bg-[#183665] hover:bg-blue-700 text-white px-6 sm:px-12 py-2 font-bold rounded-lg transition-colors duration-300 ease-in-out">
+                        Add Committee
+                    </button>
+                </a>
+            </div>
+        </div>
+
+        <hr class="mb-5 border-gray-200" />
+
+        <div class="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+            <table class="min-w-[700px] w-full text-left text-sm">
+                <thead class="bg-gray-100 font-semibold">
+                    <tr>
+                        <th class="p-2 text-center">No.</th>
+                        <th class="p-2 text-center">Title</th>
+                        <th class="p-2 text-center">Description</th>
+                        <th class="p-2 text-center">Images</th>
+                        <th class="p-2 text-center">Status</th>
+                        <th class="p-2 text-center">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for committee in committees %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-2 border-2 border-gray-100 text-center">
+                            {{ forloop.counter }}
+                        </td>
+                        <td class="p-2 border-2 border-gray-100 text-center">
+                            {{ committee.title|default:'N/A'|truncatewords:3 }}
+                        </td>
+                        <td class="p-2 border-2 border-gray-100 text-center">
+                            {{ committee.description|default:'N/A'|truncatewords:5 }}
+                        </td>
+                        {% if committee.images %}
+                        <td class="p-2 border-2 border-gray-100 text-center whitespace-nowrap">
+                            <div class="flex justify-center items-center">
+                                <img src="{{ committee.images.url }}" alt="" class="h-10 w-10 object-cover rounded-md">
+                            </div>
+                        </td>
+                        {% else %}
+                        <td class="p-2 border-2 border-gray-100 text-center whitespace-nowrap">NA</td>
+                        {% endif %}
+                        <td class="p-2 border-2 border-gray-100 text-center">
+                            {% if committee.is_active %}
+                                <span class="text-green-600 py-1 px-2 rounded-xl bg-green-100">Active</span>
+                            {% else %}
+                                <span class="text-yellow-600 py-1 px-2 rounded-xl bg-yellow-100">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-2 border-2 border-gray-100 text-center">
+                            <div class="flex justify-center gap-2 items-center">
+                                <a href="{% url 'committee:past_executive_update' committee.id %}" title="Edit">
+                                    <button class="cursor-pointer">
+                                        <img src="{% static 'images/edit_ico.png' %}" class="w-5 h-5" />
+                                    </button>
+                                </a>
+
+                                <button class="cursor-pointer delete-event" data-id="{{ committee.pk }}" title="Delete">
+                                    <img src="{% static 'images/trash_red_ico.png' %}" class="w-5 h-5" />
+                                </button>
+
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-8 text-gray-600">
+                            No value added.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include "dashboard/delete_modal.html" with item_name="Committee" %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+let deleteId = null
+
+function openDeleteModal(id) {
+    deleteId = id
+    $('#deleteModal').removeClass('hidden').addClass('flex')
+}
+
+function closeDeleteModal() {
+    deleteId = null
+    $('#deleteModal').removeClass('flex').addClass('hidden')
+}
+
+$(document).ready(function () {
+
+    $('.delete-event').click(function () {
+        const id = $(this).data('id')
+        openDeleteModal(id)
+    })
+
+    $('#confirmDeleteBtn').click(function () {
+        if (!deleteId) return
+
+        $.ajax({
+            url: "{% url 'committee:past_executive_delete' 0 %}".replace('0', deleteId),
+            type: 'DELETE',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            success: function (response) {
+                if (response.success) {
+                    closeDeleteModal()
+                    location.reload()
+                } else {
+                    alert('Failed to delete.')
+                }
+            },
+            error: function () {
+                alert('An error occurred.')
+            }
+        })
+    })
+
+    $(document).click(function (e) {
+        if ($(e.target).is('#deleteModal')) {
+            closeDeleteModal()
+        }
+    })
+})
+</script>
+{% endblock %}

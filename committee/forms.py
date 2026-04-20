@@ -5,6 +5,8 @@ from committee.models import (
     CommitteeTitle,
     CommitteeYear,
     ExecutiveCommittee,
+    PastExecutiveCommittee,
+    PastSubCommittee,
 )
 
 
@@ -82,3 +84,14 @@ class ExecutiveCommitteeForm(forms.ModelForm):
         self.fields["executive_year"].widget.attrs.update(
             {"class": "w-full border border-gray-300 rounded-lg px-3 py-2"}
         )
+
+class PastExecutiveCommitteeForm(forms.ModelForm):
+    class Meta:
+        model = PastExecutiveCommittee
+        fields = ["title", "description", "is_active","images"]
+
+
+class PastSubCommitteeForm(forms.ModelForm):
+    class Meta:
+        model = PastSubCommittee
+        fields = ["title", "description", "is_active","images"]
