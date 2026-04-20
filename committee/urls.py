@@ -10,6 +10,22 @@ urlpatterns = [
         views.ExecutivePageView.as_view(),
         name="executives",
     ),
+    path(
+        "dashboard/past-executives-committee-years/",
+        views.PastExecutiveCommitteeYearsPageView.as_view(),
+        name="past_executive_years",
+    ),
+    path(
+        "dashboard/past-executives-committee/<str:year>/",
+        views.PastExecutivesCommitteeListView.as_view(),
+        name="past_executive_committee",
+    ),
+    path("dashboard/past-sub-committee/", views.past_sub_committee, name="past_sub_committee"),
+    path(
+        "dashboard/past-sub-committee/<int:id>/",
+        views.past_sub_committee_list,
+        name="past_sub_committee_list",
+    ),
     # ===================committee name url ==========================
     path(
         "dashboard/committee-name/",

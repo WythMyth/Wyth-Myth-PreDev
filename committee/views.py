@@ -75,7 +75,7 @@ class ExecutivePageView(View):
                         if not r.executive_year:
                             continue
 
-                        #positions (ManyToMany)
+                        # positions (ManyToMany)
                         for pos in r.position.all():
                             position_map[pos.title].append(
                                 {
@@ -178,21 +178,162 @@ class ExecutivePageView(View):
         )[:3]
 
         past_committee_years = [year.year_range for year in past_years_qs]
+        sub_committees = CommitteeName.objects.filter(
+            is_show_past_sub_committee=True,
+        ).order_by("display_order", "committee_name")[:3]
+        # Add Latest Active Executive Committees
+        latest_executive = (
+            PastExecutiveCommittee.objects.filter(is_active=True)
+            .order_by("-id")
+            .first()
+        )
 
-        # latest_executive = (
-        #     PastExecutiveCommittee.objects.filter(is_active=True)
-        #     .order_by("-id")
-        #     .first()
-        # )
+        # Add Latest Active Sub Committees
+        latest_sub_committee = (
+            PastSubCommittee.objects.filter(is_active=True).order_by("-id").first()
+        )
 
         context = {
             "committee_sections": committee_sections,
             "past_executive_committee_years": past_committee_years,
-            # "latest_executive": latest_executive,
+            "latest_executive": latest_executive,
+            "latest_sub_committee": latest_sub_committee,
+            "sub_committees": sub_committees,
         }
 
         return render(request, self.template_name, context)
 
+
+# -------------------------------
+# Past Executive Committee Year page
+# -------------------------------
+class PastExecutiveCommitteeYearsPageView(View):
+    template_name = "dashboard/page/past_executive_year_page.html"
+
+    def get(self, request):
+        # Latest Executive Committee
+        latest_year = CommitteeYear.objects.aggregate(latest=Max("from_date"))["latest"]
+        # past executive committee
+        past_years_qs = CommitteeYear.objects.exclude(from_date=latest_year).order_by(
+            "-from_date"
+        )
+        past_committee_years = [year.year_range for year in past_years_qs]
+        # for debug
+        # print(past_committee_years)
+        context = {"past_committee_years": past_committee_years}
+        return render(request, self.template_name, context)
+
+
+# -------------------------------
+# Past Executive Committee page
+# -------------------------------
+class PastExecutivesCommitteeListView(View):
+    template_name = "dashboard/page/past_executives_list.html"
+
+    def get(self, request, year):
+        """
+        Render Executive Members for a given committee year.
+        Example year: "2020-2021"
+        """
+        start_year, end_year = map(int, year.split("-"))
+
+        # queryset
+        members = list(
+            ExecutiveCommittee.objects.filter(
+                committee__code="EC",
+                executive_year__from_date__year=start_year,
+                executive_year__to_date__year=end_year,
+                user__isnull=False,
+            )
+            .select_related("user", "executive_year", "committee")
+            .prefetch_related("position")
+        )
+
+        # Python sorting (since ManyToMany)
+        members.sort(
+            key=lambda m: (
+                min([p.display_order or 999 for p in m.position.all()] or [999]),
+                m.executive_year.from_date,
+                m.user.first_name or "",
+            )
+        )
+
+        context = {
+            "members": members,
+            "selected_year": year,
+        }
+
+        return render(request, self.template_name, context)
+    
+def past_sub_committee(request):
+    """Show list of past sub-committees."""
+    sub_committees = CommitteeName.objects.filter(
+        is_show_past_sub_committee=True
+    ).order_by("display_order")
+
+    return render(
+        request,
+        "dashboard/page/past_sub_committee.html",
+        {"past_sub_committee": sub_committees},
+    )
+
+
+def past_sub_committee_list(request, id):
+    """Show all members of a specific sub-committee from past years."""
+
+    committee = get_object_or_404(CommitteeName, id=id)
+
+    # Get all valid years once
+    years = list(
+        CommitteeYear.objects.exclude(from_date__isnull=True)
+        .only("id", "from_date")
+        .order_by("from_date")
+    )
+
+    if len(years) < 2:
+        past_year_ids = []
+    else:
+        # second latest year
+        second_last_year = years[-2]
+
+        # get past year ids directly 
+        past_year_ids = [
+            y.id for y in years if y.from_date.year < second_last_year.from_date.year
+        ]
+
+    # Base queryset (single DB hit)
+    members = (
+        ExecutiveCommittee.objects.filter(
+            committee=committee,
+            user__isnull=False,
+            executive_year_id__in=past_year_ids,
+        )
+        .select_related("user", "executive_year", "committee")
+        .prefetch_related("position")
+    )
+
+    # Efficient Python sorting
+    def sort_key(m):
+        positions = m.position.all()
+        min_order = min((p.display_order or 999 for p in positions), default=999)
+
+        return (
+            min_order,
+            -(m.executive_year.from_date.year if m.executive_year.from_date else 0),
+            m.user.bsc_year or 0,
+            m.user.full_name or "",
+        )
+
+    members = sorted(members, key=sort_key)
+
+    return render(
+        request,
+        "dashboard/page/past_sub_committee_list.html",
+        {
+            "committee": committee,
+            "past_sub_committee_members": members,
+        },
+    )
 
 # ----------------------
 # CommitteeName Views

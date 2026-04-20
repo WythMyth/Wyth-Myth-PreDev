@@ -43,7 +43,10 @@
                                 </h3>
 
                                 {% for position, year in item.position_year_pairs %}
-                                    <p class="text-xs md:text-[16px] text-black/70">
+                                    <p class="text-xs md:text-[16px] text-black font-medium">
+                                        {{ position }}
+                                    </p>
+                                    <p class="text-xs md:text-[14px] text-black/60">
                                         {{ year }}
                                     </p>
                                 {% endfor %}
@@ -120,11 +123,15 @@
                             {{ member.user.get_full_name|default:"-" }}
                         </h3>
 
-                        <p class="font-semibold text-xs md:text-[16px] text-black/70 mb-[10px]">
-                            {% for p in member.position.all %}
-                                {{ p.title }}{% if not forloop.last %}, {% endif %}
-                            {% endfor %}
-                        </p>
+                        {% for p in member.position.all %}
+                            <p class="font-semibold text-xs md:text-[16px] text-black/70 mb-[10px]">
+                                {{ p.title }}
+                            </p>
+                        {% empty %}
+                            <p class="font-semibold text-xs md:text-[16px] text-black/70 mb-[10px]">
+                                No Position
+                            </p>
+                        {% endfor %}
 
                         {% if request.user.is_authenticated %}
                         <div class="flex justify-center space-x-3 text-gray-600 mt-auto">
@@ -191,7 +198,7 @@
                                             </p> {% endcomment %}
                                         </div>
                                         <div class="ml-4 flex-shrink-0">
-                                            <a href="{% url 'page:past_executive_committee' year %}">
+                                            <a href="{% url 'committee:past_executive_committee' year %}">
                                                 <button
                                                     class="w-8 h-8 flex items-center cursor-pointer justify-center rounded-full bg-gray-100 transition">
                                                     <i class="fa-solid fa-arrow-right text-btn-primary-bg"></i>
@@ -204,9 +211,9 @@
 
                             <!-- View More Button -->
 
-                            <a href="{% url 'page:past_executive_years' %}">
+                            <a href="{% url 'committee:past_executive_years' %}">
 
-                                <div class="flex items-center gap-2 text-gray-800 font-semibold cursor-pointer">
+                                <div class="flex items-center gap-2 mt-10 text-gray-800 font-semibold cursor-pointer">
                                     <span>View More Committee</span>
                                     <div
                                         class="w-8 h-8 ml-5 flex items-center justify-center rounded-full bg-gray-100 transition">
@@ -236,6 +243,83 @@
            
                  </div>
             {% endif %}
+        </section>
+    {% endif %}
+    
+    <!-- Hfall Past sub Committee  -->
+    {% if sub_committees %}
+        <section class="w-full px-4 py-8 bg-white">
+            <div class="max-w-7xl mx-auto">
+                {% if latest_sub_committee %}
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                    <!-- Left Side (7 columns) -->
+                    <div class="md:col-span-5 p-4 rounded-lg">
+                        <div class="rounded-xl lg:rounded-none  lg:rounded-tr-[120px] lg:rounded-bl-[120px] overflow-hidden">
+                            {% if latest_sub_committee.images %}
+                            <img class="w-full h-72 md:h-[600px] object-cover" src="{{latest_sub_committee.images.url}}"
+                                alt="Mission Image">
+                                {% else %}
+                            <img class="w-full h-72 md:h-[600px] object-cover" src="{% static 'images/bg.jpeg' %}"
+                                alt="Mission Image">
+                            {% endif %}
+                        </div>
+                    </div>
+
+
+                    <!-- Right Side (5 columns) -->
+                    <div class="md:col-span-7  p-4 rounded-lg ">
+
+                        <div class="max-w-5xl mx-auto space-y-8">
+                            <!-- Title & Description -->
+                            <div class="text-center md:text-left space-y-2">
+                                <h2 class="text-2xl md:text-3xl font-bold text-gray-900">{{latest_sub_committee.title|default:" "}}
+                                </h2>
+                                <p class="text-gray-600 text-sm md:text-base max-w-3xl">
+                                    {{latest_sub_committee.description|default:""}}
+                                </p>
+                            </div>
+
+                            <!-- Committee List -->
+                            <div class="space-y-4">
+                                {% for name in sub_committees %}
+                                    <!-- Single Item -->
+                                    <div
+                                        class="flex justify-between items-center border border-gray-200 rounded-xl p-4  transition cursor-pointer">
+                                        <div>
+                                            <h3 class="text-base md:text-2xl font-semibold text-gray-900 line-clamp-1">
+                                                {{name.committee_name}}
+                                            </h3>
+                                        </div>
+                                        <div class="ml-4 flex-shrink-0">
+                                            <a href="{% url 'committee:past_sub_committee_list' name.id %}">
+                                                <button
+                                                    class="w-8 h-8 flex items-center cursor-pointer justify-center rounded-full bg-gray-100 transition">
+                                                    <i class="fa-solid fa-arrow-right text-[#012077]"></i>
+                                                </button>
+                                            </a>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- View More Button -->
+                            <a href="{% url 'committee:past_sub_committee' %}">
+                                <div class="flex items-center gap-2 text-gray-800 font-semibold cursor-pointer">
+                                    <span>View More Committee</span>
+                                    <div
+                                        class="w-8 h-8 ml-5 flex items-center justify-center rounded-full bg-gray-100 transition">
+                                        <i class="  fa-solid fa-arrow-right text-[#012077]"></i>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+
+
+                    </div>
+
+                </div>
+                {% endif %}
+            </div>
         </section>
     {% endif %}
 </div>
