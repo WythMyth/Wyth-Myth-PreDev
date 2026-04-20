@@ -3,7 +3,7 @@ from itertools import groupby
 from operator import attrgetter
 
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Max
+from django.db.models import Max, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse_lazy
@@ -33,6 +33,8 @@ from committee.models import (
 )
 from committee.utils import merge_year_ranges
 from poll.permission import PermissionRequiredMixin
+
+
 
 
 class ExecutivePageView(View):
@@ -264,7 +266,8 @@ class PastExecutivesCommitteeListView(View):
         }
 
         return render(request, self.template_name, context)
-    
+
+
 def past_sub_committee(request):
     """Show list of past sub-committees."""
     sub_committees = CommitteeName.objects.filter(
@@ -296,7 +299,7 @@ def past_sub_committee_list(request, id):
         # second latest year
         second_last_year = years[-2]
 
-        # get past year ids directly 
+        # get past year ids directly
         past_year_ids = [
             y.id for y in years if y.from_date.year < second_last_year.from_date.year
         ]
@@ -334,6 +337,7 @@ def past_sub_committee_list(request, id):
             "past_sub_committee_members": members,
         },
     )
+
 
 # ----------------------
 # CommitteeName Views

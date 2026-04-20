@@ -2,51 +2,237 @@
 {% load static %}
 {% block content %}
 
-<div class="bg-white rounded-xl shadow p-6 mt-5 mx-4">
-    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
-        <h2 class="text-2xl font-bold">All Member List</h2>
-        <div class="flex flex-row gap-2">
-            <!-- Optional buttons can go here -->
-        </div>
-    </div>
-    <hr class="mb-5 px-5 border-gray-200">
+<div class="mb-[20px] sm:mb-[40px] lg:mb-[100px]">
+    <section class="max-w-7xl mx-auto px-6">
+        <div class="mb-10 space-y-6 px-6">
+            <div id="generalSearchRow">
+                <div class="sm:flex gap-[10px]">
+                    <div class="relative w-full flex">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </span>
+                        <input type="text" id="memberSearch" name="q" value="{{ query }}" placeholder="Search by name, member id, city, zip..." class="w-full h-[42px] pl-10 pr-20 text-sm border border-gray-300 rounded-lg focus:outline-primary" />
+                        <button type="button" id="generalSearchBtn" class="absolute right-0 top-0 h-[42px] px-[22px] bg-[#012077] text-white rounded-r-lg hover:bg-[#011a5c] transition flex items-center">
+                            Search <i class="fa-solid fa-magnifying-glass ml-2"></i>
+                        </button>
+                    </div>
+                    <div>
+                        <button type="button" id="openAdvanceBtn" class="w-full mt-4 sm:mt-0 flex items-center justify-center whitespace-nowrap h-[42px] p-5 text-white bg-blue-900 rounded-lg">Advance Search</button>
+                    </div>
+                </div>
+            </div>
 
-    <div class="p-6 bg-white rounded-lg">
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-            {% for member in members %}
-                <div class="relative group w-full h-80 overflow-hidden rounded-xl shadow-sm">
-                    <!-- Profile image -->
-                    {% if member.personal_image %}
-                        <img src="{{ member.personal_image.url }}" alt="{{ member.name }}"
-                            class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
-                    {% else %}
-                        <img src="{% static 'assets/images/defult-man.png' %}" alt="{{ member.name }}"
-                            class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
+            <form method="get">
+                <div id="advanceSearchBox" class="hidden mt-4 transition-all duration-300 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <select name="full_name" class="h-[42px] rounded-lg border text-[#524D4D] border-gray-300 bg-white px-3 text-sm focus:outline-primary">
+                        <option value="">Name</option>
+                        {% for name in full_name_choices %}
+                            <option value="{{ name }}" {% if selected.full_name == name %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <select name="city" class="h-[42px] rounded-lg border text-[#524D4D] border-gray-300 bg-white px-3 text-sm focus:outline-primary">
+                        <option value="">City</option>
+                        {% for city in city_choices %}
+                            <option value="{{ city }}" {% if selected.city == city %}selected{% endif %}>{{ city }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <select name="state" class="h-[42px] rounded-lg text-[#524D4D] border border-gray-300 bg-white px-3 text-sm focus:outline-primary">
+                        <option value="">State / Province</option>
+                        {% for item in state_choices %}
+                            <option value="{{ item }}" {% if selected.state == item %}selected{% endif %}>{{ item }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <select name="zip_code" class="h-[42px] rounded-lg border text-[#524D4D] border-gray-300 bg-white px-3 text-sm focus:outline-primary">
+                        <option value="">Zip Code</option>
+                        {% for zip_code in zip_code_choices %}
+                            <option value="{{ zip_code }}" {% if selected.zip_code == zip_code %}selected{% endif %}>{{ zip_code }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <select name="phone_number" class="h-[42px] rounded-lg border text-[#524D4D] border-gray-300 bg-white px-3 text-sm focus:outline-primary">
+                        <option value="">Phone</option>
+                        {% for phone in phone_number_choices %}
+                            <option value="{{ phone }}" {% if selected.phone_number == phone %}selected{% endif %}>{{ phone }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <select name="email" class="h-[42px] rounded-lg border text-[#524D4D] border-gray-300 bg-white px-3 text-sm focus:outline-primary">
+                        <option value="">Email</option>
+                        {% for email in email_choices %}
+                            <option value="{{ email }}" {% if selected.email == email %}selected{% endif %}>{{ email }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <div class="flex gap-2 sm:col-span-2 lg:col-span-2">
+                        <button type="submit" class="w-full h-[42px] flex items-center justify-center whitespace-nowrap p-5 text-white bg-blue-900 rounded-lg">
+                            Search <i class="fa-solid fa-magnifying-glass ml-2"></i>
+                        </button>
+
+                        <div class="w-full">
+                            <button type="button" id="openGeneralBtn" class="w-full sm:mt-0 flex items-center justify-center whitespace-nowrap h-[42px] p-5 text-white bg-blue-900 rounded-lg">General Search</button>
+                        </div>
+                    </div>
+
+                    {% if request.GET %}
+                        <div>
+                            <a href="{% url 'accounts:member_list_card' %}" class="h-[42px] px-4 rounded-lg border border-gray-300 flex items-center justify-center bg-red-800 text-white transition">
+                                Clear Advance Search
+                            </a>
+                        </div>
                     {% endif %}
+                </div>
+            </form>
+        </div>
 
-                    <!-- Hover gradient -->
-                    <div class="absolute inset-0 bg-blue-900 opacity-0 group-hover:opacity-70 transition-opacity duration-500"></div>
+        <div>
+            <h2 class="text-[#2B2B2B] text-[32px] font-semibold mb-5 text-center">Members</h2>
+            <p class="text-center md:px-20">
+                DUBANA unites life members, yearly members, and student members into a global network of alumni and learners. Together, they support the Department of Biochemistry and Molecular Biology at Dhaka University.
+            </p>
+        </div>
 
-                    <!-- Content -->
-                    <div class="absolute -bottom-10 left-0 w-full px-2 text-center text-white transition-all duration-500 group-hover:bottom-1/3 group-hover:translate-y-1/3">
-                        <h3 class="text-lg font-semibold">{{ member.get_full_name }}</h3>
+        <div class="py-5 md:p-5">
+            <div id="memberResults" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {% for member in all_members %}
+                    <div class="border pb-2 border-gray-300 overflow-hidden rounded-lg flex flex-col items-center text-center transition flex-1 h-full relative overflow-hidden">
+                        <div class="relative w-full h-72">
+                            {% if member.personal_image %}
+                                <img src="{{ member.personal_image.url }}" class="object-cover mb-4 w-full h-full" />
+                            {% else %}
+                                <img src="{% static 'images/guided-1.png' %}" class="object-cover mb-4 w-full h-full" />
+                            {% endif %}
 
-                        <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                            <p class="text-sm opacity-80">{{ member.member_id }}</p>
-                            <div class="flex justify-center gap-4 mt-3">
-                                <a href="tel:{{ member.phone_number }}" class="text-white hover:text-blue-400">
-                                    <i class="fas fa-phone"></i>
-                                </a>
-                                <a href="mailto:{{ member.email }}" class="text-white hover:text-blue-400">
-                                    <i class="fa-solid fa-envelope"></i>
-                                </a>
+                            <span class="absolute w-[170px] top-[88px] -left-8 bg-blue-50 text-own-red text-xs md:text-sm font-semibold px-6 py-1 shadow origin-top-left -rotate-45">
+                                {{ member.member_id|default:"N/A" }}
+                            </span>
+
+                            <div class="absolute w-10 h-10 bottom-2 left-2 rounded-full overflow-hidden border-2 border-flag-circle-gold shadow-lg">
+                                <img class="w-full h-full object-cover rounded-full p-[3px]" src="{% static 'images/default_flag.jpg' %}" />
+                            </div>
+                        </div>
+
+                        <div class="px-1 mt-[15px]">
+                            <h3 class="text-sm md:text-[20px] text-[#2B2B2B] font-roboto font-normal">{{ member.get_full_name|default:"" }}</h3>
+                            <p class="text-[#2B2B2B] text-xs md:text-[16px] my-[4px] font-roboto font-normal">{{ member.member_id|default:"" }}</p>
+                            
+
+                            <div class="flex justify-center space-x-3 text-gray-600 mt-auto">
+                                <a href="tel:{{ member.phone_number }}" title="{{ member.phone_number }}"><i class="fa-solid fa-phone"></i></a>
+                                <a href="mailto:{{ member.email }}" title="{{ member.email }}"><i class="fa-solid fa-envelope"></i></a>
+                                <a href="#" title="{{ member.city }}"><i class="fa-solid fa-location-dot"></i></a>
+                                <a href="{% url 'accounts:member_detail' member.id %}"><i class="fa-solid fa-circle-info"></i></a>
                             </div>
                         </div>
                     </div>
-                </div>
-            {% endfor %}
+                {% empty %}
+                    <p class="col-span-full text-center text-gray-500">No members found</p>
+                {% endfor %}
+            </div>
         </div>
-    </div>
+    </section>
 </div>
 
-{% endblock content %}
+<script>
+const searchInput = document.getElementById("memberSearch");
+const searchBtn = document.getElementById("generalSearchBtn");
+const resultsContainer = document.getElementById("memberResults");
+const STATIC_IMAGES_URL = "{% static 'images/' %}";
+const MEMBER_DETAIL_BASE_URL = "{% url 'accounts:member_detail' 0 %}";
+let debounceTimer = null;
+
+function renderMembers(data) {
+  resultsContainer.innerHTML = "";
+
+  if (!data.results.length) {
+    resultsContainer.innerHTML = `<p class="col-span-full text-center text-gray-500">No members found</p>`;
+    return;
+  }
+
+  data.results.forEach(member => {
+    const detailsUrl = MEMBER_DETAIL_BASE_URL.replace("0", String(member.id));
+    resultsContainer.insertAdjacentHTML("beforeend", `
+      <div class="border pb-2 border-gray-300 overflow-hidden rounded-lg flex flex-col items-center text-center transition flex-1 h-full relative overflow-hidden">
+        <div class="relative w-full h-72">
+          <img src="${member.personal_image || STATIC_IMAGES_URL + 'guided-1.png'}" class="object-cover mb-4 w-full h-full" />
+
+          <span class="absolute w-[170px] top-[88px] -left-8 bg-blue-50 text-own-red text-xs md:text-sm font-semibold px-6 py-1 shadow origin-top-left -rotate-45">
+            ${member.member_id || 'N/A'}
+          </span>
+
+          <div class="absolute w-10 h-10 bottom-2 left-2 rounded-full overflow-hidden border-2 border-flag-circle-gold shadow-lg">
+            <img class="w-full h-full object-cover rounded-full p-[3px]" src="${STATIC_IMAGES_URL}default_flag.jpg" />
+          </div>
+        </div>
+
+        <div class="px-1 mt-[15px]">
+          <h3 class="text-sm md:text-[20px] text-[#2B2B2B] font-roboto font-normal">${member.full_name || ''}</h3>
+          <p class="text-[#2B2B2B] text-xs md:text-[16px] my-[4px] font-roboto font-normal">${member.member_id || ''}</p>
+
+          <div class="flex justify-center space-x-3 text-gray-600 mt-auto">
+            <a href="tel:${member.phone_number || ''}" title="${member.phone_number || ''}"><i class="fa-solid fa-phone"></i></a>
+            <a href="mailto:${member.email || ''}" title="${member.email || ''}"><i class="fa-solid fa-envelope"></i></a>
+            <a href="#" title="${member.city || ''}"><i class="fa-solid fa-location-dot"></i></a>
+            <a href="${detailsUrl}"><i class="fa-solid fa-circle-info"></i></a>
+          </div>
+        </div>
+      </div>
+    `);
+  });
+}
+
+function runSearch() {
+  const query = searchInput.value.trim();
+  fetch(`{% url 'accounts:member_search' %}?q=${encodeURIComponent(query)}`)
+    .then(res => res.json())
+    .then(renderMembers);
+}
+
+searchInput.addEventListener("keyup", function () {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(runSearch, 400);
+});
+
+searchBtn.addEventListener("click", runSearch);
+
+function updatePlaceholder() {
+  if (window.innerWidth < 640) {
+    searchInput.placeholder = "Search...";
+  } else {
+    searchInput.placeholder = "Search by name, member id, city, zip...";
+  }
+}
+
+updatePlaceholder();
+window.addEventListener("resize", updatePlaceholder);
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const generalRow = document.getElementById("generalSearchRow");
+  const advanceBox = document.getElementById("advanceSearchBox");
+  const openAdvanceBtn = document.getElementById("openAdvanceBtn");
+  const openGeneralBtn = document.getElementById("openGeneralBtn");
+
+  if (openAdvanceBtn && openGeneralBtn && generalRow && advanceBox) {
+    openAdvanceBtn.addEventListener("click", () => {
+      generalRow.classList.add("hidden");
+      advanceBox.classList.remove("hidden");
+    });
+
+    openGeneralBtn.addEventListener("click", () => {
+      advanceBox.classList.add("hidden");
+      generalRow.classList.remove("hidden");
+    });
+
+    {% if request.GET.full_name or request.GET.city or request.GET.state or request.GET.zip_code or request.GET.phone_number or request.GET.email %}
+      generalRow.classList.add("hidden");
+      advanceBox.classList.remove("hidden");
+    {% endif %}
+  }
+});
+</script>
+
+{% endblock %}

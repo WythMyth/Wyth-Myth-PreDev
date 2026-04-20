@@ -1,41 +1,15 @@
 import datetime
-import os
-from django.views.generic import CreateView, UpdateView
-from django.utils import timezone
-from django.http import HttpResponseRedirect
-from .models import Property, User, PropertyContribution
-
 import json
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from django.db.models import Sum
-from django.contrib import messages
-from django.forms import modelformset_factory
-from django.shortcuts import redirect
-from django.contrib import messages
-from .forms import BeneficiaryForm
-from .models import Beneficiary
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.db import transaction
-
-from django.views.generic import ListView
-from decimal import Decimal, ROUND_HALF_UP
-from .models import Expense, User, ExpensePayment
-from .forms import OfficeExpensePaymentForm
-from decimal import Decimal, InvalidOperation
-  
-from datetime import datetime, date
-from django.db.models import Sum, Count 
-from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import csrf_exempt
-from .forms import ExpenseForm, ExpensePaymentForm
-from .models import Expense, ExpensePayment, DeductionHistory
-import paypalrestsdk
+import os
+import uuid
 from base64 import b64encode
-from decimal import ROUND_HALF_UP, Decimal
+from datetime import date, datetime
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from email.mime.image import MIMEImage
 from io import BytesIO
+
+import paypalrestsdk
+import stripe
 import weasyprint
 from django.conf import settings
 from django.contrib import messages
@@ -45,19 +19,27 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView
 from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
-from email.mime.image import MIMEImage
-from django.db.models import Prefetch, Sum, Case, When, IntegerField
+from django.db.models import Case, Count, IntegerField, Prefetch, Q, Sum, When
 from django.db.models.functions import Coalesce
-from django.http import FileResponse, HttpResponse, HttpResponseForbidden
+from django.forms import modelformset_factory
+from django.http import (
+    FileResponse,
+    HttpResponse,
+    HttpResponseForbidden,
+    HttpResponseRedirect,
+    JsonResponse,
+)
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
-from django.urls import reverse_lazy
-
+from django.urls import reverse, reverse_lazy
+from django.utils import timezone
+from django.utils.dateparse import parse_date
+from django.utils.decorators import method_decorator
 from django.utils.html import strip_tags
 from django.utils.timezone import now
 from django.views.decorators.clickjacking import xframe_options_exempt
-from django.views.decorators.http import require_GET
-from django.utils.dateparse import parse_date
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import (
     CreateView,
     DeleteView,
@@ -68,9 +50,8 @@ from django.views.generic import (
 )
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from django.utils.decorators import method_decorator
-import uuid
 from square.client import Client
+
 from accounts.utils import (
     calculate_user_investment_summary,
     generate_stock_certificate_image,
@@ -79,6 +60,11 @@ from hfallmedia.models import HeroVideo
 
 from .forms import (
     AnnouncementForm,
+    BeneficiaryForm,
+    ExpenseForm,
+    ExpensePaymentForm,
+    HelpForm,
+    OfficeExpensePaymentForm,
     PaymentApprovalForm,
     PaymentForm,
     PropertyForm,
@@ -86,21 +72,22 @@ from .forms import (
     UserLoginForm,
     UserRegistrationForm,
     UserUpdateForm,
-    HelpForm
 )
 from .models import (
     Agreement,
     Bank,
+    Beneficiary,
+    DeductionHistory,
+    Expense,
+    ExpensePayment,
     Payment,
     Property,
+    PropertyContribution,
     PropertyImage,
     Story,
     User,
-    UserAgreement
+    UserAgreement,
 )
-import stripe
-from django.http import  JsonResponse
-from django.urls import reverse
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -209,8 +196,11 @@ def download_stock_certificate(request):
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
+
 from django.db.models import Prefetch, Sum
 from django.db.models.functions import Coalesce
+
+
 def _safe_decimal(value, default="0.00"):
     if value is None:
         return Decimal(default)
@@ -933,20 +923,138 @@ class  member_list(LoginRequiredMixin, ListView):
 
 @login_required
 def member_list_card(request):
-    members = User.objects.all()
-    for i in members:
-        print(i.personal_image)
-    context = {"members": members}
+    base_qs = User.objects.filter(
+        is_active=True,
+        is_agree=True,
+    )
+
+    # Fields for advanced filter dropdowns
+    filter_fields = ["city", "state", "email", "phone_number", "zip_code"]
+
+    # Dropdown data
+    raw_data = base_qs.values("first_name", "middle_name", "last_name", *filter_fields)
+
+    dropdowns = defaultdict(set)
+
+    for row in raw_data:
+        full_name = " ".join(
+            part.strip()
+            for part in [
+                row.get("first_name") or "",
+                row.get("middle_name") or "",
+                row.get("last_name") or "",
+            ]
+            if part and part.strip()
+        )
+        if full_name:
+            dropdowns["full_name"].add(full_name)
+
+        for field in filter_fields:
+            value = row.get(field)
+            if value:
+                dropdowns[field].add(value)
+
+    queryset = base_qs
+    selected_filters = {}
+
+    # General search
+    query = request.GET.get("q", "").strip()
+    if query:
+        queryset = queryset.filter(
+            Q(first_name__icontains=query)
+            | Q(middle_name__icontains=query)
+            | Q(last_name__icontains=query)
+            | Q(short_name__icontains=query)
+            | Q(member_id__icontains=query)
+            | Q(city__icontains=query)
+            | Q(state__icontains=query)
+            | Q(zip_code__icontains=query)
+            | Q(email__icontains=query)
+            | Q(phone_number__icontains=query)
+        )
+
+    # Advanced filters
+    full_name = request.GET.get("full_name", "").strip()
+    if full_name:
+        for token in full_name.split():
+            queryset = queryset.filter(
+                Q(first_name__icontains=token)
+                | Q(middle_name__icontains=token)
+                | Q(last_name__icontains=token)
+            )
+        selected_filters["full_name"] = full_name
+
+    for field in filter_fields:
+        value = request.GET.get(field, "").strip()
+        if value:
+            queryset = queryset.filter(**{f"{field}__iexact": value})
+            selected_filters[field] = value
+
     if request.user.is_superuser:
         # Calculate total investment from all users
         total_investment = (
             User.objects.all().aggregate(Sum("balance"))["balance__sum"] or 0
         )
-        context["total_balance"] = total_investment
+        total_balance = total_investment
     else:
-        context["total_balance"] = request.user.balance
+        total_balance = request.user.balance
+    context = {
+        "all_members": queryset.order_by("first_name", "last_name"),
+        # dropdowns
+        "full_name_choices": sorted(dropdowns["full_name"]),
+        "city_choices": sorted(dropdowns["city"]),
+        "state_choices": sorted(dropdowns["state"]),
+        "zip_code_choices": sorted(dropdowns["zip_code"]),
+        "phone_number_choices": sorted(dropdowns["phone_number"]),
+        "email_choices": sorted(dropdowns["email"]),
+        "selected": selected_filters,
+        "query": query,
+        "total_balance":total_balance,
+    }
+
     return render(request, "member_list_card.html", context)
 
+
+def member_search(request):
+    query = request.GET.get("q", "").strip()
+
+    members = User.objects.filter(
+        is_active=True,
+        is_agree=True,
+    )
+
+    if query:
+        members = members.filter(
+            Q(first_name__icontains=query)
+            | Q(middle_name__icontains=query)
+            | Q(last_name__icontains=query)
+            | Q(short_name__icontains=query)
+            | Q(member_id__icontains=query)
+            | Q(city__icontains=query)
+            | Q(state__icontains=query)
+            | Q(zip_code__icontains=query)
+            | Q(email__icontains=query)
+            | Q(phone_number__icontains=query)
+        )
+
+    members = members.order_by("first_name")
+
+    data = [
+        {
+            "id": m.id,
+            "full_name": m.get_full_name(),
+            "member_id": m.member_id,
+            "city": m.city,
+            "state": m.state,
+            "zip_code": m.zip_code,
+            "email": m.email,
+            "phone_number": m.phone_number,
+            "personal_image": m.personal_image.url if m.personal_image else None,
+        }
+        for m in members
+    ]
+
+    return JsonResponse({"results": data})
 
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
@@ -1085,17 +1193,30 @@ def member_detail(request, pk):
 #         return context
 #start
 #today start
-from datetime import date, datetime
 import calendar
+from datetime import date, datetime
 
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Prefetch, Sum, Case, When, Value, IntegerField, F, DateField, DateTimeField
+from django.db.models import (
+    Case,
+    DateField,
+    DateTimeField,
+    F,
+    IntegerField,
+    Prefetch,
+    Sum,
+    Value,
+    When,
+)
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.generic import ListView
 
-from .models import Property, User
-from .models import Story  # adjust import if Story is in different app
+from .models import (
+    Property,
+    Story,  # adjust import if Story is in different app
+    User,
+)
 
 
 def third_friday(year: int, month: int) -> date:
@@ -3380,10 +3501,11 @@ def expense_payment_create(request, expense_id):
 #         context["expense_balance"] = ExpenseBalance.objects.filter(id=1).first()
 
 #         return context
-from django.views.generic import ListView
 from django.contrib.auth.decorators import login_required
-from django.utils.decorators import method_decorator
 from django.db.models import Q, Sum
+from django.utils.decorators import method_decorator
+from django.views.generic import ListView
+
 
 @method_decorator(login_required, name="dispatch")
 class expense_payment_list(ListView):
@@ -4575,21 +4697,19 @@ class managementexpenselist(ListView):
 
 
 import re
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 
 import openpyxl
-
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db import transaction
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views import View
 
 from .forms import PropertyExcelUploadForm
 from .models import Property, User
-
 
 # ===============================
 # Exact Excel Header Mapping

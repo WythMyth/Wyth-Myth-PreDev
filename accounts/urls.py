@@ -38,6 +38,7 @@ urlpatterns = [
              template_name='password_reset_complete.html'
          ), 
          name='password_reset_complete'),
+    path("members/search/", member_search, name="member_search"),
     path('download-stock-certificate/', download_stock_certificate, name='download_stock_certificate'),
     path('dashboard/', dashboard, name='dashboard'),
     path('expenses/', expense_list.as_view(), name='expense_list'),
