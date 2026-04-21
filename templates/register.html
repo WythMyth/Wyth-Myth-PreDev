@@ -141,37 +141,90 @@
             <!-- Home Address -->
             <div class="mb-6">
                 <div class="mb-6">
-                    <label for="id_home_address_line_1" class="block text-sm font-medium text-gray-700 mb-1">Home Address Line 1 *</label>
-                    <input type="text" name="home_address_line_1" id="id_home_address_line_1" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
-                    <span class="error-message" id="home_address_error" style="color: red; font-size: 14px;"></span>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Is your Home Address U.S. Based? *</label>
+                    <div class="flex items-center gap-6">
+                        <label class="inline-flex items-center">
+                            <input
+                                type="radio"
+                                name="is_us_based"
+                                value="true"
+                                {% if form.data.is_us_based == "false" %}{% else %}checked{% endif %}
+                                class="text-orange-500 focus:ring-orange-500"
+                            >
+                            <span class="ml-2 text-sm text-gray-700">Yes</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input
+                                type="radio"
+                                name="is_us_based"
+                                value="false"
+                                {% if form.data.is_us_based == "false" %}checked{% endif %}
+                                class="text-orange-500 focus:ring-orange-500"
+                            >
+                            <span class="ml-2 text-sm text-gray-700">No</span>
+                        </label>
+                    </div>
                 </div>
-                <div class="mb-6">
-                    <label for="id_home_address_line_2" class="block text-sm font-medium text-gray-700 mb-1">Home Address Line 2</label>
-                    <input type="text" name="home_address_line_2" id="id_home_address_line_2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
-                    <span class="error-message" id="home_address_line_2_error" style="color: red; font-size: 14px;"></span>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <div class="mb-6">
+                        <label for="id_home_address_line_1" class="block text-sm font-medium text-gray-700 mb-1">Home Address Line 1 *</label>
+                        <input type="text" name="home_address_line_1" id="id_home_address_line_1" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <span class="error-message" id="home_address_error" style="color: red; font-size: 14px;"></span>
+                    </div>
+                    <div class="mb-6">
+                        <label for="id_home_address_line_2" class="block text-sm font-medium text-gray-700 mb-1">Home Address Line 2</label>
+                        <input type="text" name="home_address_line_2" id="id_home_address_line_2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <span class="error-message" id="home_address_line_2_error" style="color: red; font-size: 14px;"></span>
+                    </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div id="international_required_row" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="mb-6">
+                        <label for="id_country" class="block text-sm font-medium text-gray-700 mb-1">Country *</label>
+                        <input type="text" name="country" id="id_country" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <span class="error-message" id="country_error" style="color: red; font-size: 14px;"></span>
+                    </div>
+                    <div class="mb-6">
+                        <label for="id_country_code" class="block text-sm font-medium text-gray-700 mb-1">Country Code *</label>
+                        <input type="text" name="country_code" id="id_country_code" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <span class="error-message" id="country_code_error" style="color: red; font-size: 14px;"></span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="mb-6">
                         <label for="id_city" class="block text-sm font-medium text-gray-700 mb-1">City *</label>
                         <input type="text" name="city" id="id_city" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
                         <span class="error-message" id="city_error" style="color: red; font-size: 14px;"></span>
                     </div>
                     <div class="mb-6">
-                        <label for="id_state" class="block text-sm font-medium text-gray-700 mb-1">State *</label>
-                        <select name="state" id="id_state" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
-                            <option value="">Select State</option>
-                            {% for val, label in form.fields.state.choices %}
-                                <option value="{{ val }}" {% if form.data.state == val|stringformat:"s" %}selected{% endif %}>
-                                    {{ label }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                        <span class="error-message" id="stateerror" style="color: red; font-size: 14px;"></span>
-                    </div>
-                    <div class="mb-6">
                         <label for="id_zip_code" class="block text-sm font-medium text-gray-700 mb-1">ZIP Code *</label>
                         <input type="text" name="zip_code" id="id_zip_code" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
                         <span class="error-message" id="zip_code_error" style="color: red; font-size: 14px;"></span>
+                    </div>
+                </div>
+
+                <div class="mb-6" id="us_state_wrapper">
+                    <label for="id_state" class="block text-sm font-medium text-gray-700 mb-1">State *</label>
+                    <select name="state" id="id_state" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <option value="">Select State</option>
+                        {% for val, label in form.fields.state.choices %}
+                            <option value="{{ val }}" {% if form.data.state == val|stringformat:"s" %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <span class="error-message" id="stateerror" style="color: red; font-size: 14px;"></span>
+                </div>
+
+                <div id="international_optional_row" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="mb-6">
+                        <label for="id_province_region_territory" class="block text-sm font-medium text-gray-700 mb-1">Province/Region/Territory</label>
+                        <input type="text" name="province_region_territory" id="id_province_region_territory" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div class="mb-6">
+                        <label for="id_zip_postalcode_ext" class="block text-sm font-medium text-gray-700 mb-1">ZIP/Postal Code Extension</label>
+                        <input type="text" name="zip_postalcode_ext" id="id_zip_postalcode_ext" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
                 </div>
             </div>
@@ -497,14 +550,14 @@
 
     function validateZipCode(field) {
         const errorMessage = document.getElementById("zip_code_error");
-        const regex = /^\d{5}$/;
+        const usZipRegex = /^\d{5}$/;
         const value = field.value.trim();
 
         if (!value) {
             errorMessage.textContent = "ZIP Code is required.";
             field.classList.add("error-border");
             return false;
-        } else if (!regex.test(value)) {
+        } else if (isUsBased() && !usZipRegex.test(value)) {
             errorMessage.textContent = "Must be a 5-digit ZIP code.";
             field.classList.add("error-border");
             return false;
@@ -515,9 +568,20 @@
         }
     }
 
+    function isUsBased() {
+        const selected = document.querySelector('input[name="is_us_based"]:checked');
+        return !selected || selected.value === "true";
+    }
+
     function check_state(field) {
         const errorMessage = document.getElementById("stateerror");
         const value = field.value.trim();
+
+        if (!isUsBased()) {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
 
         if (!value) {
             errorMessage.textContent = "State is required.";
@@ -527,6 +591,73 @@
             errorMessage.textContent = "";
             field.classList.remove("error-border");
             return true;
+        }
+    }
+
+    function check_country(field) {
+        const errorMessage = document.getElementById("country_error");
+        const value = field.value.trim();
+
+        if (isUsBased()) {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+
+        if (!value) {
+            errorMessage.textContent = "Country is required.";
+            field.classList.add("error-border");
+            return false;
+        }
+
+        errorMessage.textContent = "";
+        field.classList.remove("error-border");
+        return true;
+    }
+
+    function check_country_code(field) {
+        const errorMessage = document.getElementById("country_code_error");
+        const value = field.value.trim();
+
+        if (isUsBased()) {
+            errorMessage.textContent = "";
+            field.classList.remove("error-border");
+            return true;
+        }
+
+        if (!value) {
+            errorMessage.textContent = "Country Code is required.";
+            field.classList.add("error-border");
+            return false;
+        }
+
+        errorMessage.textContent = "";
+        field.classList.remove("error-border");
+        return true;
+    }
+
+    function toggleAddressMode() {
+        const usStateWrapper = document.getElementById("us_state_wrapper");
+        const internationalRequiredRow = document.getElementById("international_required_row");
+        const internationalOptionalRow = document.getElementById("international_optional_row");
+        const stateField = document.getElementById("id_state");
+        const countryField = document.getElementById("id_country");
+        const countryCodeField = document.getElementById("id_country_code");
+
+        if (isUsBased()) {
+            usStateWrapper.style.display = "block";
+            internationalRequiredRow.style.display = "none";
+            internationalOptionalRow.style.display = "none";
+            stateField.required = true;
+            countryField.required = false;
+            countryCodeField.required = false;
+        } else {
+            usStateWrapper.style.display = "none";
+            internationalRequiredRow.style.display = "grid";
+            internationalOptionalRow.style.display = "grid";
+            stateField.required = false;
+            countryField.required = true;
+            countryCodeField.required = true;
         }
     }
 
@@ -668,12 +799,19 @@
         document.getElementById("id_city").addEventListener("blur", function () { check_city(this); });
         document.getElementById("id_zip_code").addEventListener("blur", function () { validateZipCode(this); });
         document.getElementById("id_state").addEventListener("blur", function () { check_state(this); });
+        document.getElementById("id_country").addEventListener("blur", function () { check_country(this); });
+        document.getElementById("id_country_code").addEventListener("blur", function () { check_country_code(this); });
         document.getElementById("id_sign_by_name").addEventListener("blur", function () { check_sign_by_name(this); });
         document.getElementById("id_personal_image").addEventListener("blur", function () { check_personal_image(this); });
         document.getElementById("id_photo_id").addEventListener("blur", function () { check_photo_id(this); });
         document.getElementById("id_password").addEventListener("focus", function () { document.getElementById("password-requirements").style.display = "block"; });
         document.getElementById("id_password").addEventListener("blur", function () { document.getElementById("password-requirements").style.display = "none"; check_password(this); });
         document.getElementById("id_emergency_contact_number").addEventListener("blur", function () { validateEmergencyContactNumber(this); });
+
+        document.querySelectorAll('input[name="is_us_based"]').forEach(radio => {
+            radio.addEventListener("change", toggleAddressMode);
+        });
+        toggleAddressMode();
 
         // Submit Button Logic
         document.getElementById("submit_button").addEventListener("click", function (event) {
@@ -689,6 +827,8 @@
                 { field: document.getElementById("id_birth_month"), validator: validateBirthMonth },
                 { field: document.getElementById("id_birth_date"), validator: validateBirthDate },
                 { field: document.getElementById("id_state"), validator: check_state },
+                { field: document.getElementById("id_country"), validator: check_country },
+                { field: document.getElementById("id_country_code"), validator: check_country_code },
                 { field: document.getElementById("id_sign_by_name"), validator: check_sign_by_name },
                 { field: document.getElementById("id_personal_image"), validator: check_personal_image },
                 { field: document.getElementById("id_photo_id"), validator: check_photo_id },

@@ -127,9 +127,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Address information
     home_address_line_1 = models.CharField(max_length=255, verbose_name='Home Address Line 1')
     home_address_line_2 = models.CharField(max_length=255, verbose_name='Home Address Line 2', blank=True, null=True)
-    city = models.CharField(max_length=100, verbose_name='City')
+    city = models.CharField(max_length=100, verbose_name='City',blank=False, null=True)
     state = models.CharField(max_length=100, verbose_name='State', choices=STATE_CHOICES, blank=False, null=True)
-    zip_code = models.CharField(max_length=10, verbose_name='ZIP Code')
+    zip_code = models.CharField(max_length=10, verbose_name='ZIP Code', blank=False, null=True)
+
+    #if not us based 
+    country = models.CharField(max_length=100, verbose_name='Country',blank=False, null=True)
+    country_code = models.CharField(max_length=10, verbose_name='Country Code',blank=False, null=True)
+    province_region_territory = models.CharField(max_length=100, verbose_name='Country',blank=False, null=True)
+    zip_postalcode_ext = models.CharField(max_length=15, verbose_name='ZIP Code Ext', blank=False, null=True)
+
     
     # Profile images and ID
     personal_image = models.ImageField(upload_to='users/profile/', verbose_name='Personal Image', null=True, blank=True)
@@ -154,7 +161,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     total_invest_balance = models.DecimalField(max_digits=100, decimal_places=6, default=0.00, verbose_name='Invest Balance')
 
     tags = models.ManyToManyField("schedule.Tag", blank=True, related_name="users")
-    
+
+
+    is_us_based = models.BooleanField(default=True, verbose_name='Is your Home Address U.S. Based?')
     is_active = models.BooleanField(default=True, verbose_name='Is Active')
     is_agree = models.BooleanField(default=False, verbose_name='Is Agree')
     is_expense = models.BooleanField(default=False, verbose_name='Is Expense')
