@@ -1,0 +1,67 @@
+{% extends 'layout/homeLayout.html' %}
+{% block title %}
+  Hfall | Past Sub Committee List
+{% endblock %}
+{% load static %}
+{% load widget_tweaks %}
+{% block content %}
+  <section class="mt-[100px] sm:mt-[130px] lg:mt-[170px]">
+    <section class="max-w-7xl mx-auto px-6">
+      <div class="">
+        <h2 class="text-3xl font-bold mb-5 text-center">{{ committee.committee_name }}</h2>
+        <p class="text-center md:px-20">Building Community, Empowering Growth – Our members come together to create a supportive network that fosters collaboration, celebrates Bangladeshi heritage, and drives both personal and professional development in the tech industry.</p>
+      </div>
+
+      {% if past_sub_committee_members %}
+        <div class="py-5 md:p-5">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {% for member in past_sub_committee_members %}
+              <div class="bg-border rounded-xl flex flex-col items-center text-center transition flex-1 py-5 relative overflow-hidden">
+                <div class="relative w-52 h-52">
+                  {% if member.user.personal_image %}
+                    <img src="{{ member.user.personal_image.url }}" alt="" class="object-cover rounded-full mb-4 w-full h-full" />
+                  {% else %}
+                    <img src="{% static 'images/guided-1.png' %}" alt="" class="object-cover rounded-full mb-4 w-full h-full" />
+                  {% endif %}
+                </div>
+                <div class="px-6 mt-4">
+                  <h3 class="text-sm md:text-lg font-semibold line-clamp-1">{{ member.user.get_full_name }}</h3>
+                  {% for p in member.position.all %}
+                        <p class="mb-1 text-xs md:text-base text-black">
+                            {{ p.title }}
+                        </p>
+                    {% empty %}
+                        <p class="mb-1 text-xs md:text-base text-black">
+                            No Position
+                        </p>
+                    {% endfor %}
+                  {% if request.user.is_authenticated %}
+                    <div class="flex justify-center space-x-3 text-gray-600 mt-auto">
+                      <a href="tel:{{ member.user.phone_number }}"><i class="fa-solid fa-phone"></i></a>
+                      <a href="mailto:{{ member.user.email }}"><i class="fa-solid fa-envelope"></i></a>
+                      <a href="#" title="{{ member.user.city }}"><i class="fa-solid fa-location-dot"></i></a>
+
+                      {% if member.user.linkd %}
+                        <a href="{{ member.user.linkd }}" target="_blank"><i class="fa-brands fa-linkedin-in"></i></a>
+                      {% endif %}
+                      {% if member.user.fb %}
+                        <a href="{{ member.user.fb }}" target="_blank"><i class="fa-brands fa-facebook-f"></i></a>
+                      {% endif %}
+                      {% if member.user.twit %}
+                        <a href="{{ member.user.twit }}" target="_blank"><i class="fa-brands fa-x-twitter"></i></a>
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% else %}
+        <div class="py-5 md:p-5">
+          <p class="text-center font-bold text-xl text-red-500">There are no members in this sub-committee.</p>
+        </div>
+      {% endif %}
+    </section>
+  </section>
+{% endblock %}

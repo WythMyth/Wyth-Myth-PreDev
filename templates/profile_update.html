@@ -77,6 +77,32 @@
             <!-- Address Info -->
             <div class="pb-4">
                 <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Is your Home Address U.S. Based? *</label>
+                    <div class="flex items-center gap-6">
+                        <label class="inline-flex items-center">
+                            <input
+                                type="radio"
+                                name="is_us_based"
+                                value="true"
+                                {% if form.data.is_us_based == "false" %}{% else %}checked{% endif %}
+                                class="text-orange-500 focus:ring-orange-500"
+                            >
+                            <span class="ml-2 text-sm text-gray-700">Yes</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input
+                                type="radio"
+                                name="is_us_based"
+                                value="false"
+                                {% if form.data.is_us_based == "false" %}checked{% endif %}
+                                class="text-orange-500 focus:ring-orange-500"
+                            >
+                            <span class="ml-2 text-sm text-gray-700">No</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mb-4">
                     <label for="id_home_address_line_1" class="block text-sm font-medium text-gray-700 mb-1">Home Address Line 1 </label>
                     <input type="text" name="home_address_line_1" id="id_home_address_line_1" value="{{ form.instance.home_address_line_1 }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
                 </div>
@@ -84,35 +110,65 @@
                     <label for="id_home_address_line_2" class="block text-sm font-medium text-gray-700 mb-1">Home Address Line 2</label>
                     <input type="text" name="home_address_line_2" id="id_home_address_line_2" value="{{ form.instance.home_address_line_2|default_if_none:"" }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                <div id="international_required_row" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="id_country" class="block text-sm font-medium text-gray-700 mb-1">Country *</label>
+                        <input type="text" name="country" id="id_country" value="{{ form.data.country|default:form.instance.country|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div>
+                        <label for="id_country_code" class="block text-sm font-medium text-gray-700 mb-1">Country Code *</label>
+                        <input type="text" name="country_code" id="id_country_code" value="{{ form.data.country_code|default:form.instance.country_code|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
                         <label for="id_city" class="block text-sm font-medium text-gray-700 mb-1">City</label>
                         <input type="text" name="city" id="id_city" value="{{ form.instance.city }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
-                    </div>
-                    <div class="mb-6">
-                        <label for="id_state" class="block text-sm font-medium text-gray-700 mb-1">State *</label>
-                        <select name="state" id="id_state" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
-                            <option value="">Select State</option>
-                            {% for val, label in form.fields.state.choices %}
-                                <option value="{{ val }}" {% if form.data.state == val|stringformat:"s" %}selected{% endif %}>
-                                    {{ label }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                        <span class="error-message" id="stateerror" style="color: red; font-size: 14px;"></span>
                     </div>
                     <div>
                         <label for="id_zip_code" class="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
                         <input type="text" name="zip_code" id="id_zip_code" value="{{ form.instance.zip_code }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
                 </div>
+
+                <div class="mb-6 mt-4" id="us_state_wrapper">
+                        <label for="id_state" class="block text-sm font-medium text-gray-700 mb-1">State *</label>
+                        <select name="state" id="id_state" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            <option value="">Select State</option>
+                            {% for val, label in form.fields.state.choices %}
+                                <option value="{{ val }}" {% if form.data.state == val|stringformat:"s" or form.instance.state == val %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <span class="error-message" id="stateerror" style="color: red; font-size: 14px;"></span>
+                </div>
+
+                <div id="international_optional_row" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label for="id_province_region_territory" class="block text-sm font-medium text-gray-700 mb-1">Province/Region/Territory</label>
+                        <input type="text" name="province_region_territory" id="id_province_region_territory" value="{{ form.data.province_region_territory|default:form.instance.province_region_territory|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div>
+                        <label for="id_zip_postalcode_ext" class="block text-sm font-medium text-gray-700 mb-1">ZIP/Postal Code Extension</label>
+                        <input type="text" name="zip_postalcode_ext" id="id_zip_postalcode_ext" value="{{ form.data.zip_postalcode_ext|default:form.instance.zip_postalcode_ext|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                </div>
             </div>
 
             <!-- Emergency Contact -->
             <div class="pb-4">
-                <div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
                     <label for="id_emergency_contact" class="block text-sm font-medium text-gray-700 mb-1">Emergency Contact</label>
                     <input type="text" name="emergency_contact" id="id_emergency_contact" value="{{ form.instance.emergency_contact|default_if_none:"" }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div>
+                        <label for="id_emergency_contact_number" class="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Number *</label>
+                        <input type="text" name="emergency_contact_number" id="id_emergency_contact_number" value="{{ form.data.emergency_contact_number|default:form.instance.emergency_contact_number|default_if_none:'' }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
                 </div>
             </div>
             <div class="pb-4 border-t pt-4">
@@ -376,7 +432,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        / Birth date functionality
+        // Birth date functionality
 const birthYear = document.getElementById('id_birth_year');
 const birthMonth = document.getElementById('id_birth_month');
 const birthDate = document.getElementById('id_birth_date');
@@ -413,6 +469,60 @@ if (birthMonth) birthMonth.addEventListener('change', updateBirthDates);
 
 // Initialize birth dates on page load if values are already selected
 updateBirthDates();
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const postedIsUsBased = "{{ form.data.is_us_based|default:'' }}";
+        const instanceIsUsBased = "{{ form.instance.is_us_based|yesno:'true,false' }}";
+
+        if (!postedIsUsBased) {
+            const yesRadio = document.querySelector('input[name="is_us_based"][value="true"]');
+            const noRadio = document.querySelector('input[name="is_us_based"][value="false"]');
+            if (instanceIsUsBased === 'false') {
+                if (yesRadio) yesRadio.checked = false;
+                if (noRadio) noRadio.checked = true;
+            } else {
+                if (yesRadio) yesRadio.checked = true;
+                if (noRadio) noRadio.checked = false;
+            }
+        }
+
+        function isUsBased() {
+            const selected = document.querySelector('input[name="is_us_based"]:checked');
+            return !selected || selected.value === 'true';
+        }
+
+        function toggleAddressMode() {
+            const usStateWrapper = document.getElementById('us_state_wrapper');
+            const internationalRequiredRow = document.getElementById('international_required_row');
+            const internationalOptionalRow = document.getElementById('international_optional_row');
+            const stateField = document.getElementById('id_state');
+            const countryField = document.getElementById('id_country');
+            const countryCodeField = document.getElementById('id_country_code');
+
+            if (isUsBased()) {
+                usStateWrapper.style.display = 'block';
+                internationalRequiredRow.style.display = 'none';
+                internationalOptionalRow.style.display = 'none';
+                stateField.required = true;
+                countryField.required = false;
+                countryCodeField.required = false;
+            } else {
+                usStateWrapper.style.display = 'none';
+                internationalRequiredRow.style.display = 'grid';
+                internationalOptionalRow.style.display = 'grid';
+                stateField.required = false;
+                countryField.required = true;
+                countryCodeField.required = true;
+            }
+        }
+
+        document.querySelectorAll('input[name="is_us_based"]').forEach(function(radio) {
+            radio.addEventListener('change', toggleAddressMode);
+        });
+
+        toggleAddressMode();
     });
 </script>
 {% endblock scripts %}

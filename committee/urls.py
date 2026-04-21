@@ -5,6 +5,27 @@ from committee import views
 app_name = "committee"
 
 urlpatterns = [
+    path(
+        "dashboard/executives/",
+        views.ExecutivePageView.as_view(),
+        name="executives",
+    ),
+    path(
+        "dashboard/past-executives-committee-years/",
+        views.PastExecutiveCommitteeYearsPageView.as_view(),
+        name="past_executive_years",
+    ),
+    path(
+        "dashboard/past-executives-committee/<str:year>/",
+        views.PastExecutivesCommitteeListView.as_view(),
+        name="past_executive_committee",
+    ),
+    path("dashboard/past-sub-committee/", views.past_sub_committee, name="past_sub_committee"),
+    path(
+        "dashboard/past-sub-committee/<int:id>/",
+        views.past_sub_committee_list,
+        name="past_sub_committee_list",
+    ),
     # ===================committee name url ==========================
     path(
         "dashboard/committee-name/",
@@ -88,5 +109,48 @@ urlpatterns = [
         "dashboard/executive-committee/<int:pk>/delete/",
         views.ExecutiveCommitteeDeleteView.as_view(),
         name="executive_committee_delete",
+    ),
+
+    # Executive Committee
+    path(
+        "past-executive/",
+        views.PastExecutiveCommitteeListView.as_view(),
+        name="past_executive_list",
+    ),
+    path(
+        "past-executive/create/",
+        views.PastExecutiveCommitteeCreateView.as_view(),
+        name="past_executive_create",
+    ),
+    path(
+        "past-executive/update/<int:pk>/",
+        views.PastExecutiveCommitteeUpdateView.as_view(),
+        name="past_executive_update",
+    ),
+    path(
+        "past-executive/delete/<int:pk>/",
+        views.PastExecutiveCommitteeDeleteView.as_view(),
+        name="past_executive_delete",
+    ),
+    # past sub Committee
+    path(
+        "past-subcommittee/",
+        views.PastSubCommitteeListView.as_view(),
+        name="past_sub_list",
+    ),
+    path(
+        "past-subcommittee/create/",
+        views.PastSubCommitteeCreateView.as_view(),
+        name="past_sub_create",
+    ),
+    path(
+        "past-subcommittee/update/<int:pk>/",
+        views.PastSubCommitteeUpdateView.as_view(),
+        name="past_sub_update",
+    ),
+    path(
+        "past-subcommittee/delete/<int:pk>/",
+        views.PastSubCommitteeDeleteView.as_view(),
+        name="past_sub_delete",
     ),
 ]

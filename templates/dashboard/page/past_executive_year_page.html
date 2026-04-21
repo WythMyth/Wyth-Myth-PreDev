@@ -1,0 +1,39 @@
+{% extends 'layout/homeLayout.html' %}
+{% block title %}
+  Hfall | Past Executive Committee
+{% endblock %}
+{% load static %}
+{% load widget_tweaks %}
+{% block content %}
+  <section class="mt-[140px] sm:mt-[170px] lg:mt-[170px] mb-[20px] sm:mb-[40px] lg:mb-[100px]">
+    {% if past_committee_years %}
+      <section class="w-full px-6">
+        <div class="max-w-7xl mx-auto">
+          <!-- Title & Description -->
+          <div class="text-center space-y-2 mb-8">
+            <h2 class="text-center text-xl sm:text-2xl lg:text-[32px] text-black-text font-semibold">Hfall Past Executive Committee</h2>
+            <p class="text-center my-5 text-black-text/70 text-sm sm:text-base lg:text-lg font-medium">Building Community, Empowering Growth – Our members come together to create a supportive network that fosters collaboration.</p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5 items-center">
+            {% for year in past_committee_years %}
+              <!-- Single Item -->
+              <div class="flex justify-between items-center border border-gray-200 rounded-2xl p-6 transition cursor-pointer">
+                <div>
+                  <h3 class="text-base md:text-2xl font-semibold text-gray-900">Committee {{ year }}</h3>
+                  <p class="text-lg text-gray-600 line-clamp-1">Lorem ipsum dolor sit amet consectetur adipisicing elit. Numquam, omnis quibusdam est possimus impedit voluptas optio aliquid sequi dolor excepturi tempore aliquam ad quisquam ullam placeat mollitia quod nostrum. At.</p>
+                </div>
+                <div class="ml-4 flex-shrink-0">
+                  <a href="{% url 'committee:past_executive_committee' year %}"><button class="w-8 h-8 flex items-center cursor-pointer justify-center rounded-full bg-gray-100 transition"><i class="fa-solid fa-arrow-right text-btn-primary-bg"></i></button></a>
+                </div>
+              </div>
+            {% empty %}
+              <div class="col-span-full grid place-items-center">
+                <p class="text-xl text-red-500">No committees found.</p>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+    {% endif %}
+  </section>
+{% endblock %}

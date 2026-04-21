@@ -1,0 +1,166 @@
+{% extends 'dashboard/layout/dashboardLayout.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="space-y-5 md:space-y-8 max-w-full mx-auto rounded-lg">
+
+    <div class="bg-white rounded-xl shadow p-6 mt-5 mx-4">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+            <h1 class="text-2xl font-bold text-gray-800">
+                {% if form.instance.pk %}
+                    Edit Past Sub Committee
+                {% else %}
+                    Add Past Sub Committee
+                {% endif %}
+            </h1>
+        </div>
+
+        <hr class="mb-5 px-5 border-gray-200">
+
+        <!-- IMPORTANT: enctype added -->
+        <form method="POST" enctype="multipart/form-data" class="space-y-5">
+            {% csrf_token %}
+
+            <div class="grid grid-cols-2 gap-6">
+
+                <!-- Title -->
+                <div>
+                    <label class="block text-base font-medium mb-2">Title</label>
+                    {% render_field form.title placeholder="Enter Title" class="w-full border shadow-sm rounded-lg px-3 py-2" %}
+                </div>
+
+                <!-- Is Active (Kept EXACTLY like your example) -->
+                <div>
+                    <label class="block text-base font-medium mb-2">Is Active</label>
+                    <select name="is_active"
+                        class="w-full border shadow-sm rounded-lg px-3 py-2">
+                        <option value="True"
+                            {% if form.instance.is_active %}selected{% endif %}>
+                            Yes
+                        </option>
+                        <option value="False"
+                            {% if not form.instance.is_active %}selected{% endif %}>
+                            No
+                        </option>
+                    </select>
+                </div>
+
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label class="block text-base font-medium mb-2">Description</label>
+                {% render_field form.description placeholder="Enter Description" class="w-full border shadow-sm rounded-lg px-3 py-2" %}
+            </div>
+
+            <!-- Image Upload -->
+            <div>
+                <label class="block text-base font-medium mb-2">Image</label>
+
+                <div class="lg:flex items-center gap-6">
+
+                    <div class="flex items-center gap-3 min-w-0">
+                        <label for="image"
+                            class="bg-gray-100 border border-gray-300 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200 transition whitespace-nowrap">
+                            Choose Image
+                        </label>
+
+                        <span id="image_id"
+                              class="text-gray-500 text-sm truncate">
+                            No File Chosen
+                        </span>
+
+                        <!-- IMPORTANT: name MUST match model field -->
+                        <input type="file"
+                               id="image"
+                               name="images"
+                               class="hidden file-input"
+                               accept=".jpg,.jpeg,.png,.webp" />
+
+                        <!-- Remove Button -->
+                        <button type="button"
+                                id="removeImageBtn"
+                                onclick="removePersonalImage()"
+                                class="hidden ml-2 inline-flex items-center gap-2 text-own-red ">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+
+                    <!-- Show Current Image -->
+                    {% if form.instance.images %}
+                    <div class="flex gap-4 items-center mt-4 lg:mt-0">
+
+                        <div class="text-sm text-gray-600 whitespace-nowrap">
+                            Current:
+                            <a href="{{ form.instance.images.url }}"
+                               target="_blank"
+                               class="text-blue-600 underline">
+                               View
+                            </a>
+                        </div>
+
+                        <!-- Django Clear Checkbox -->
+                        <label class="flex items-center gap-1 cursor-pointer whitespace-nowrap">
+                            <input type="checkbox"
+                                   name="images-clear"
+                                   class="rounded border-gray-300">
+                            Clear Image
+                        </label>
+
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex justify-center space-x-4 mt-6">
+                <button type="submit"
+                    class="px-6 py-2 bg-[#183665] text-white rounded-md">
+                    {% if form.instance.pk %}
+                        Update Sub Committee
+                    {% else %}
+                        Add Sub Committee
+                    {% endif %}
+                </button>
+
+                <a href="{% url 'committee:past_sub_list' %}"
+                    class="px-6 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">
+                    Cancel
+                </a>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- JS -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const imageInput = document.getElementById('image');
+    const imageDisplay = document.getElementById('image_id');
+    const removeImageBtn = document.getElementById('removeImageBtn');
+
+    if (imageInput) {
+        imageInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                imageDisplay.textContent = this.files[0].name;
+                removeImageBtn.classList.remove('hidden');
+            } else {
+                imageDisplay.textContent = 'No File Chosen';
+                removeImageBtn.classList.add('hidden');
+            }
+        });
+    }
+
+    window.removePersonalImage = function() {
+        imageInput.value = "";
+        imageDisplay.textContent = "No File Chosen";
+        removeImageBtn.classList.add('hidden');
+    }
+
+});
+</script>
+
+{% endblock %}
