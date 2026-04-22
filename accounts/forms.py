@@ -82,6 +82,8 @@ class UserRegistrationForm(forms.ModelForm):
             "zip_code",
             "country",
             "country_code",
+            "not_usa_phone_number",
+            "not_usa_state",
             "province_region_territory",
             "zip_postalcode_ext",
             "emergency_contact",
@@ -100,13 +102,15 @@ class UserRegistrationForm(forms.ModelForm):
             "zip_code",
             "country",
             "country_code",
+            "not_usa_phone_number",
+            "not_usa_state",
             "province_region_territory",
             "zip_postalcode_ext",
         ]:
             self.fields[field_name].required = False
 
         self.fields["home_address_line_1"].required = True
-        self.fields["phone_number"].required = True
+        self.fields["phone_number"].required = False
         self.fields["emergency_contact"].required = False
         self.fields["emergency_contact_number"].required = True
 
@@ -169,25 +173,23 @@ class UserRegistrationForm(forms.ModelForm):
 
         # Always required
         require_field("home_address_line_1", "Home Address Line 1 is required.")
-        require_field("city", "City is required.")
-        require_field("zip_code", "ZIP Code is required.")
-        require_field("phone_number", "Phone Number is required.")
         require_field(
             "emergency_contact_number", "Emergency Contact Number is required."
         )
 
         if is_us_based:
-            require_field("state", "State is required for U.S. addresses.")
+            require_field(
+                "phone_number", "USA Phone Number is required for U.S. addresses."
+            )
             cleaned_data["country"] = None
             cleaned_data["country_code"] = None
+            cleaned_data["not_usa_phone_number"] = None
+            cleaned_data["not_usa_state"] = None
             cleaned_data["province_region_territory"] = None
             cleaned_data["zip_postalcode_ext"] = None
         else:
-            require_field("country", "Country is required for non-U.S. addresses.")
-            require_field(
-                "country_code", "Country Code is required for non-U.S. addresses."
-            )
             cleaned_data["state"] = None
+            cleaned_data["phone_number"] = None
 
         return cleaned_data
 
@@ -255,6 +257,8 @@ class UserUpdateForm(forms.ModelForm):
             "zip_code",
             "country",
             "country_code",
+            "not_usa_phone_number",
+            "not_usa_state",
             "province_region_territory",
             "zip_postalcode_ext",
             "personal_image",
@@ -296,13 +300,15 @@ class UserUpdateForm(forms.ModelForm):
             "zip_code",
             "country",
             "country_code",
+            "not_usa_phone_number",
+            "not_usa_state",
             "province_region_territory",
             "zip_postalcode_ext",
         ]:
             self.fields[field_name].required = False
 
         self.fields["home_address_line_1"].required = True
-        self.fields["phone_number"].required = True
+        self.fields["phone_number"].required = False
         self.fields["emergency_contact"].required = False
         self.fields["emergency_contact_number"].required = True
 
@@ -349,25 +355,23 @@ class UserUpdateForm(forms.ModelForm):
                 self.add_error(field_name, message)
 
         require_field("home_address_line_1", "Home Address Line 1 is required.")
-        require_field("city", "City is required.")
-        require_field("zip_code", "ZIP Code is required.")
-        require_field("phone_number", "Phone Number is required.")
         require_field(
             "emergency_contact_number", "Emergency Contact Number is required."
         )
 
         if is_us_based:
-            require_field("state", "State is required for U.S. addresses.")
+            require_field(
+                "phone_number", "USA Phone Number is required for U.S. addresses."
+            )
             cleaned_data["country"] = None
             cleaned_data["country_code"] = None
+            cleaned_data["not_usa_phone_number"] = None
+            cleaned_data["not_usa_state"] = None
             cleaned_data["province_region_territory"] = None
             cleaned_data["zip_postalcode_ext"] = None
         else:
-            require_field("country", "Country is required for non-U.S. addresses.")
-            require_field(
-                "country_code", "Country Code is required for non-U.S. addresses."
-            )
             cleaned_data["state"] = None
+            cleaned_data["phone_number"] = None
 
         names = self.data.getlist("beneficiary_name[]")
         percentages = self.data.getlist("beneficiary_percentage[]")

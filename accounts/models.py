@@ -117,7 +117,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     short_name = models.CharField(max_length=255, verbose_name='Short Name', blank=True, null=True)
 
     # Contact information
-    phone_number = models.CharField(max_length=20, verbose_name='Phone Number')
+    phone_number = models.CharField(max_length=20, verbose_name='Phone Number', blank=False, null=True)
     email = models.EmailField(verbose_name='Email Address', max_length=255, unique=True)
     # Birth date information
     birth_year = models.IntegerField(choices=BIRTH_YEAR_CHOICES, verbose_name='Birth Year', blank=False, null=True)
@@ -134,6 +134,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     #if not us based 
     country = models.CharField(max_length=100, verbose_name='Country',blank=False, null=True)
     country_code = models.CharField(max_length=10, verbose_name='Country Code',blank=False, null=True)
+    not_usa_phone_number = models.CharField(max_length=20, verbose_name='Phone Number', blank=False, null=True) 
+    not_usa_state = models.CharField(max_length=20, verbose_name='State', blank=False, null=True) 
     province_region_territory = models.CharField(max_length=100, verbose_name='Country',blank=False, null=True)
     zip_postalcode_ext = models.CharField(max_length=15, verbose_name='ZIP Code Ext', blank=False, null=True)
 
