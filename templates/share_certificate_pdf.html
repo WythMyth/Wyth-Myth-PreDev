@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+        <meta charset="UTF-8">
+        <title>Share Certificate</title>
+        <style>
+                body {
+                        font-family: Arial;
+                        text-align: center;
+                        padding: 50px;
+                }
+
+                h1 {
+                        color: #183665;
+                }
+
+                .box {
+                        border: 2px solid #183665;
+                        padding: 40px;
+                }
+        </style>
+</head>
+
+<body>
+
+        <div class="box">
+                <h1>SHARE CERTIFICATE</h1>
+
+                <p>This is to certify that</p>
+
+                <h2>{{ user.get_full_name }}</h2>
+
+                <p>holds</p>
+
+                <h2>{{ total_shares|floatformat:6 }} Shares</h2>
+
+                <p>Share Price: ${{ share_price }}</p>
+                <p>Balance: ${{ cash_balance }}</p>
+                <p>Invested: ${{ active_invested_amount }}</p>
+
+        </div>
+
+</body>
+
+</html>

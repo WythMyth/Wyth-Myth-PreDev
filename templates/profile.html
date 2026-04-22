@@ -126,6 +126,16 @@
                     {% endif %}
                 </span>
             </div>
+            <div class="flex items-center gap-2 mt-2">
+                <p class="text-sm font-bold text-[#183665]">
+                    Share: {{ total_shares|floatformat:6|default:"0.000000" }}
+                </p>
+            
+                <a href="{% url 'accounts:download_share_certificate' %}"
+                    class="bg-[#183665] text-white text-xs px-2 py-1 rounded hover:bg-[#152c52]" target="_blank">
+                    Download
+                </a>
+            </div>
 
             <!-- Member ID -->
             <div class="w-full">
