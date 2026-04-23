@@ -6,20 +6,21 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0010_alter_property_exterior_feature_and_more'),
-        ('schedule', '0001_initial'),
-        ('schedule', '0002_tag_meetingschedule_enable_all_email_notification_and_more'),
+        ("accounts", "0010_alter_property_exterior_feature_and_more"),
+        ("schedule", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='user',
-            name='is_committee',
-            field=models.BooleanField(default=False, verbose_name='Is Committee'),
+            model_name="user",
+            name="is_committee",
+            field=models.BooleanField(default=False, verbose_name="Is Committee"),
         ),
         migrations.AddField(
-            model_name='user',
-            name='tags',
-            field=models.ManyToManyField(blank=True, related_name='users', to='schedule.tag'),
+            model_name="user",
+            name="tags",
+            field=models.ManyToManyField(
+                blank=True, related_name="users", to="schedule.tag"
+            ),
         ),
     ]

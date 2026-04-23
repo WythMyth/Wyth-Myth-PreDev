@@ -88,7 +88,7 @@
 
   <body>
     <div class="certificate-container">
-      <img src="http://127.0.0.1:8000/static/images/share_certificate.png" alt="Share Certificate" class="certificate-image" />
+      <img src="{{certificate_image_url}}" alt="Share Certificate" class="certificate-image" />
 
       <div class="overlay-text name">{{ user.get_full_name|default:"Member" }}</div>
       <div class="overlay-text shares">{{ total_shares|floatformat:6 }}</div>
