@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Share Certificate</title>
+    <style>
+      @page {
+        margin: 0;
+        size: A4 landscape;
+      }
+      
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+      }
+      
+      .certificate-container {
+        position: relative;
+        width: 1123px;
+        height: 794px;
+        margin: 0 auto;
+      }
+      
+      .certificate-image {
+        width: 1123px;
+        height: 794px;
+        display: block;
+      }
+      
+      .overlay-text {
+        position: absolute;
+        color: #000;
+        font-weight: 700;
+      }
+      
+      .name {
+        top: 330px;
+        left: 275px;
+        font-size: 23px;
+        width: 500px;
+        text-align: center;
+      }
+      
+      .shares {
+        top: 370px;
+        left: 120px;
+        font-size: 23px;
+        width: 320px;
+        text-align: center;
+      }
+      
+      .share-price {
+        top: 478px;
+        left: 385px;
+        font-size: 23px;
+      }
+      
+      .balance {
+        top: 522px;
+        left: 385px;
+        font-size: 23px;
+      }
+      
+      .invested {
+        top: 566px;
+        left: 385px;
+        font-size: 23px;
+      }
+      
+      .date-day {
+        top: 524px;
+        left: 345px;
+        font-size: 23px;
+      }
+      .date-month {
+        top: 520px;
+        left: 555px;
+        font-size: 23px;
+      }
+      .date-year {
+        top: 524px;
+        left: 745px;
+        font-size: 23px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="certificate-container">
+      <img src="http://127.0.0.1:8000/static/images/share_certificate.png" alt="Share Certificate" class="certificate-image" />
+
+      <div class="overlay-text name">{{ user.get_full_name|default:"Member" }}</div>
+      <div class="overlay-text shares">{{ total_shares|floatformat:6 }}</div>
+      <div class="overlay-text date-day">{{ now|date:'d' }}</div>
+      <div class="overlay-text date-month">{{ now|date:'F' }}</div>
+      <div class="overlay-text date-year">{{ now|date:'Y' }}</div>
+    </div>
+  </body>
+</html>
