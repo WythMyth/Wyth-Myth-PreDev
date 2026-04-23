@@ -7,6 +7,7 @@ from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from email.mime.image import MIMEImage
 from io import BytesIO
+from pathlib import Path
 
 import paypalrestsdk
 import stripe
@@ -84,13 +85,14 @@ from .models import (
     Property,
     PropertyContribution,
     PropertyImage,
+    SharePrice,
     Story,
     User,
     UserAgreement,
-    SharePrice
 )
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
+
 
 def home(request):
     properties = Property.objects.filter(status="ready_to_sell").order_by(
@@ -191,8 +193,9 @@ def download_stock_certificate(request):
         pdf_buffer,
         as_attachment=False,  # Let the browser display it
         filename="certificate.pdf",
-        content_type='application/pdf'
+        content_type="application/pdf",
     )
+
 
 from collections import defaultdict
 from datetime import date
@@ -247,10 +250,9 @@ def build_user_property_summary_cards(user):
     """
 
     properties = (
-        Property.objects
-        .filter(
+        Property.objects.filter(
             property_contributions__user=user,
-            status__in=["bought", "ready_to_sell", "sold"]
+            status__in=["bought", "ready_to_sell", "sold"],
         )
         .prefetch_related(
             "images",
@@ -267,7 +269,9 @@ def build_user_property_summary_cards(user):
 
     for prop in properties:
         user_contributions = list(
-            prop.property_contributions.filter(user=user).order_by("investment_sequence", "id")
+            prop.property_contributions.filter(user=user).order_by(
+                "investment_sequence", "id"
+            )
         )
 
         if not user_contributions:
@@ -294,19 +298,21 @@ def build_user_property_summary_cards(user):
         total_user_final_profit = Decimal("0.00")
         total_user_received = Decimal("0.00")
 
-        layer_map = defaultdict(lambda: {
-            "sequence": None,
-            "buyer_level": "-",
-            "share_multiplier": Decimal("1.00"),
-            "days": 0,
-            "invest_amount": Decimal("0.00"),
-            "contribution": Decimal("0.00"),
-            "profit": Decimal("0.00"),
-            "deduction": Decimal("0.00"),
-            "final_profit": Decimal("0.00"),
-            "received": Decimal("0.00"),
-            "investment_date": None,
-        })
+        layer_map = defaultdict(
+            lambda: {
+                "sequence": None,
+                "buyer_level": "-",
+                "share_multiplier": Decimal("1.00"),
+                "days": 0,
+                "invest_amount": Decimal("0.00"),
+                "contribution": Decimal("0.00"),
+                "profit": Decimal("0.00"),
+                "deduction": Decimal("0.00"),
+                "final_profit": Decimal("0.00"),
+                "received": Decimal("0.00"),
+                "investment_date": None,
+            }
+        )
 
         contribution_rows = []
 
@@ -351,47 +357,52 @@ def build_user_property_summary_cards(user):
             if not layer["investment_date"] and contrib.investment_date:
                 layer["investment_date"] = contrib.investment_date
 
-            contribution_rows.append({
-                "sequence": contrib.investment_sequence or 1,
-                "buyer_level": buyer_level,
-                "share_multiplier": share_multiplier,
-                "investment_date": contrib.investment_date,
-                "days": layer_days,
-                "invest_amount": invest_amount,
-                "contribution": contribution,
-                "profit": profit,
-                "deduction": deduction,
-                "final_profit": final_profit,
-                "received": received,
-            })
+            contribution_rows.append(
+                {
+                    "sequence": contrib.investment_sequence or 1,
+                    "buyer_level": buyer_level,
+                    "share_multiplier": share_multiplier,
+                    "investment_date": contrib.investment_date,
+                    "days": layer_days,
+                    "invest_amount": invest_amount,
+                    "contribution": contribution,
+                    "profit": profit,
+                    "deduction": deduction,
+                    "final_profit": final_profit,
+                    "received": received,
+                }
+            )
 
         layer_rows = sorted(layer_map.values(), key=lambda x: x["sequence"] or 0)
 
-        summary_cards.append({
-            "property": prop,
-            "primary_image": primary_image,
-            "is_sold": prop.status == "sold",
-            "status": prop.status,
-            "address": prop.address,
-            "buying_price": buying_price,
-            "service_cost": service_cost,
-            "acquisition_cost": acquisition_cost,
-            "selling_price": selling_price,
-            "property_profit": property_profit,
-            "user_total_invested": total_user_invested,
-            "user_total_profit": total_user_profit,
-            "user_total_deduction": total_user_deduction,
-            "user_total_final_profit": total_user_final_profit,
-            "user_total_received": total_user_received,
-            "layer_count": len(layer_rows),
-            "layer_rows": layer_rows,
-            "contribution_rows": contribution_rows,
-        })
+        summary_cards.append(
+            {
+                "property": prop,
+                "primary_image": primary_image,
+                "is_sold": prop.status == "sold",
+                "status": prop.status,
+                "address": prop.address,
+                "buying_price": buying_price,
+                "service_cost": service_cost,
+                "acquisition_cost": acquisition_cost,
+                "selling_price": selling_price,
+                "property_profit": property_profit,
+                "user_total_invested": total_user_invested,
+                "user_total_profit": total_user_profit,
+                "user_total_deduction": total_user_deduction,
+                "user_total_final_profit": total_user_final_profit,
+                "user_total_received": total_user_received,
+                "layer_count": len(layer_rows),
+                "layer_rows": layer_rows,
+                "contribution_rows": contribution_rows,
+            }
+        )
 
     sold_cards = [item for item in summary_cards if item["is_sold"]]
     active_cards = [item for item in summary_cards if not item["is_sold"]]
 
     return sold_cards, active_cards
+
 
 def build_user_overall_summary(user):
     """
@@ -399,21 +410,24 @@ def build_user_overall_summary(user):
     """
 
     contributions = (
-        PropertyContribution.objects
-        .filter(user=user, property__status__in=["bought", "ready_to_sell", "sold"])
+        PropertyContribution.objects.filter(
+            user=user, property__status__in=["bought", "ready_to_sell", "sold"]
+        )
         .select_related("property")
         .order_by("property_id", "investment_sequence", "investment_date")
     )
 
     today = date.today()
 
-    property_map = defaultdict(lambda: {
-        "property": None,
-        "total_invested": Decimal("0.00"),
-        "total_profit": Decimal("0.00"),
-        "total_days": 0,
-        "investments": []
-    })
+    property_map = defaultdict(
+        lambda: {
+            "property": None,
+            "total_invested": Decimal("0.00"),
+            "total_profit": Decimal("0.00"),
+            "total_days": 0,
+            "investments": [],
+        }
+    )
 
     # ===== LOOP =====
     for contrib in contributions:
@@ -437,11 +451,13 @@ def build_user_overall_summary(user):
         data["total_profit"] += profit
         data["total_days"] += days
 
-        data["investments"].append({
-            "date": contrib.investment_date,
-            "amount": invest_amount,
-            "days": days,
-        })
+        data["investments"].append(
+            {
+                "date": contrib.investment_date,
+                "amount": invest_amount,
+                "days": days,
+            }
+        )
 
     # ===== FINAL LIST =====
     property_summaries = []
@@ -453,13 +469,15 @@ def build_user_overall_summary(user):
         overall_invested += item["total_invested"]
         overall_profit += item["total_profit"]
 
-        property_summaries.append({
-            "property": item["property"],
-            "total_invested": item["total_invested"],
-            "total_profit": item["total_profit"],
-            "total_days": item["total_days"],
-            "investments": item["investments"],
-        })
+        property_summaries.append(
+            {
+                "property": item["property"],
+                "total_invested": item["total_invested"],
+                "total_profit": item["total_profit"],
+                "total_days": item["total_days"],
+                "investments": item["investments"],
+            }
+        )
 
     return {
         "total_properties": len(property_summaries),
@@ -467,6 +485,7 @@ def build_user_overall_summary(user):
         "overall_profit": overall_profit,
         "properties": property_summaries,
     }
+
 
 @login_required
 def dashboard(request):
@@ -501,9 +520,7 @@ def dashboard(request):
 
     additional_expenses = Expense.objects.filter(
         status="approved", property__isnull=True
-    ).aggregate(
-        total=Coalesce(Sum("amount"), Decimal("0.00"))
-    )["total"]
+    ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
 
     initial_total_balance = (
         total_balance + total_invested + total_repair_cost + additional_expenses
@@ -563,28 +580,26 @@ def dashboard(request):
         }
         properties_data.append(property_data)
 
-    sold_summary_cards, active_summary_cards = build_user_property_summary_cards(request.user)
+    sold_summary_cards, active_summary_cards = build_user_property_summary_cards(
+        request.user
+    )
     overall_summary = build_user_overall_summary(request.user)
 
     context = {
         "properties_bought": properties_bought,
         "properties_wishlist": properties_wishlist,
         "properties_sold": properties_sold,
-
         "company_total_balance": initial_total_balance,
         "company_invested": total_invested,
         "company_repair_cost": total_repair_cost,
         "company_remaining": remaining_balance,
-
         "user_total_investment": user_total_investment,
         "user_contribution": user_contribution,
         "user_remaining": user_balance,
         "user_contribution_percentage": round(contribution_percentage, 1),
         "user_profit": user_profit,
-
         "properties_data": properties_data,
         "summary": summary,
-
         # new
         "sold_summary_cards": sold_summary_cards,
         "active_summary_cards": active_summary_cards,
@@ -600,6 +615,7 @@ def dashboard(request):
         context["total_balance"] = request.user.balance
 
     return render(request, "dashboard.html", context)
+
 
 # @login_required
 # def dashboard(request):
@@ -745,120 +761,6 @@ def user_logout(request):
     return redirect("accounts:login")
 
 
-
-# @login_required
-# @xframe_options_exempt
-# def profile_view(request):
-#     approved_payments = Payment.objects.filter(
-#         user=request.user, status="approved"
-#     ).order_by("-approved_at")
-
-#     # Get all uploaded agreements from all users
-#     all_uploaded_agreements = (
-#         UserAgreement.objects.filter(uploaded_file__isnull=False)
-#         .exclude(uploaded_file="")
-#         .order_by("-created_at")
-#     )
-
-#     context = {
-#         "user": request.user,
-#         "approved_payments": approved_payments,
-#         "all_uploaded_agreements": all_uploaded_agreements,
-#     }
-
-#     if request.GET.get("preview") == "pdf" or request.GET.get("download") == "pdf":
-#         image_context = {}
-
-#         # Handle user personal image
-#         if request.user.personal_image:
-#             try:
-#                 image_path = request.user.personal_image.path
-#                 if os.path.exists(image_path):
-#                     with open(image_path, "rb") as image_file:
-#                         encoded_string = b64encode(image_file.read()).decode()
-#                         image_context["user_image_data"] = (
-#                             f"data:image/{os.path.splitext(image_path)[1][1:].lower()};base64,{encoded_string}"
-#                         )
-#             except Exception as e:
-#                 print(f"Error processing personal image: {e}")
-
-#         # Handle user photo ID
-#         if request.user.photo_id:
-#             try:
-#                 photo_id_path = request.user.photo_id.path
-#                 if os.path.exists(photo_id_path):
-#                     with open(photo_id_path, "rb") as photo_id_file:
-#                         encoded_string = b64encode(photo_id_file.read()).decode()
-#                         image_context["photo_id_data"] = (
-#                             f"data:image/{os.path.splitext(photo_id_path)[1][1:].lower()};base64,{encoded_string}"
-#                         )
-#             except Exception as e:
-#                 print(f"Error processing photo ID: {e}")
-
-#         # Handle logo image
-#         try:
-#             logo_path = os.path.join(settings.STATIC_ROOT, "assets/images/logo.png")
-#             footer_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf_footer.png")
-
-#             # If STATIC_ROOT doesn't exist or file not found, try STATICFILES_DIRS
-#             if not (os.path.exists(logo_path) and os.path.exists(footer_path)):
-#                 for static_dir in settings.STATICFILES_DIRS:
-#                     test_logo = os.path.join(static_dir, "assets/images/logo.png")
-#                     test_footer = os.path.join(static_dir, "assets/images/pdf_footer.png")
-#                     if os.path.exists(test_logo) and os.path.exists(test_footer):
-#                         logo_path = test_logo
-#                         footer_path = test_footer
-#                         break
-
-#             # Process logo image
-#             if os.path.exists(logo_path):
-#                 with open(logo_path, "rb") as logo_file:
-#                     encoded_logo = b64encode(logo_file.read()).decode()
-#                     image_context["logo_data"] = f"data:image/png;base64,{encoded_logo}"
-
-#             # Process footer image
-#             if os.path.exists(footer_path):
-#                 with open(footer_path, "rb") as footer_file:
-#                     encoded_footer = b64encode(footer_file.read()).decode()
-#                     image_context["footer_data"] = f"data:image/png;base64,{encoded_footer}"
-
-#         except Exception as e:
-#             print(f"Error processing logo/footer: {e}")
-
-#         image_context["base_url"] = request.build_absolute_uri("/")
-#         context.update(image_context)
-
-#         # Render HTML template
-#         html = render_to_string("profile_pdf.html", context)
-
-#         # Create PDF response
-#         response = HttpResponse(content_type="application/pdf")
-
-#         # Set content disposition based on whether it's a preview or download
-#         if request.GET.get("download") == "pdf":
-#             response["Content-Disposition"] = 'attachment; filename="profile.pdf"'
-#         else:
-#             response["Content-Disposition"] = 'inline; filename="profile.pdf"'
-
-#         # Generate PDF with WeasyPrint
-#         pdf = weasyprint.HTML(
-#             string=html, base_url=request.build_absolute_uri("/")
-#         ).write_pdf()
-#         response.write(pdf)
-#         return response
-
-#     if request.user.is_superuser:
-#         # Calculate total investment from all users
-#         total_investment = (
-#             User.objects.all().aggregate(Sum("balance"))["balance__sum"] or 0
-#         )
-#         context["total_balance"] = total_investment
-#     else:
-#         context["total_balance"] = request.user.balance
-
-#     # Normal view
-#     return render(request, "profile.html", context)
-##new code apply
 @login_required
 @xframe_options_exempt
 def profile_view(request):
@@ -866,45 +768,23 @@ def profile_view(request):
         user=request.user, status="approved"
     ).order_by("-approved_at")
 
+    # Get all uploaded agreements from all users
     all_uploaded_agreements = (
         UserAgreement.objects.filter(uploaded_file__isnull=False)
         .exclude(uploaded_file="")
         .order_by("-created_at")
     )
 
-    # ✅ SHARE CALCULATION (NEW ADD)
-    active_invested_amount = (
-        PropertyContribution.objects.filter(
-            user=request.user,
-            property__status__in=["bought", "ready_to_sell"],
-        ).aggregate(total=Sum("contribution"))["total"]
-        or Decimal("0")
-    )
-
-    share_price = SharePrice.get_current_price() or Decimal("1")
-    total_share_base = (request.user.balance or Decimal("0")) + active_invested_amount
-
-    total_shares = Decimal("0")
-    if share_price > 0:
-        total_shares = (total_share_base / share_price).quantize(
-            Decimal("0.000001"), rounding=ROUND_HALF_UP
-        )
-
     context = {
         "user": request.user,
         "approved_payments": approved_payments,
         "all_uploaded_agreements": all_uploaded_agreements,
-
-        # ✅ NEW CONTEXT
-        "active_invested_amount": active_invested_amount,
-        "share_price": share_price,
-        "total_shares": total_shares,
     }
 
-    # ===== EXISTING PDF PART (UNCHANGED) =====
     if request.GET.get("preview") == "pdf" or request.GET.get("download") == "pdf":
         image_context = {}
 
+        # Handle user personal image
         if request.user.personal_image:
             try:
                 image_path = request.user.personal_image.path
@@ -915,28 +795,81 @@ def profile_view(request):
                             f"data:image/{os.path.splitext(image_path)[1][1:].lower()};base64,{encoded_string}"
                         )
             except Exception as e:
-                print(e)
+                print(f"Error processing personal image: {e}")
 
+        # Handle user photo ID
+        if request.user.photo_id:
+            try:
+                photo_id_path = request.user.photo_id.path
+                if os.path.exists(photo_id_path):
+                    with open(photo_id_path, "rb") as photo_id_file:
+                        encoded_string = b64encode(photo_id_file.read()).decode()
+                        image_context["photo_id_data"] = (
+                            f"data:image/{os.path.splitext(photo_id_path)[1][1:].lower()};base64,{encoded_string}"
+                        )
+            except Exception as e:
+                print(f"Error processing photo ID: {e}")
+
+        # Handle logo image
+        try:
+            logo_path = os.path.join(settings.STATIC_ROOT, "assets/images/logo.png")
+            footer_path = os.path.join(
+                settings.STATIC_ROOT, "assets/images/pdf_footer.png"
+            )
+
+            # If STATIC_ROOT doesn't exist or file not found, try STATICFILES_DIRS
+            if not (os.path.exists(logo_path) and os.path.exists(footer_path)):
+                for static_dir in settings.STATICFILES_DIRS:
+                    test_logo = os.path.join(static_dir, "assets/images/logo.png")
+                    test_footer = os.path.join(
+                        static_dir, "assets/images/pdf_footer.png"
+                    )
+                    if os.path.exists(test_logo) and os.path.exists(test_footer):
+                        logo_path = test_logo
+                        footer_path = test_footer
+                        break
+
+            # Process logo image
+            if os.path.exists(logo_path):
+                with open(logo_path, "rb") as logo_file:
+                    encoded_logo = b64encode(logo_file.read()).decode()
+                    image_context["logo_data"] = f"data:image/png;base64,{encoded_logo}"
+
+            # Process footer image
+            if os.path.exists(footer_path):
+                with open(footer_path, "rb") as footer_file:
+                    encoded_footer = b64encode(footer_file.read()).decode()
+                    image_context["footer_data"] = (
+                        f"data:image/png;base64,{encoded_footer}"
+                    )
+
+        except Exception as e:
+            print(f"Error processing logo/footer: {e}")
+
+        image_context["base_url"] = request.build_absolute_uri("/")
         context.update(image_context)
 
+        # Render HTML template
         html = render_to_string("profile_pdf.html", context)
 
+        # Create PDF response
         response = HttpResponse(content_type="application/pdf")
 
+        # Set content disposition based on whether it's a preview or download
         if request.GET.get("download") == "pdf":
             response["Content-Disposition"] = 'attachment; filename="profile.pdf"'
         else:
             response["Content-Disposition"] = 'inline; filename="profile.pdf"'
 
+        # Generate PDF with WeasyPrint
         pdf = weasyprint.HTML(
             string=html, base_url=request.build_absolute_uri("/")
         ).write_pdf()
-
         response.write(pdf)
         return response
 
-    # ===== BALANCE PART =====
     if request.user.is_superuser:
+        # Calculate total investment from all users
         total_investment = (
             User.objects.all().aggregate(Sum("balance"))["balance__sum"] or 0
         )
@@ -944,21 +877,19 @@ def profile_view(request):
     else:
         context["total_balance"] = request.user.balance
 
+    # Normal view
     return render(request, "profile.html", context)
 
 
-# ✅ SHARE CERTIFICATE DOWNLOAD VIEW
+# SHARE CERTIFICATE DOWNLOAD VIEW
 @login_required
 def download_share_certificate(request):
     user = request.user
 
-    active_invested_amount = (
-        PropertyContribution.objects.filter(
-            user=user,
-            property__status__in=["bought", "ready_to_sell"],
-        ).aggregate(total=Sum("contribution"))["total"]
-        or Decimal("0")
-    )
+    active_invested_amount = PropertyContribution.objects.filter(
+        user=user,
+        property__status__in=["bought", "ready_to_sell"],
+    ).aggregate(total=Sum("contribution"))["total"] or Decimal("0")
 
     share_price = SharePrice.get_current_price() or Decimal("1")
     total_share_base = (user.balance or Decimal("0")) + active_invested_amount
@@ -975,6 +906,10 @@ def download_share_certificate(request):
         "total_shares": total_shares,
         "active_invested_amount": active_invested_amount,
         "cash_balance": user.balance,
+        "now": datetime.now(),
+        "certificate_image_url": Path(
+            settings.BASE_DIR, "static", "images", "share_certificate.png"
+        ).as_uri(),
     }
 
     html = render_to_string("share_certificate_pdf.html", context)
@@ -983,13 +918,12 @@ def download_share_certificate(request):
     response["Content-Disposition"] = 'attachment; filename="share_certificate.pdf"'
 
     pdf = weasyprint.HTML(
-        string=html,
-        base_url=request.build_absolute_uri("/")
+        string=html, base_url=request.build_absolute_uri("/")
     ).write_pdf()
 
     response.write(pdf)
     return response
-##new code end
+
 
 class UserProfileUpdateView(LoginRequiredMixin, UpdateView):
     model = User
@@ -1010,42 +944,45 @@ class UserProfileUpdateView(LoginRequiredMixin, UpdateView):
         else:
             context["total_balance"] = self.request.user.balance
         return context
+
     def form_valid(self, form):
-        
-        names = self.request.POST.getlist('beneficiary_name[]')
-        percentages = self.request.POST.getlist('beneficiary_percentage[]')
-        
+
+        names = self.request.POST.getlist("beneficiary_name[]")
+        percentages = self.request.POST.getlist("beneficiary_percentage[]")
+
         beneficiaries = []
         for name, percentage in zip(names, percentages):
-           
+
             if name.strip() and percentage.strip():
                 try:
-                    beneficiaries.append({
-                        'name': name.strip(),
-                        'percentage': float(percentage)
-                    })
+                    beneficiaries.append(
+                        {"name": name.strip(), "percentage": float(percentage)}
+                    )
                 except (ValueError, TypeError):
-                    pass 
-        
+                    pass
+
         form.instance.beneficiaries = beneficiaries
         messages.success(self.request, "Profile updated successfully!")
         return super().form_valid(form)
 
-class  member_list(LoginRequiredMixin, ListView):
+
+class member_list(LoginRequiredMixin, ListView):
     model = User
     template_name = "member_list.html"
     context_object_name = "members"
     paginate_by = 20
 
     def get_queryset(self):
-        return User.objects.all().order_by("id")  
+        return User.objects.all().order_by("id")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
         # Total balance logic
         if self.request.user.is_superuser:
-            total_investment = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            total_investment = (
+                User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            )
             context["total_balance"] = total_investment
         else:
             context["total_balance"] = self.request.user.balance
@@ -1141,7 +1078,7 @@ def member_list_card(request):
         "email_choices": sorted(dropdowns["email"]),
         "selected": selected_filters,
         "query": query,
-        "total_balance":total_balance,
+        "total_balance": total_balance,
     }
 
     return render(request, "member_list_card.html", context)
@@ -1188,13 +1125,16 @@ def member_search(request):
 
     return JsonResponse({"results": data})
 
+
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
 @xframe_options_exempt
 def member_detail(request, pk):
     member = get_object_or_404(User, pk=pk)
 
-    approved_payments = Payment.objects.filter(user=member, status="approved").order_by("-approved_at")
+    approved_payments = Payment.objects.filter(user=member, status="approved").order_by(
+        "-approved_at"
+    )
 
     # All uploaded agreements
     all_uploaded_agreements = (
@@ -1219,7 +1159,9 @@ def member_detail(request, pk):
                 if os.path.exists(image_path):
                     with open(image_path, "rb") as image_file:
                         encoded_string = b64encode(image_file.read()).decode()
-                        image_context["user_image_data"] = f"data:image/{os.path.splitext(image_path)[1][1:].lower()};base64,{encoded_string}"
+                        image_context["user_image_data"] = (
+                            f"data:image/{os.path.splitext(image_path)[1][1:].lower()};base64,{encoded_string}"
+                        )
             except Exception as e:
                 print(f"Error processing personal image: {e}")
 
@@ -1230,19 +1172,25 @@ def member_detail(request, pk):
                 if os.path.exists(photo_id_path):
                     with open(photo_id_path, "rb") as photo_id_file:
                         encoded_string = b64encode(photo_id_file.read()).decode()
-                        image_context["photo_id_data"] = f"data:image/{os.path.splitext(photo_id_path)[1][1:].lower()};base64,{encoded_string}"
+                        image_context["photo_id_data"] = (
+                            f"data:image/{os.path.splitext(photo_id_path)[1][1:].lower()};base64,{encoded_string}"
+                        )
             except Exception as e:
                 print(f"Error processing photo ID: {e}")
 
         # Logo and Footer
         try:
             logo_path = os.path.join(settings.STATIC_ROOT, "assets/images/logo.png")
-            footer_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf_footer.png")
+            footer_path = os.path.join(
+                settings.STATIC_ROOT, "assets/images/pdf_footer.png"
+            )
 
             if not (os.path.exists(logo_path) and os.path.exists(footer_path)):
                 for static_dir in settings.STATICFILES_DIRS:
                     test_logo = os.path.join(static_dir, "assets/images/logo.png")
-                    test_footer = os.path.join(static_dir, "assets/images/pdf_footer.png")
+                    test_footer = os.path.join(
+                        static_dir, "assets/images/pdf_footer.png"
+                    )
                     if os.path.exists(test_logo) and os.path.exists(test_footer):
                         logo_path = test_logo
                         footer_path = test_footer
@@ -1256,7 +1204,9 @@ def member_detail(request, pk):
             if os.path.exists(footer_path):
                 with open(footer_path, "rb") as footer_file:
                     encoded_footer = b64encode(footer_file.read()).decode()
-                    image_context["footer_data"] = f"data:image/png;base64,{encoded_footer}"
+                    image_context["footer_data"] = (
+                        f"data:image/png;base64,{encoded_footer}"
+                    )
 
         except Exception as e:
             print(f"Error processing logo/footer: {e}")
@@ -1269,11 +1219,15 @@ def member_detail(request, pk):
         response = HttpResponse(content_type="application/pdf")
 
         if request.GET.get("download") == "pdf":
-            response["Content-Disposition"] = 'attachment; filename="member_profile.pdf"'
+            response["Content-Disposition"] = (
+                'attachment; filename="member_profile.pdf"'
+            )
         else:
             response["Content-Disposition"] = 'inline; filename="member_profile.pdf"'
 
-        pdf = weasyprint.HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
+        pdf = weasyprint.HTML(
+            string=html, base_url=request.build_absolute_uri("/")
+        ).write_pdf()
         response.write(pdf)
         return response
     if request.user.is_superuser:
@@ -1323,8 +1277,8 @@ def member_detail(request, pk):
 #         else:
 #             context["total_balance"] = self.request.user.balance
 #         return context
-#start
-#today start
+# start
+# today start
 import calendar
 from datetime import date, datetime
 
@@ -1390,7 +1344,9 @@ class PropertyListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         story_prefetch = Prefetch(
             "stories",
-            queryset=Story.objects.only("id", "message", "created_at", "related_property").order_by("-created_at"),
+            queryset=Story.objects.only(
+                "id", "message", "created_at", "related_property"
+            ).order_by("-created_at"),
         )
 
         qs = Property.objects.prefetch_related("images", story_prefetch)
@@ -1460,7 +1416,9 @@ class PropertyListView(LoginRequiredMixin, ListView):
         context["to_date"] = self.request.GET.get("to_date", "")
 
         if self.request.user.is_superuser:
-            total_investment = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            total_investment = (
+                User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            )
             context["total_balance"] = total_investment
         else:
             context["total_balance"] = self.request.user.balance
@@ -1471,7 +1429,9 @@ class PropertyListView(LoginRequiredMixin, ListView):
         context["auction_cycle_end"] = cycle_end
 
         return context
-#today end
+
+
+# today end
 # views.py
 # import calendar
 # from datetime import date
@@ -1482,7 +1442,7 @@ class PropertyListView(LoginRequiredMixin, ListView):
 # from django.views.generic import ListView
 
 # from .models import Property, User
-# from .models import Story 
+# from .models import Story
 
 
 # def add_one_month(d: date) -> date:
@@ -1571,7 +1531,8 @@ class PropertyListView(LoginRequiredMixin, ListView):
 
 #         return context
 
-#end
+# end
+
 
 class PropertyDetailView(DetailView):
     model = Property
@@ -1609,63 +1570,66 @@ class PropertyCreateView(PropertyUserRequiredMixin, CreateView):
     form_class = PropertyForm
     template_name = "property_form.html"
     success_url = reverse_lazy("accounts:property_list")
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["image_formset"] = PropertyImageFormSet(
-            self.request.POST or None,
-            self.request.FILES or None
+            self.request.POST or None, self.request.FILES or None
         )
         all_users = User.objects.filter(is_active=True, investor=True)
-        context['all_users'] = all_users
-        context['user_contributions'] = {}  # Empty for create - template expects this key
+        context["all_users"] = all_users
+        context["user_contributions"] = (
+            {}
+        )  # Empty for create - template expects this key
         context["total_balance"] = (
             User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
             if self.request.user.is_superuser
             else self.request.user.balance
         )
         # Default investment date
-        context["default_investment_date"] = date.today().strftime('%Y-%m-%d')
-        
+        context["default_investment_date"] = date.today().strftime("%Y-%m-%d")
+
         return context
-    
+
     def form_valid(self, form):
         context = self.get_context_data()
         image_formset = context["image_formset"]
-        
-        print("\n" + "="*80)
+
+        print("\n" + "=" * 80)
         print("🆕 CREATING NEW PROPERTY WITH MULTI-INVESTMENT SUPPORT")
-        print("="*80)
-        
+        print("=" * 80)
+
         with transaction.atomic():
             form.instance.listed_by = self.request.user
-            buying_price = form.cleaned_data.get('buying_price') or 0
-            service_cost = form.cleaned_data.get('service_cost') or 0
-            form.instance.acquisition_cost = buying_price + service_cost if (buying_price or service_cost) else None
-            
+            buying_price = form.cleaned_data.get("buying_price") or 0
+            service_cost = form.cleaned_data.get("service_cost") or 0
+            form.instance.acquisition_cost = (
+                buying_price + service_cost if (buying_price or service_cost) else None
+            )
+
             # Save property first
             self.object = form.save(commit=False)
             self.object.save()
-            
+
             print(f"✅ Property saved: {self.object.property_name}")
             print(f"   Status: {self.object.status}")
             print(f"   Buying Price: ${self.object.buying_price}")
             print(f"   Service Cost: ${self.object.service_cost}")
-            
-            if self.object.status == 'bought':
+
+            if self.object.status == "bought":
                 # Parse multi-investment data from POST
                 investments_list = []
                 investment_dates_list = []
                 selected_contributors = set()
-                
+
                 print("\n📊 Parsing Investment Data...")
-                
+
                 # Parse all invest_ fields with sequence numbers
                 for key in self.request.POST:
-                    if key.startswith('invest_'):
+                    if key.startswith("invest_"):
                         # Format: invest_{user_id}_{sequence}
-                        parts = key.replace('invest_', '').split('_')
-                        
+                        parts = key.replace("invest_", "").split("_")
+
                         if len(parts) >= 2:
                             user_id = int(parts[0])
                             sequence = int(parts[1])
@@ -1673,133 +1637,143 @@ class PropertyCreateView(PropertyUserRequiredMixin, CreateView):
                             # Old format fallback: invest_{user_id}
                             user_id = int(parts[0])
                             sequence = 1
-                        
-                        amount_str = self.request.POST.get(key, '').strip()
-                        
+
+                        amount_str = self.request.POST.get(key, "").strip()
+
                         try:
                             amount = Decimal(amount_str)
-                            
+
                             # Check if checkbox is selected
-                            checkbox_key = f'select_user_{user_id}_{sequence}'
-                            is_selected = self.request.POST.get(checkbox_key) is not None
-                            
+                            checkbox_key = f"select_user_{user_id}_{sequence}"
+                            is_selected = (
+                                self.request.POST.get(checkbox_key) is not None
+                            )
+
                             if amount > 0 and is_selected:
                                 # Check if fixed
-                                fixed_key = f'fixed_{user_id}_{sequence}'
+                                fixed_key = f"fixed_{user_id}_{sequence}"
                                 is_fixed = self.request.POST.get(fixed_key) is not None
-                                
-                                investments_list.append({
-                                    'user_id': user_id,
-                                    'invest_amount': amount,
-                                    'is_fixed': is_fixed,
-                                    'sequence': sequence
-                                })
-                                
+
+                                investments_list.append(
+                                    {
+                                        "user_id": user_id,
+                                        "invest_amount": amount,
+                                        "is_fixed": is_fixed,
+                                        "sequence": sequence,
+                                    }
+                                )
+
                                 selected_contributors.add(user_id)
-                                
+
                                 # Get investment date
-                                date_key = f'date_{user_id}_{sequence}'
-                                date_str = self.request.POST.get(date_key, '').strip()
-                                
+                                date_key = f"date_{user_id}_{sequence}"
+                                date_str = self.request.POST.get(date_key, "").strip()
+
                                 if date_str:
                                     try:
-                                        inv_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                                        inv_date = datetime.strptime(
+                                            date_str, "%Y-%m-%d"
+                                        ).date()
                                     except ValueError:
-                                        inv_date = self.object.buying_date or date.today()
+                                        inv_date = (
+                                            self.object.buying_date or date.today()
+                                        )
                                 else:
                                     inv_date = self.object.buying_date or date.today()
-                                
-                                investment_dates_list.append({
-                                    'user_id': user_id,
-                                    'sequence': sequence,
-                                    'date': inv_date
-                                })
-                                
-                                print(f"   ✓ User {user_id} Investment #{sequence}: ${amount} (Fixed: {is_fixed}, Date: {inv_date})")
-                        
+
+                                investment_dates_list.append(
+                                    {
+                                        "user_id": user_id,
+                                        "sequence": sequence,
+                                        "date": inv_date,
+                                    }
+                                )
+
+                                print(
+                                    f"   ✓ User {user_id} Investment #{sequence}: ${amount} (Fixed: {is_fixed}, Date: {inv_date})"
+                                )
+
                         except (ValueError, InvalidOperation, AttributeError) as e:
                             print(f"   ✗ Error parsing {key}: {e}")
                             continue
-                
+
                 print(f"\n📝 Total Investments Collected: {len(investments_list)}")
                 print(f"   Unique Contributors: {len(selected_contributors)}")
-                
+
                 if investments_list:
                     # Set contributors
                     self.object.contributors.set(
                         User.objects.filter(id__in=selected_contributors)
                     )
-                    
+
                     print("\n💰 Processing Investments...")
-                    
+
                     # Use the new multi-investment method
-                    success = self.object.deduct_property_costs_with_multiple_investments(
-                        investments_list, 
-                        investment_dates_list
+                    success = (
+                        self.object.deduct_property_costs_with_multiple_investments(
+                            investments_list, investment_dates_list
+                        )
                     )
-                    
+
                     if not success:
                         print("❌ Investment processing failed!")
-                        form.add_error(None, "Invalid investment data or insufficient balance.")
+                        form.add_error(
+                            None, "Invalid investment data or insufficient balance."
+                        )
                         return self.form_invalid(form)
-                    
+
                     print("✅ All investments processed successfully!")
                 else:
                     print("⚠️  No valid investments found")
-            
+
             # Save images
             if image_formset.is_valid():
                 image_formset.instance = self.object
                 image_formset.save()
                 print("✅ Images saved")
-        
-        print("="*80)
+
+        print("=" * 80)
         print("✅ PROPERTY CREATION COMPLETED SUCCESSFULLY")
-        print("="*80 + "\n")
-        
+        print("=" * 80 + "\n")
+
         return HttpResponseRedirect(self.get_success_url())
+
 
 class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
     model = Property
     form_class = PropertyForm
     template_name = "property_form.html"
     success_url = reverse_lazy("accounts:property_list")
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
+
         # ✅ Get fresh user data - force evaluation with list()
         all_users = list(
-            User.objects.filter(
-                is_active=True, 
-                investor=True
-            ).order_by('id')
+            User.objects.filter(is_active=True, investor=True).order_by("id")
         )
-        
+
         # Build user contributions map
         user_contributions = {}
         for user in all_users:
             # Get all contributions for this user, force fresh query
             contributions = list(
                 PropertyContribution.objects.filter(
-                    property=self.object, 
-                    user=user
-                ).order_by('investment_sequence')
+                    property=self.object, user=user
+                ).order_by("investment_sequence")
             )
-            
+
             if contributions:
                 user_contributions[user.id] = contributions
-        
+
         # Build image formset
         context["image_formset"] = PropertyImageFormSet(
-            self.request.POST or None,
-            self.request.FILES or None,
-            instance=self.object
+            self.request.POST or None, self.request.FILES or None, instance=self.object
         )
-        
+
         context["all_users"] = all_users
         context["user_contributions"] = user_contributions
-        
+
         # Calculate total balance from fresh data
         if self.request.user.is_superuser:
             context["total_balance"] = sum(user.balance for user in all_users)
@@ -1807,55 +1781,55 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
             # Get fresh balance for current user
             current_user = User.objects.get(pk=self.request.user.pk)
             context["total_balance"] = current_user.balance
-        
+
         # Set default investment date
         context["default_investment_date"] = (
-            self.object.buying_date.strftime('%Y-%m-%d') 
-            if self.object.buying_date 
-            else date.today().strftime('%Y-%m-%d')
+            self.object.buying_date.strftime("%Y-%m-%d")
+            if self.object.buying_date
+            else date.today().strftime("%Y-%m-%d")
         )
-        
+
         return context
-    
+
     def form_valid(self, form):
         old_property = Property.objects.get(pk=self.object.pk)
         old_status = old_property.status
-        
-        print("\n" + "="*80)
+
+        print("\n" + "=" * 80)
         print(f"🔄 UPDATING PROPERTY: {old_property.property_name}")
-        print("="*80)
-        
+        print("=" * 80)
+
         buying_price = form.cleaned_data.get("buying_price") or 0
         service_cost = form.cleaned_data.get("service_cost") or 0
         form.instance.acquisition_cost = (
             buying_price + service_cost if (buying_price or service_cost) else None
         )
-        
+
         self.object = form.save(commit=False)
         self.object.save()
-        
+
         if self.object.status == "bought":
             # Get all existing contributions with their sequences
             existing_contributions = PropertyContribution.objects.filter(
                 property=self.object
-            ).select_related('user')
-            
+            ).select_related("user")
+
             # Create mapping: {user_id: {sequence: contribution_object}}
             existing_map = {}
             for contrib in existing_contributions:
                 if contrib.user_id not in existing_map:
                     existing_map[contrib.user_id] = {}
                 existing_map[contrib.user_id][contrib.investment_sequence] = contrib
-            
+
             investments_list = []
             investment_dates_list = []
             selected_contributors = set()
-            
+
             # Track which existing contributions are being submitted
             submitted_contributions = set()  # {(user_id, sequence)}
-            
+
             print("\n📊 Parsing Updated Investment Data...")
-            
+
             # Parse all invest_ fields with sequence
             for key in self.request.POST:
                 if key.startswith("invest_"):
@@ -1866,78 +1840,95 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
                     else:
                         user_id = int(parts[0])
                         sequence = 1
-                    
-                    amount_str = self.request.POST.get(key, '').strip()
+
+                    amount_str = self.request.POST.get(key, "").strip()
                     try:
                         amount = Decimal(amount_str)
-                        
+
                         # Check if checkbox is selected
-                        checkbox_key = f'select_user_{user_id}_{sequence}'
+                        checkbox_key = f"select_user_{user_id}_{sequence}"
                         is_selected = self.request.POST.get(checkbox_key) is not None
-                        
+
                         if amount > 0 and is_selected:
-                            fixed_key = f'fixed_{user_id}_{sequence}'
+                            fixed_key = f"fixed_{user_id}_{sequence}"
                             is_fixed = self.request.POST.get(fixed_key) is not None
-                            
-                            investments_list.append({
-                                'user_id': user_id,
-                                'invest_amount': amount,
-                                'is_fixed': is_fixed,
-                                'sequence': sequence
-                            })
+
+                            investments_list.append(
+                                {
+                                    "user_id": user_id,
+                                    "invest_amount": amount,
+                                    "is_fixed": is_fixed,
+                                    "sequence": sequence,
+                                }
+                            )
                             selected_contributors.add(user_id)
                             submitted_contributions.add((user_id, sequence))
-                            
+
                             # Get investment date
-                            date_key = f'date_{user_id}_{sequence}'
-                            date_str = self.request.POST.get(date_key, '').strip()
+                            date_key = f"date_{user_id}_{sequence}"
+                            date_str = self.request.POST.get(date_key, "").strip()
                             if date_str:
                                 try:
-                                    inv_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                                    inv_date = datetime.strptime(
+                                        date_str, "%Y-%m-%d"
+                                    ).date()
                                 except ValueError:
                                     inv_date = self.object.buying_date or date.today()
                             else:
                                 # Use existing date if available
-                                if user_id in existing_map and sequence in existing_map[user_id]:
-                                    inv_date = existing_map[user_id][sequence].investment_date or self.object.buying_date or date.today()
+                                if (
+                                    user_id in existing_map
+                                    and sequence in existing_map[user_id]
+                                ):
+                                    inv_date = (
+                                        existing_map[user_id][sequence].investment_date
+                                        or self.object.buying_date
+                                        or date.today()
+                                    )
                                 else:
                                     inv_date = self.object.buying_date or date.today()
-                            
-                            investment_dates_list.append({
-                                'user_id': user_id,
-                                'sequence': sequence,
-                                'date': inv_date
-                            })
-                            
-                            print(f"   ✓ User {user_id} Investment #{sequence}: ${amount} (Fixed: {is_fixed})")
-                    
+
+                            investment_dates_list.append(
+                                {
+                                    "user_id": user_id,
+                                    "sequence": sequence,
+                                    "date": inv_date,
+                                }
+                            )
+
+                            print(
+                                f"   ✓ User {user_id} Investment #{sequence}: ${amount} (Fixed: {is_fixed})"
+                            )
+
                     except (ValueError, InvalidOperation, AttributeError) as e:
                         print(f"   ✗ Error parsing {key}: {e}")
                         continue
-            
+
             print(f"\n📝 Total Investments: {len(investments_list)}")
             print(f"   Selected Contributors: {selected_contributors}")
-            
+
             # ✅ FIX: Check for NEW contributors OR NEW sequences
             existing_user_ids = set(existing_map.keys())
             truly_new_user_ids = selected_contributors - existing_user_ids
-            
+
             # Check for new sequences from existing users
             new_sequences_added = []
             for user_id, sequence in submitted_contributions:
                 if user_id in existing_map:
                     if sequence not in existing_map[user_id]:
                         new_sequences_added.append((user_id, sequence))
-            
+
             # ⚠️ CRITICAL FIX: Check if any contributions were REMOVED
             removed_contributions = []
             for user_id, sequences in existing_map.items():
                 for sequence in sequences:
                     if (user_id, sequence) not in submitted_contributions:
                         removed_contributions.append((user_id, sequence))
-            
-            should_refund = bool(truly_new_user_ids or new_sequences_added or removed_contributions)
-            
+
+            should_refund = bool(
+                truly_new_user_ids or new_sequences_added or removed_contributions
+            )
+
             if should_refund:
                 if truly_new_user_ids:
                     print(f"\n🆕 NEW CONTRIBUTORS: {truly_new_user_ids}")
@@ -1949,48 +1940,55 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
                     print(f"\n🗑️  CONTRIBUTIONS REMOVED:")
                     for user_id, seq in removed_contributions:
                         print(f"   User {user_id} Sequence #{seq}")
-                
+
                 print("\n🔄 Refunding all existing contributions...")
                 self.object.refund_all_contributions()
                 print("   ✅ Refund completed")
             else:
-                print("\n✅ No structural changes - updating existing contributions only")
-            
+                print(
+                    "\n✅ No structural changes - updating existing contributions only"
+                )
+
             if investments_list:
                 # Set contributors
                 self.object.contributors.set(
                     User.objects.filter(id__in=selected_contributors)
                 )
-                
+
                 print("\n💰 Processing Updated Investments...")
                 success = self.object.deduct_property_costs_with_multiple_investments(
-                    investments_list, 
-                    investment_dates_list
+                    investments_list, investment_dates_list
                 )
-                
+
                 if not success:
                     print("❌ Update failed!")
                     form.add_error(None, "Invalid investment or insufficient balance.")
                     return self.form_invalid(form)
-                
+
                 print("✅ Update successful!")
-        
+
         elif old_status == "bought" and self.object.status == "sold":
             print("\n💵 Property sold - distributing proceeds...")
             self.object.distribute_sale_proceeds()
-        
-        elif old_status == "bought" and self.object.status not in ["bought", "ready_to_sell", "sold"]:
+
+        elif old_status == "bought" and self.object.status not in [
+            "bought",
+            "ready_to_sell",
+            "sold",
+        ]:
             print("\n↩️  Status changed - refunding contributions...")
             self.object.refund_all_contributions()
-        
+
         # Handle image formset
         context = self.get_context_data()
         image_formset = context["image_formset"]
         if image_formset.is_valid():
             image_formset.save()
-        
-        print("="*80 + "\n")
+
+        print("=" * 80 + "\n")
         return HttpResponseRedirect(self.get_success_url())
+
+
 class PropertyGalleryView(DetailView):
     model = Property
     template_name = "property_gallery.html"
@@ -2075,7 +2073,7 @@ def make_payment(request, bank_id):
             payment.user = request.user
             payment.bank = bank
             payment.save()
-            user= payment.user
+            user = payment.user
 
             # ✅ Send email to admin
             subject = f"New Payment Submission (Pending Review) by {request.user.get_full_name()}"
@@ -2088,7 +2086,9 @@ def make_payment(request, bank_id):
                 "date": now().strftime("%d %b %Y"),
             }
 
-            html_content = render_to_string("emails/admin_payment_notification.html", context)
+            html_content = render_to_string(
+                "emails/admin_payment_notification.html", context
+            )
             text_content = f"""
             A new payment has been submitted by {request.user.get_full_name()} on {context['date']}.
             Bank: {bank.name}
@@ -2099,7 +2099,9 @@ def make_payment(request, bank_id):
             HFall Payment System
             """
 
-            email = EmailMultiAlternatives(subject, text_content.strip(), from_email, to_email)
+            email = EmailMultiAlternatives(
+                subject, text_content.strip(), from_email, to_email
+            )
             email.attach_alternative(html_content, "text/html")
             email.send()
 
@@ -2121,7 +2123,6 @@ def make_payment(request, bank_id):
     return render(request, "make_payment.html", context)
 
 
-
 @method_decorator(login_required, name="dispatch")
 class my_payments(ListView):
     model = Payment
@@ -2130,12 +2131,14 @@ class my_payments(ListView):
     paginate_by = 10000
 
     def get_queryset(self):
-        payments = Payment.objects.filter(user=self.request.user).order_by("-created_at")
+        payments = Payment.objects.filter(user=self.request.user).order_by(
+            "-created_at"
+        )
 
         # Filters
         from_date = self.request.GET.get("from_date")
         to_date = self.request.GET.get("to_date")
-        status = self.request.GET.get('status', 'approved') 
+        status = self.request.GET.get("status", "approved")
         bank_id = self.request.GET.get("bank")
 
         if from_date:
@@ -2156,7 +2159,9 @@ class my_payments(ListView):
 
         # Total balance logic
         if self.request.user.is_superuser:
-            total_investment = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            total_investment = (
+                User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            )
             context_total_balance = total_investment
         else:
             context_total_balance = self.request.user.balance
@@ -2167,32 +2172,44 @@ class my_payments(ListView):
         status = self.request.GET.get("status")
         bank_id = self.request.GET.get("bank")
 
-        is_filtered = bool(from_date or to_date or (status and status != "all") or (bank_id and bank_id != "all"))
+        is_filtered = bool(
+            from_date
+            or to_date
+            or (status and status != "all")
+            or (bank_id and bank_id != "all")
+        )
 
         # Filter sum
         if is_filtered:
             filter_sum = payments.aggregate(Sum("amount"))["amount__sum"] or 0
-            
+
         else:
-            filter_sum = Payment.objects.filter(
-                user=self.request.user,
-                status="approved"   
-            ).aggregate(Sum("amount"))["amount__sum"] or 0
+            filter_sum = (
+                Payment.objects.filter(
+                    user=self.request.user, status="approved"
+                ).aggregate(Sum("amount"))["amount__sum"]
+                or 0
+            )
         # else:
         #     filter_sum = Payment.objects.filter(user=self.request.user).aggregate(Sum("amount"))["amount__sum"] or 0
 
-        context.update({
-            "total_balance": context_total_balance,
-            "filter_sum": filter_sum,
-            "banks": Bank.objects.all().order_by("name"),
-            "statuses": Payment.STATUS_CHOICES,
-            "from_date": from_date or "",
-            "to_date": to_date or "",
-            "selected_status": status or "all",
-            "selected_bank": int(bank_id) if bank_id and bank_id.isdigit() else "all",
-        })
+        context.update(
+            {
+                "total_balance": context_total_balance,
+                "filter_sum": filter_sum,
+                "banks": Bank.objects.all().order_by("name"),
+                "statuses": Payment.STATUS_CHOICES,
+                "from_date": from_date or "",
+                "to_date": to_date or "",
+                "selected_status": status or "all",
+                "selected_bank": (
+                    int(bank_id) if bank_id and bank_id.isdigit() else "all"
+                ),
+            }
+        )
 
         return context
+
 
 # @method_decorator([login_required, user_passes_test(lambda u: u.is_superuser)], name="dispatch")
 # class pending_payments(ListView):
@@ -2246,6 +2263,7 @@ class my_payments(ListView):
 #         else:
 #             context["total_balance"] = self.request.user.balance
 
+
 #         return context
 @method_decorator(login_required, name="dispatch")
 class pending_payments(ListView):
@@ -2261,10 +2279,7 @@ class pending_payments(ListView):
         if user.is_superuser:
             payments = Payment.objects.filter(status="pending")
         else:
-            payments = Payment.objects.filter(
-                status="pending",
-                user=user
-            )
+            payments = Payment.objects.filter(status="pending", user=user)
 
         payments = payments.order_by("-created_at")
 
@@ -2315,26 +2330,26 @@ class pending_payments(ListView):
 @user_passes_test(lambda u: u.is_superuser)
 def payment_detail(request, payment_id):
     payment = get_object_or_404(Payment, id=payment_id)
-    
+
     if request.method == "POST":
         form = PaymentApprovalForm(request.POST, instance=payment)
         if form.is_valid():
             payment = form.save(commit=False)
             action = request.POST.get("action")
             user = payment.user
-            
+
             if action == "approve":
                 payment.status = "approved"
                 payment.approved_by = request.user
                 payment.approved_at = now()
                 payment.is_office_management = False  # Normal approval
                 payment.save()  # This will trigger automatic balance update for user
-                
+
                 messages.success(
                     request,
                     f"Payment approved. ${payment.amount} added to {user.email}'s balance.",
                 )
-                
+
                 subject = "Your Payment Has Been Approved - HFall Realty"
                 from_email = settings.DEFAULT_FROM_EMAIL
                 to_email = [user.email]
@@ -2344,7 +2359,9 @@ def payment_detail(request, payment_id):
                     "date": now().strftime("%d %b %Y"),
                     "status": "approved",
                 }
-                html_content = render_to_string("emails/user_payment_status.html", context)
+                html_content = render_to_string(
+                    "emails/user_payment_status.html", context
+                )
                 text_content = f"""
                     Dear {user.get_full_name()},
                     Your payment of ${payment.amount} has been approved and added to your balance.
@@ -2353,39 +2370,46 @@ def payment_detail(request, payment_id):
                     Regards,
                     HFall Finance Team
                 """.strip()
-                email = EmailMultiAlternatives(subject, text_content, from_email, to_email)
+                email = EmailMultiAlternatives(
+                    subject, text_content, from_email, to_email
+                )
                 email.attach_alternative(html_content, "text/html")
                 email.send()
-                
+
             elif action == "approve_office":
                 # Get the office manager
                 office_manager = User.get_office_manager()
-                
+
                 if not office_manager:
-                    messages.error(request, "No office manager found. Please assign an office manager first.")
+                    messages.error(
+                        request,
+                        "No office manager found. Please assign an office manager first.",
+                    )
                     return redirect("accounts:payment_detail", payment_id=payment.id)
-                
+
                 # Manually update payment status WITHOUT triggering save() balance logic
                 with transaction.atomic():
                     Payment.objects.filter(pk=payment.pk).update(
-                        status='approved',
+                        status="approved",
                         approved_by=request.user,
                         approved_at=now(),
-                        is_office_management=True  # Mark as office management
+                        is_office_management=True,  # Mark as office management
                     )
-                    
+
                     # Only update office manager's balance
                     office_manager.balance += payment.amount
                     office_manager.total_invest_balance += payment.amount
                     office_manager.save()
-                
+
                 messages.success(
                     request,
                     f"Payment approved for office management. ${payment.amount} added to office manager ({office_manager.get_full_name()})'s balance. User {user.email}'s balance remains unchanged.",
                 )
-                
+
                 # Send email to payment submitter
-                subject = "Your Payment Has Been Approved (Office Management) - HFall Realty"
+                subject = (
+                    "Your Payment Has Been Approved (Office Management) - HFall Realty"
+                )
                 from_email = settings.DEFAULT_FROM_EMAIL
                 to_email = [user.email]
                 context = {
@@ -2395,7 +2419,9 @@ def payment_detail(request, payment_id):
                     "status": "approved",
                     "office_management": True,
                 }
-                html_content = render_to_string("emails/user_payment_status.html", context)
+                html_content = render_to_string(
+                    "emails/user_payment_status.html", context
+                )
                 text_content = f"""
                     Dear {user.get_full_name()},
                     Your payment of ${payment.amount} has been approved and added to the office management account.
@@ -2404,17 +2430,19 @@ def payment_detail(request, payment_id):
                     Regards,
                     HFall Finance Team
                 """.strip()
-                email = EmailMultiAlternatives(subject, text_content, from_email, to_email)
+                email = EmailMultiAlternatives(
+                    subject, text_content, from_email, to_email
+                )
                 email.attach_alternative(html_content, "text/html")
                 email.send()
-                
+
             elif action == "reject":
                 payment.status = "rejected"
                 payment.is_office_management = False
                 payment.save()
-                
+
                 messages.warning(request, f"Payment rejected for {user.email}.")
-                
+
                 subject = "Your Payment Has Been Rejected - HFall Realty"
                 from_email = settings.DEFAULT_FROM_EMAIL
                 to_email = [user.email]
@@ -2424,7 +2452,9 @@ def payment_detail(request, payment_id):
                     "date": now().strftime("%d %b %Y"),
                     "status": "rejected",
                 }
-                html_content = render_to_string("emails/user_payment_status.html", context)
+                html_content = render_to_string(
+                    "emails/user_payment_status.html", context
+                )
                 text_content = f"""
                     Dear {user.get_full_name()},
                     Unfortunately, your payment of ${payment.amount} has been rejected after review.
@@ -2433,13 +2463,17 @@ def payment_detail(request, payment_id):
                     Regards,
                     HFall Finance Team
                 """.strip()
-                email = EmailMultiAlternatives(subject, text_content, from_email, to_email)
+                email = EmailMultiAlternatives(
+                    subject, text_content, from_email, to_email
+                )
                 email.attach_alternative(html_content, "text/html")
                 email.send()
-                
+
             elif action == "clarification":
-                clarification_message = request.POST.get("clarification_message", "").strip()
-                
+                clarification_message = request.POST.get(
+                    "clarification_message", ""
+                ).strip()
+
                 subject = f"Clarification Needed for Payment #{payment.id}"
                 from_email = settings.DEFAULT_FROM_EMAIL
                 to_email = [user.email]
@@ -2449,7 +2483,9 @@ def payment_detail(request, payment_id):
                     "clarification_message": clarification_message,
                     "date": now().strftime("%d %b %Y"),
                 }
-                html_content = render_to_string("emails/payment_clarification.html", context)
+                html_content = render_to_string(
+                    "emails/payment_clarification.html", context
+                )
                 text_content = f"""
                     Dear {context['user_full_name']},
                     We need clarification for Payment ID #{payment.id}.
@@ -2458,34 +2494,37 @@ def payment_detail(request, payment_id):
                     Regards,
                     HFall Finance Team
                 """.strip()
-                email = EmailMultiAlternatives(subject, text_content, from_email, to_email)
+                email = EmailMultiAlternatives(
+                    subject, text_content, from_email, to_email
+                )
                 email.attach_alternative(html_content, "text/html")
                 email.send()
-                
-                messages.info(request, f"Clarification request email sent to {user.email}.")
+
+                messages.info(
+                    request, f"Clarification request email sent to {user.email}."
+                )
                 return redirect("accounts:payment_detail", payment_id=payment.id)
-            
+
             return redirect("accounts:pending_payments")
     else:
         form = PaymentApprovalForm(instance=payment)
-    
+
     # Get office manager for template context
     office_manager = User.get_office_manager()
-    
+
     context = {
-        "payment": payment, 
+        "payment": payment,
         "form": form,
         "office_manager": office_manager,
     }
-    
+
     if request.user.is_superuser:
         total_investment = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
         context["total_balance"] = total_investment
     else:
         context["total_balance"] = request.user.balance
-    
-    return render(request, "payment_detail.html", context)
 
+    return render(request, "payment_detail.html", context)
 
 
 @login_required
@@ -2496,40 +2535,45 @@ def office_management_payments(request):
     """
     # Check if current user is office manager
     if not request.user.office_management:
-        messages.error(request, "You don't have permission to access this page. Only office manager can view this.")
-        return redirect('accounts:dashboard')
-    
+        messages.error(
+            request,
+            "You don't have permission to access this page. Only office manager can view this.",
+        )
+        return redirect("accounts:dashboard")
+
     # Get all office management payments
-    payments = Payment.objects.filter(
-        is_office_management=True,
-        status='approved'
-    ).select_related('user', 'bank', 'approved_by').order_by('-approved_at')
-    
+    payments = (
+        Payment.objects.filter(is_office_management=True, status="approved")
+        .select_related("user", "bank", "approved_by")
+        .order_by("-approved_at")
+    )
+
     # Calculate total amount
-    total_amount = payments.aggregate(total=Sum('amount'))['total'] or 0
-    
+    total_amount = payments.aggregate(total=Sum("amount"))["total"] or 0
+
     # Get filter parameters
-    user_id = request.GET.get('user')
-    bank_id = request.GET.get('bank')
-    
+    user_id = request.GET.get("user")
+    bank_id = request.GET.get("bank")
+
     # Apply filters
     if user_id:
         payments = payments.filter(user_id=user_id)
     if bank_id:
         payments = payments.filter(bank_id=bank_id)
-    
+
     # Recalculate total after filter
-    total_amount = payments.aggregate(total=Sum('amount'))['total'] or 0
-    
+    total_amount = payments.aggregate(total=Sum("amount"))["total"] or 0
+
     context = {
-        'payments': payments,
-        'total_amount': total_amount,
-        'users': User.objects.all(),
-        'banks': Bank.objects.all(),
-        'office_manager': request.user,
+        "payments": payments,
+        "total_amount": total_amount,
+        "users": User.objects.all(),
+        "banks": Bank.objects.all(),
+        "office_manager": request.user,
     }
-    
-    return render(request, 'office_management_payments.html', context)
+
+    return render(request, "office_management_payments.html", context)
+
 
 @login_required
 def office_management_dashboard(request):
@@ -2539,96 +2583,92 @@ def office_management_dashboard(request):
     """
     # Check if current user is office manager
     if not request.user.office_management:
-        messages.error(request, "You don't have permission to access this page. Only office manager can view this.")
-        return redirect('accounts:dashboard')
-    
+        messages.error(
+            request,
+            "You don't have permission to access this page. Only office manager can view this.",
+        )
+        return redirect("accounts:dashboard")
+
     # Get filter parameters
-    date_from = request.GET.get('date_from')
-    date_to = request.GET.get('date_to')
-    user_id = request.GET.get('user')
-    
+    date_from = request.GET.get("date_from")
+    date_to = request.GET.get("date_to")
+    user_id = request.GET.get("user")
+
     # Get Office Management Payments
     payments = Payment.objects.filter(
-        is_office_management=True,
-        status='approved'
-    ).select_related('user', 'bank', 'approved_by')
-    
+        is_office_management=True, status="approved"
+    ).select_related("user", "bank", "approved_by")
+
     # Get Deduction History
     deductions = DeductionHistory.objects.filter(
         office_manager=request.user
-    ).select_related(
-        'property', 
-        'user', 
-        'property_contribution'
-    )
-    
+    ).select_related("property", "user", "property_contribution")
+
     # Apply filters
     if date_from:
         try:
-            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+            date_from_obj = datetime.strptime(date_from, "%Y-%m-%d")
             payments = payments.filter(approved_at__date__gte=date_from_obj)
             deductions = deductions.filter(created_at__date__gte=date_from_obj)
         except ValueError:
             pass
-    
+
     if date_to:
         try:
-            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d')
+            date_to_obj = datetime.strptime(date_to, "%Y-%m-%d")
             payments = payments.filter(approved_at__date__lte=date_to_obj)
             deductions = deductions.filter(created_at__date__lte=date_to_obj)
         except ValueError:
             pass
-    
+
     if user_id:
         payments = payments.filter(user_id=user_id)
         deductions = deductions.filter(user_id=user_id)
-    
+
     # Ordering
-    payments = payments.order_by('-approved_at')
-    deductions = deductions.order_by('-created_at')
-    
+    payments = payments.order_by("-approved_at")
+    deductions = deductions.order_by("-created_at")
+
     # Calculate totals
-    total_payments = payments.aggregate(total=Sum('amount'))['total'] or 0
-    total_deductions = deductions.aggregate(total=Sum('deduction_amount'))['total'] or 0
+    total_payments = payments.aggregate(total=Sum("amount"))["total"] or 0
+    total_deductions = deductions.aggregate(total=Sum("deduction_amount"))["total"] or 0
     total_income = total_payments + total_deductions
-    
+
     # Get summary by user
-    payment_summary = payments.values(
-        'user__id', 
-        'user__first_name', 
-        'user__last_name',
-        'user__short_name'
-    ).annotate(
-        total_amount=Sum('amount'),
-        payment_count=Count('id')
-    ).order_by('-total_amount')
-    
-    deduction_summary = deductions.values(
-        'user__id', 
-        'user__first_name', 
-        'user__last_name',
-        'user__short_name'
-    ).annotate(
-        total_deduction=Sum('deduction_amount'),
-        deduction_count=Count('id')
-    ).order_by('-total_deduction')
-    
+    payment_summary = (
+        payments.values(
+            "user__id", "user__first_name", "user__last_name", "user__short_name"
+        )
+        .annotate(total_amount=Sum("amount"), payment_count=Count("id"))
+        .order_by("-total_amount")
+    )
+
+    deduction_summary = (
+        deductions.values(
+            "user__id", "user__first_name", "user__last_name", "user__short_name"
+        )
+        .annotate(total_deduction=Sum("deduction_amount"), deduction_count=Count("id"))
+        .order_by("-total_deduction")
+    )
+
     context = {
-        'payments': payments,
-        'deductions': deductions,
-        'total_payments': total_payments,
-        'total_deductions': total_deductions,
-        'total_income': total_income,
-        'payment_summary': payment_summary,
-        'deduction_summary': deduction_summary,
-        'users': User.objects.all(),
-        'office_manager': request.user,
-        'date_from': date_from,
-        'date_to': date_to,
-        'selected_user': user_id,
+        "payments": payments,
+        "deductions": deductions,
+        "total_payments": total_payments,
+        "total_deductions": total_deductions,
+        "total_income": total_income,
+        "payment_summary": payment_summary,
+        "deduction_summary": deduction_summary,
+        "users": User.objects.all(),
+        "office_manager": request.user,
+        "date_from": date_from,
+        "date_to": date_to,
+        "selected_user": user_id,
     }
-    
-    return render(request, 'office_management_dashboard.html', context)
+
+    return render(request, "office_management_dashboard.html", context)
+
+
 @login_required
 def stripe_payment(request):
     if request.method == "POST":
@@ -2642,10 +2682,12 @@ def stripe_payment(request):
             amount = float(amount)
 
             fee = round((amount * 0.03) + 0.30, 2)
-            total_charge = round(amount + fee, 2) 
-            amount_in_cents = int(total_charge * 100)  
+            total_charge = round(amount + fee, 2)
+            amount_in_cents = int(total_charge * 100)
 
-            success_url = request.build_absolute_uri(reverse("accounts:payment_success"))
+            success_url = request.build_absolute_uri(
+                reverse("accounts:payment_success")
+            )
             cancel_url = request.build_absolute_uri(reverse("accounts:payment_banks"))
 
             checkout_session = stripe.checkout.Session.create(
@@ -2655,7 +2697,7 @@ def stripe_payment(request):
                         "price_data": {
                             "currency": "usd",
                             "product_data": {"name": f"Account Deposit - ${amount}"},
-                            "unit_amount": amount_in_cents, 
+                            "unit_amount": amount_in_cents,
                         },
                         "quantity": 1,
                     },
@@ -2678,13 +2720,19 @@ def stripe_payment(request):
             messages.error(request, f"Error: {str(e)}")
             return redirect("accounts:payment_banks")
 
-    return render(request, "stripe_payment.html", {"stripe_public_key": settings.STRIPE_PUBLIC_KEY})
+    return render(
+        request,
+        "stripe_payment.html",
+        {"stripe_public_key": settings.STRIPE_PUBLIC_KEY},
+    )
+
+
 @login_required
 def payment_success(request):
     session_id = request.GET.get("session_id")
-    amount = request.GET.get("amount")  
+    amount = request.GET.get("amount")
     fee = request.GET.get("fee")
-    total = request.GET.get("total")  
+    total = request.GET.get("total")
 
     if not session_id:
         messages.error(request, "Invalid payment session")
@@ -2704,7 +2752,6 @@ def payment_success(request):
                 },
             )
 
-           
             payment = Payment.objects.create(
                 user=request.user,
                 bank=stripe_bank,
@@ -2713,7 +2760,7 @@ def payment_success(request):
                 status="pending",
                 notes=notes,
             )
-            user=payment.user
+            user = payment.user
             subject = f"New Stripe Payment (Pending) - {request.user.get_full_name()}"
             from_email = settings.DEFAULT_FROM_EMAIL
             to_email = [user.email]
@@ -2725,7 +2772,9 @@ def payment_success(request):
                 "date": now().strftime("%d %b %Y"),
             }
 
-            html_content = render_to_string("emails/admin_payment_notification.html", context)
+            html_content = render_to_string(
+                "emails/admin_payment_notification.html", context
+            )
             text_content = (
                 f"A new Stripe payment has been submitted by {request.user.get_full_name()} "
                 f"({request.user.email}) and is pending review.\n"
@@ -2740,11 +2789,10 @@ def payment_success(request):
             email.attach_alternative(html_content, "text/html")
             email.send()
 
-           
             messages.success(
                 request,
                 f"Payment successful! You sent ${total}. Fee: ${fee}. "
-                f"${amount} will be added to your balance after admin review."
+                f"${amount} will be added to your balance after admin review.",
             )
 
             return render(
@@ -2754,7 +2802,7 @@ def payment_success(request):
                     "original_amount": amount,
                     "card_fee": fee,
                     "net_amount": total,
-                }
+                },
             )
         else:
             messages.error(request, "Payment was not completed")
@@ -2763,7 +2811,6 @@ def payment_success(request):
     except Exception as e:
         messages.error(request, f"Error verifying payment: {str(e)}")
         return redirect("accounts:dashboard")
-
 
 
 def stripe_webhook(request):
@@ -2792,11 +2839,12 @@ def stripe_webhook(request):
 
     return HttpResponse(status=200)
 
+
 def get_square_client():
-   
+
     return Client(
         access_token=settings.SQUARE_ACCESS_TOKEN,
-        environment=settings.SQUARE_ENVIRONMENT
+        environment=settings.SQUARE_ENVIRONMENT,
     )
 
 
@@ -2813,11 +2861,11 @@ def square_create_payment(request):
             amount = float(amount)
             fee = round((amount * 0.03) + 0.30, 2)
             total_charge = round(amount + fee, 2)
-            amount_in_cents = int(total_charge * 100) 
+            amount_in_cents = int(total_charge * 100)
 
             client = Client(
                 access_token=settings.SQUARE_ACCESS_TOKEN,
-                environment=settings.SQUARE_ENVIRONMENT
+                environment=settings.SQUARE_ENVIRONMENT,
             )
             checkout_api = client.checkout
 
@@ -2831,30 +2879,31 @@ def square_create_payment(request):
                                 "name": f"Account Deposit: ${amount}",
                                 "quantity": "1",
                                 "base_price_money": {
-                                    "amount": amount_in_cents,  
-                                    "currency": "USD"
-                                }
+                                    "amount": amount_in_cents,
+                                    "currency": "USD",
+                                },
                             }
-                        ]
+                        ],
                     }
                 },
                 "ask_for_shipping_address": False,
                 "pre_populate_buyer_email": request.user.email,
-                "redirect_url": request.build_absolute_uri(reverse('accounts:square_payment_success'))
+                "redirect_url": request.build_absolute_uri(
+                    reverse("accounts:square_payment_success")
+                ),
             }
 
             response = checkout_api.create_checkout(
-                location_id=settings.SQUARE_LOCATION_ID, 
-                body=body
+                location_id=settings.SQUARE_LOCATION_ID, body=body
             )
 
             if response.is_success():
-                checkout_url = response.body['checkout']['checkout_page_url']
-                request.session['square_payment_data'] = {
-                    'original_amount': str(amount),
-                    'fee': str(fee),
-                    'total_charge': str(total_charge),
-                    'notes': notes,
+                checkout_url = response.body["checkout"]["checkout_page_url"]
+                request.session["square_payment_data"] = {
+                    "original_amount": str(amount),
+                    "fee": str(fee),
+                    "total_charge": str(total_charge),
+                    "notes": notes,
                 }
                 return redirect(checkout_url)
             else:
@@ -2867,9 +2916,10 @@ def square_create_payment(request):
 
     return redirect("accounts:payment_banks")
 
+
 @login_required
 def square_payment_success(request):
-    payment_data = request.session.get('square_payment_data')
+    payment_data = request.session.get("square_payment_data")
     if not payment_data:
         messages.error(request, "Payment session expired")
         return redirect("accounts:payment_banks")
@@ -2892,14 +2942,14 @@ def square_payment_success(request):
         payment = Payment.objects.create(
             user=request.user,
             bank=square_bank,
-            amount=original_amount, 
+            amount=original_amount,
             paid_amount=total_charge,
             status="pending",
             notes=notes,
         )
 
         # Email notification (same as Stripe)
-        user=payment.user
+        user = payment.user
         subject = f"New Square Payment (Pending) - {request.user.get_full_name()}"
         from_email = settings.DEFAULT_FROM_EMAIL
         to_email = [user.email]
@@ -2910,7 +2960,9 @@ def square_payment_success(request):
             "date": now().strftime("%d %b %Y"),
         }
 
-        html_content = render_to_string("emails/admin_payment_notification.html", context)
+        html_content = render_to_string(
+            "emails/admin_payment_notification.html", context
+        )
         text_content = (
             f"A new Square payment has been submitted by {request.user.get_full_name()} "
             f"({request.user.email}) and is pending review.\n"
@@ -2927,28 +2979,34 @@ def square_payment_success(request):
         messages.success(
             request,
             f"Square payment successful! You sent ${total_charge:.2f}. Fee: ${fee:.2f}. "
-            f"${original_amount:.2f} will be added to your balance after admin review."
+            f"${original_amount:.2f} will be added to your balance after admin review.",
         )
 
-        del request.session['square_payment_data']
+        del request.session["square_payment_data"]
 
-        return render(request, "payment_success.html", {
-            "original_amount": f"{original_amount:.2f}",
-            "card_fee": f"{fee:.2f}",
-            "net_amount": f"{total_charge:.2f}",
-            "payment_method": "Square"
-        })
+        return render(
+            request,
+            "payment_success.html",
+            {
+                "original_amount": f"{original_amount:.2f}",
+                "card_fee": f"{fee:.2f}",
+                "net_amount": f"{total_charge:.2f}",
+                "payment_method": "Square",
+            },
+        )
 
     except Exception as e:
         messages.error(request, f"Error processing Square payment: {str(e)}")
         return redirect("accounts:payment_banks")
 
 
-paypalrestsdk.configure({
-    "mode": "live",  # sandbox or live
-    "client_id": "AaUpRxa9MVVgAz-4-Mr262QMqLy9pb-MOKIY_82FM7Hlg56GpwjW6PA9e7Ow784B38HneBAFxn9i1HoC",
-    "client_secret": "EP2IKcRnf6GfwkdIKCpeCNzkC_hq3dc_HnReJ8fIaHREnHG_xjwkghm6RQc1UCT85tfJ4DQL9L99Wg8Q"
-})
+paypalrestsdk.configure(
+    {
+        "mode": "live",  # sandbox or live
+        "client_id": "AaUpRxa9MVVgAz-4-Mr262QMqLy9pb-MOKIY_82FM7Hlg56GpwjW6PA9e7Ow784B38HneBAFxn9i1HoC",
+        "client_secret": "EP2IKcRnf6GfwkdIKCpeCNzkC_hq3dc_HnReJ8fIaHREnHG_xjwkghm6RQc1UCT85tfJ4DQL9L99Wg8Q",
+    }
+)
 
 
 @login_required
@@ -2962,33 +3020,43 @@ def paypal_create_payment(request):
 
         try:
             # PayPal payment create
-            payment = paypalrestsdk.Payment({
-                "intent": "sale",
-                "payer": {"payment_method": "paypal"},
-                "redirect_urls": {
-                    "return_url": request.build_absolute_uri(reverse("accounts:paypal_success")),
-                    "cancel_url": request.build_absolute_uri(reverse("accounts:payment_banks")),
-                },
-                "transactions": [{
-                    "item_list": {
-                        "items": [{
-                            "name": f"Account Deposit - ${amount}",
-                            "sku": "deposit",
-                            "price": str(amount),
-                            "currency": "USD",
-                            "quantity": 1,
-                        }]
+            payment = paypalrestsdk.Payment(
+                {
+                    "intent": "sale",
+                    "payer": {"payment_method": "paypal"},
+                    "redirect_urls": {
+                        "return_url": request.build_absolute_uri(
+                            reverse("accounts:paypal_success")
+                        ),
+                        "cancel_url": request.build_absolute_uri(
+                            reverse("accounts:payment_banks")
+                        ),
                     },
-                    "amount": {"total": str(amount), "currency": "USD"},
-                    "description": notes,
-                }]
-            })
+                    "transactions": [
+                        {
+                            "item_list": {
+                                "items": [
+                                    {
+                                        "name": f"Account Deposit - ${amount}",
+                                        "sku": "deposit",
+                                        "price": str(amount),
+                                        "currency": "USD",
+                                        "quantity": 1,
+                                    }
+                                ]
+                            },
+                            "amount": {"total": str(amount), "currency": "USD"},
+                            "description": notes,
+                        }
+                    ],
+                }
+            )
 
             if payment.create():
                 for link in payment.links:
                     if link.rel == "approval_url":
                         approval_url = str(link.href)
-                        request.session['paypal_payment_data'] = {
+                        request.session["paypal_payment_data"] = {
                             "payment_id": payment.id,
                             "amount": amount,
                             "notes": notes,
@@ -3034,13 +3102,13 @@ def paypal_success(request):
                 user=request.user,
                 bank=paypal_bank,
                 amount=float(payment_data["amount"]),
-                paid_amount=float(payment_data["amount"]), 
+                paid_amount=float(payment_data["amount"]),
                 status="pending",
                 notes=payment_data.get("notes", ""),
             )
 
             # Email to admin
-            user=payment.user
+            user = payment.user
             subject = f"New PayPal Payment (Pending) - {request.user.get_full_name()}"
             from_email = settings.DEFAULT_FROM_EMAIL
             to_email = [user.email]
@@ -3049,7 +3117,9 @@ def paypal_success(request):
                 "payment": new_payment,
                 "date": now().strftime("%d %b %Y"),
             }
-            html_content = render_to_string("emails/admin_payment_notification.html", context)
+            html_content = render_to_string(
+                "emails/admin_payment_notification.html", context
+            )
             text_content = f"A new PayPal payment has been submitted by {request.user.get_full_name()}"
 
             email = EmailMultiAlternatives(subject, text_content, from_email, to_email)
@@ -3059,13 +3129,17 @@ def paypal_success(request):
             messages.success(
                 request,
                 f"PayPal payment successful! You sent ${payment_data['amount']}. "
-                f"${payment_data['amount']} will be added to your balance after admin review."
+                f"${payment_data['amount']} will be added to your balance after admin review.",
             )
-            del request.session['paypal_payment_data']
-            return render(request, "payment_success.html", {
-                "original_amount": payment_data["amount"],
-                "payment_method": "PayPal",
-            })
+            del request.session["paypal_payment_data"]
+            return render(
+                request,
+                "payment_success.html",
+                {
+                    "original_amount": payment_data["amount"],
+                    "payment_method": "PayPal",
+                },
+            )
         else:
             messages.error(request, "Payment was not completed")
             return redirect("accounts:payment_banks")
@@ -3080,6 +3154,7 @@ def get_square_client():
         environment=settings.SQUARE_ENVIRONMENT,
     )
 
+
 @login_required
 def square_checkout(request):
     amount = request.GET.get("amount", "")
@@ -3091,10 +3166,10 @@ def square_checkout(request):
         "environment": settings.SQUARE_ENVIRONMENT,
         "prefill_amount": amount,
         "prefill_notes": notes,
-    
         "success_url": reverse("accounts:square_success"),
     }
     return render(request, "square_checkout.html", context)
+
 
 @method_decorator(login_required, name="dispatch")
 class expense_list(ListView):
@@ -3104,9 +3179,11 @@ class expense_list(ListView):
     paginate_by = 100000
 
     def get_queryset(self):
-        expenses = Expense.objects.filter(
-            property__isnull=False
-        ).select_related('property', 'created_by', 'approved_by').order_by("-expense_date")
+        expenses = (
+            Expense.objects.filter(property__isnull=False)
+            .select_related("property", "created_by", "approved_by")
+            .order_by("-expense_date")
+        )
 
         # Get filters
         status_filter = self.request.GET.get("status", "")
@@ -3138,29 +3215,34 @@ class expense_list(ListView):
         from_date = self.request.GET.get("from_date", "")
         to_date = self.request.GET.get("to_date", "")
 
-        context.update({
-            "status_filter": status_filter,
-            "created_by_filter": created_by_filter,
-            "from_date": from_date,
-            "to_date": to_date,
-            "users": User.objects.all().order_by("short_name"),  # For dropdown
-        })
-        
+        context.update(
+            {
+                "status_filter": status_filter,
+                "created_by_filter": created_by_filter,
+                "from_date": from_date,
+                "to_date": to_date,
+                "users": User.objects.all().order_by("short_name"),  # For dropdown
+            }
+        )
+
         filtered_expenses = self.get_queryset()
-        total_expense_amount = filtered_expenses.aggregate(
-            total=Sum("amount")
-        )["total"] or 0
+        total_expense_amount = (
+            filtered_expenses.aggregate(total=Sum("amount"))["total"] or 0
+        )
 
         context["total_expense_amount"] = total_expense_amount
 
         # Total balance logic
         if self.request.user.is_superuser:
-            total_investment = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            total_investment = (
+                User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            )
             context["total_balance"] = total_investment
         else:
             context["total_balance"] = self.request.user.balance
 
         return context
+
 
 @csrf_exempt
 @require_POST
@@ -3173,11 +3255,17 @@ def update_expense_status(request):
 
     success = expense.update_status(new_status, request.user)
 
-    return JsonResponse({
-        "success": success,
-        "new_status": expense.get_status_display(),
-        "approved_by": expense.approved_by.get_full_name() if expense.approved_by else "-",
-    })
+    return JsonResponse(
+        {
+            "success": success,
+            "new_status": expense.get_status_display(),
+            "approved_by": (
+                expense.approved_by.get_full_name() if expense.approved_by else "-"
+            ),
+        }
+    )
+
+
 @login_required
 def expense_delete(request, pk):
     expense = get_object_or_404(Expense, pk=pk)
@@ -3185,7 +3273,9 @@ def expense_delete(request, pk):
         expense.delete()
         messages.success(request, "Expense deleted successfully ✅")
         return redirect("accounts:expense_list")
-    return redirect("accounts:expense_list") 
+    return redirect("accounts:expense_list")
+
+
 @login_required
 def expense_download(request):
     """Download expenses as Excel file using openpyxl"""
@@ -3314,10 +3404,15 @@ def expense_download(request):
 
     return response
 
+
 @login_required
 def expense_create(request):
     """Create a new expense request"""
-    if not request.user.is_superuser and not request.user.is_finnancial and not request.user.is_expense:
+    if (
+        not request.user.is_superuser
+        and not request.user.is_finnancial
+        and not request.user.is_expense
+    ):
         messages.error(request, "Only financial users or admins can create expenses.")
         return redirect("accounts:expense_list")
     if request.method == "POST":
@@ -3346,7 +3441,11 @@ def expense_update(request, expense_id):
     expense = get_object_or_404(Expense, id=expense_id)
 
     # Permission check
-    if (request.user != expense.created_by and not request.user.is_superuser and not request.user.is_expense):
+    if (
+        request.user != expense.created_by
+        and not request.user.is_superuser
+        and not request.user.is_expense
+    ):
         messages.error(request, "You do not have permission to edit this expense.")
         return redirect("accounts:expense_list")
 
@@ -3420,7 +3519,9 @@ def expense_approve(request, expense_id):
                 "status": "approved",
             }
 
-            html_content = render_to_string("emails/expense_status_update.html", context)
+            html_content = render_to_string(
+                "emails/expense_status_update.html", context
+            )
             text_content = f"""
                 Dear {context['user_full_name']},
 
@@ -3439,7 +3540,9 @@ def expense_approve(request, expense_id):
             messages.success(request, "Expense approved successfully and email sent.")
 
         except Exception as e:
-            messages.warning(request, f"Expense approved but email could not be sent: {e}")
+            messages.warning(
+                request, f"Expense approved but email could not be sent: {e}"
+            )
     else:
         messages.error(request, "Error approving expense.")
 
@@ -3466,7 +3569,7 @@ def expense_reject(request, expense_id):
         return redirect("accounts:expense_list")
 
     if expense.reject_expense(request.user):
-      
+
         user = expense.created_by
         subject = f"Expense #{expense.id} Rejected - HFall Realty"
         from_email = settings.DEFAULT_FROM_EMAIL
@@ -3504,7 +3607,6 @@ def expense_reject(request, expense_id):
     return redirect("accounts:expense_list")
 
 
-
 @login_required
 def expense_clarification(request, expense_id):
     """
@@ -3539,7 +3641,6 @@ def expense_clarification(request, expense_id):
         email = EmailMultiAlternatives(subject, text_content, from_email, to_email)
         email.attach_alternative(html_content, "text/html")
 
-
         email.send()
 
         messages.success(request, f"Clarification email sent to {user.email}.")
@@ -3547,48 +3648,61 @@ def expense_clarification(request, expense_id):
 
     return redirect("accounts:expense_detail", expense_id=expense.id)
 
+
 # views.py - Updated payment view and list view
+
 
 @login_required
 def expense_payment_create(request, expense_id):
-    if not request.user.is_superuser and not getattr(request.user, "is_finnancial", False):
+    if not request.user.is_superuser and not getattr(
+        request.user, "is_finnancial", False
+    ):
         messages.error(request, "Only financial users or admins can pay expenses.")
         return redirect("accounts:expense_payment_list")
-    
+
     expense = get_object_or_404(Expense, id=expense_id, status="approved")
-    
+
     # Check if this expense should be in the payment list
     if not expense.should_add_to_expense_balance():
-        messages.error(request, "This expense is not eligible for payment (property expense without user payment).")
+        messages.error(
+            request,
+            "This expense is not eligible for payment (property expense without user payment).",
+        )
         return redirect("accounts:expense_payment_list")
-    
+
     # Pre-fill user field if paid_by_user is set
     initial_data = {
-        "amount": Decimal(expense.amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        "amount": Decimal(expense.amount).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
     }
     if expense.paid_by_user:
         initial_data["user"] = expense.paid_by_user
-    
+
     form = ExpensePaymentForm(
-        request.POST or None,
-        request.FILES or None,
-        initial=initial_data
+        request.POST or None, request.FILES or None, initial=initial_data
     )
-    form.instance.expense = expense  
-    
+    form.instance.expense = expense
+
     if request.method == "POST":
-        print("POST request received")  
+        print("POST request received")
         if form.is_valid():
             payment = form.save(commit=False)
-            payment.amount = Decimal(expense.amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            payment.process_payment() 
-            print("Payment processed")  
+            payment.amount = Decimal(expense.amount).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            payment.process_payment()
+            print("Payment processed")
             messages.success(request, "Expense payment processed successfully.")
             return redirect("accounts:expense_payment_list")
         else:
-            print("Form errors:", form.errors)  
-    
-    return render(request, "expenses/expense_payment_form.html", {"form": form, "expense": expense})
+            print("Form errors:", form.errors)
+
+    return render(
+        request,
+        "expenses/expense_payment_form.html",
+        {"form": form, "expense": expense},
+    )
 
 
 # @method_decorator(login_required, name="dispatch")
@@ -3605,17 +3719,17 @@ def expense_payment_create(request, expense_id):
 #         2. Property expenses with paid_by_user set (need reimbursement)
 #         """
 #         from django.db.models import Q
-        
+
 #         # Get all approved expenses
 #         queryset = Expense.objects.filter(status="approved").select_related(
 #             'paid_by_user', 'property', 'created_by', 'approved_by'
 #         ).order_by("-created_at")
-        
+
 #         payable_expenses = queryset.filter(
 #             Q(property__isnull=True) |  # Non-property expenses
 #             Q(property__isnull=False, paid_by_user__isnull=False)  # Property expenses with user
 #         )
-        
+
 #         return payable_expenses
 
 #     def get_context_data(self, **kwargs):
@@ -3627,7 +3741,7 @@ def expense_payment_create(request, expense_id):
 #             context["total_balance"] = total_investment
 #         else:
 #             context["total_balance"] = self.request.user.balance
-        
+
 #         # Add expense balance for display
 #         from .models import ExpenseBalance
 #         context["expense_balance"] = ExpenseBalance.objects.filter(id=1).first()
@@ -3653,15 +3767,15 @@ class expense_payment_list(ListView):
         2. Property expenses with paid_by_user (reimbursement)
         """
 
-        qs = Expense.objects.filter(
-            status="approved"
-        ).select_related(
-            "property", "paid_by_user", "created_by"
-        ).order_by("-expense_date")
+        qs = (
+            Expense.objects.filter(status="approved")
+            .select_related("property", "paid_by_user", "created_by")
+            .order_by("-expense_date")
+        )
 
         qs = qs.filter(
-            Q(property__isnull=True) |
-            Q(property__isnull=False, paid_by_user__isnull=False)
+            Q(property__isnull=True)
+            | Q(property__isnull=False, paid_by_user__isnull=False)
         )
 
         # -------- Filters --------
@@ -3686,29 +3800,30 @@ class expense_payment_list(ListView):
         filtered_qs = self.get_queryset()
 
         # Payable SUM
-        context["total_payable"] = filtered_qs.aggregate(
-            total=Sum("amount")
-        )["total"] or 0
+        context["total_payable"] = (
+            filtered_qs.aggregate(total=Sum("amount"))["total"] or 0
+        )
 
         # Filters data
-        context.update({
-            "users": User.objects.all().order_by("short_name"),
-            "properties": Property.objects.all().order_by("title"),
-            "payment_status_filter": self.request.GET.get("payment_status", ""),
-            "paid_by_filter": self.request.GET.get("paid_by", ""),
-            "property_filter": self.request.GET.get("property", ""),
-        })
+        context.update(
+            {
+                "users": User.objects.all().order_by("short_name"),
+                "properties": Property.objects.all().order_by("title"),
+                "payment_status_filter": self.request.GET.get("payment_status", ""),
+                "paid_by_filter": self.request.GET.get("paid_by", ""),
+                "property_filter": self.request.GET.get("property", ""),
+            }
+        )
 
         # Balance info
         if self.request.user.is_superuser:
-            context["total_balance"] = User.objects.aggregate(
-                Sum("balance")
-            )["balance__sum"] or 0
+            context["total_balance"] = (
+                User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            )
         else:
             context["total_balance"] = self.request.user.balance
 
         return context
-
 
 
 @method_decorator(login_required, name="dispatch")
@@ -3716,49 +3831,59 @@ class ExpenseDetailView(DetailView):
     model = Expense
     template_name = "expenses/expense_details.html"
     context_object_name = "expense"
+
+
 @login_required
 def expense_payment_create(request, expense_id):
-    if not request.user.is_superuser and not getattr(request.user, "is_finnancial", False):
+    if not request.user.is_superuser and not getattr(
+        request.user, "is_finnancial", False
+    ):
         messages.error(request, "Only financial users or admins can pay expenses.")
         return redirect("accounts:expense_payment_list")
-    
+
     expense = get_object_or_404(Expense, id=expense_id, status="approved")
-    
+
     # Check if this expense should be in the payment list
     if not expense.should_add_to_expense_balance():
-        messages.error(request, "This expense is not eligible for payment (property expense without user payment).")
+        messages.error(
+            request,
+            "This expense is not eligible for payment (property expense without user payment).",
+        )
         return redirect("accounts:expense_payment_list")
-    
+
     # Pre-fill user field if paid_by_user is set
     initial_data = {
-        "amount": Decimal(expense.amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        "amount": Decimal(expense.amount).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
     }
     if expense.paid_by_user:
         initial_data["user"] = expense.paid_by_user
-    
+
     form = ExpensePaymentForm(
-        request.POST or None,
-        request.FILES or None,
-        initial=initial_data
+        request.POST or None, request.FILES or None, initial=initial_data
     )
-    form.instance.expense = expense  
-    
+    form.instance.expense = expense
+
     if request.method == "POST":
-        print("POST request received")  
+        print("POST request received")
         if form.is_valid():
             payment = form.save(commit=False)
-            payment.amount = Decimal(expense.amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            payment.process_payment() 
-            print("Payment processed")  
+            payment.amount = Decimal(expense.amount).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            payment.process_payment()
+            print("Payment processed")
             messages.success(request, "Expense payment processed successfully.")
             return redirect("accounts:expense_payment_list")
         else:
-            print("Form errors:", form.errors)  
-    
-    return render(request, "expenses/expense_payment_form.html", {"form": form, "expense": expense})
+            print("Form errors:", form.errors)
 
-
-
+    return render(
+        request,
+        "expenses/expense_payment_form.html",
+        {"form": form, "expense": expense},
+    )
 
 
 @login_required
@@ -3771,6 +3896,7 @@ def get_expense_details(request, expense_id):
         "user_name": expense.created_by.get_full_name() or expense.created_by.username,
     }
     return JsonResponse(data)
+
 
 def get_client_ip(request):
     """
@@ -3825,7 +3951,9 @@ class UploadedAgreementsView(LoginRequiredMixin, ListView):
 
         # Total balance logic
         if self.request.user.is_superuser:
-            total_investment = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            total_investment = (
+                User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            )
             context["total_balance"] = total_investment
         else:
             context["total_balance"] = self.request.user.balance
@@ -3908,32 +4036,33 @@ class ExpensesCopyView(LoginRequiredMixin, View):
             description=original.description,
             # expense_date=original.expense_date,
             expense_date=timezone.now().date(),
-            status='pending',
+            status="pending",
             image=original.image,
-            property=original.property, 
+            property=original.property,
             amount=original.amount,
             created_by=request.user,
         )
-        return JsonResponse({'status': 'success', 'copied_id': copied.pk})
+        return JsonResponse({"status": "success", "copied_id": copied.pk})
+
 
 @user_passes_test(lambda u: u.is_superuser)
 def help_create_view(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = HelpForm(request.POST, request.FILES)
         if form.is_valid():
             help_instance = form.save()
 
             subject = f"New Help Entry: {help_instance.title}"
             from_email = settings.DEFAULT_FROM_EMAIL
-            to_emails = ['malaminmiu@gmail.com', 'tofael483@gmail.com']
+            to_emails = ["malaminmiu@gmail.com", "tofael483@gmail.com"]
             context = {
-                'title': help_instance.title,
-                'description': help_instance.description,
-                'created_at': help_instance.created_at.strftime('%B %d, %Y'),
-                'image_cid': 'helpimage'  
+                "title": help_instance.title,
+                "description": help_instance.description,
+                "created_at": help_instance.created_at.strftime("%B %d, %Y"),
+                "image_cid": "helpimage",
             }
 
-            html_content = render_to_string('emails/help_created.html', context)
+            html_content = render_to_string("emails/help_created.html", context)
             text_content = strip_tags(html_content)
 
             msg = EmailMultiAlternatives(subject, text_content, from_email, to_emails)
@@ -3942,36 +4071,40 @@ def help_create_view(request):
             # Attach image if uploaded
             if help_instance.image:
                 image_path = help_instance.image.path
-                with open(image_path, 'rb') as f:
+                with open(image_path, "rb") as f:
                     image = MIMEImage(f.read())
-                    image.add_header('Content-ID', '<helpimage>')
-                    image.add_header('Content-Disposition', 'inline', filename=os.path.basename(image_path))
+                    image.add_header("Content-ID", "<helpimage>")
+                    image.add_header(
+                        "Content-Disposition",
+                        "inline",
+                        filename=os.path.basename(image_path),
+                    )
                     msg.attach(image)
 
             msg.send()
-            return redirect('accounts:help_success')
+            return redirect("accounts:help_success")
     else:
         form = HelpForm()
-    return render(request, 'help_create.html', {'form': form})
+    return render(request, "help_create.html", {"form": form})
+
 
 def help_success_view(request):
-    return render(request, 'snippet/success.html')
+    return render(request, "snippet/success.html")
 
 
-
-@method_decorator(login_required, name='dispatch')
+@method_decorator(login_required, name="dispatch")
 class PaymentListView(ListView):
     model = Payment
-    template_name = 'payment_list.html'
-    context_object_name = 'payments'
+    template_name = "payment_list.html"
+    context_object_name = "payments"
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = Payment.objects.select_related('user', 'bank', 'approved_by').all()
+        queryset = Payment.objects.select_related("user", "bank", "approved_by").all()
 
-        status = self.request.GET.get('status', 'approved') 
-        user_id = self.request.GET.get('user')
-        bank_id = self.request.GET.get('bank')
+        status = self.request.GET.get("status", "approved")
+        user_id = self.request.GET.get("user")
+        bank_id = self.request.GET.get("bank")
 
         if status:
             queryset = queryset.filter(status=status)
@@ -3983,14 +4116,13 @@ class PaymentListView(ListView):
         return queryset
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)      
+        context = super().get_context_data(**kwargs)
         queryset = self.get_queryset()
-        context['statuses'] = Payment.STATUS_CHOICES
-        context['users'] = User.objects.all().order_by("short_name")
-        context['banks'] = Bank.objects.all().order_by("name")
-        context['total_amount'] = queryset.aggregate(total=Sum('amount'))['total'] or 0
+        context["statuses"] = Payment.STATUS_CHOICES
+        context["users"] = User.objects.all().order_by("short_name")
+        context["banks"] = Bank.objects.all().order_by("name")
+        context["total_amount"] = queryset.aggregate(total=Sum("amount"))["total"] or 0
         return context
-
 
 
 @csrf_exempt
@@ -4005,23 +4137,30 @@ def update_payment_status(request):
     payment.approved_by = request.user if new_status == "approved" else None
     payment.save()
 
-    return JsonResponse({
-        "success": True,
-        "new_status": payment.get_status_display(),
-        "approved_by": payment.approved_by.get_full_name() if payment.approved_by else "-",
-        "approved_at": payment.approved_at.strftime("%Y-%m-%d %H:%M") if payment.approved_at else "-"
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "new_status": payment.get_status_display(),
+            "approved_by": (
+                payment.approved_by.get_full_name() if payment.approved_by else "-"
+            ),
+            "approved_at": (
+                payment.approved_at.strftime("%Y-%m-%d %H:%M")
+                if payment.approved_at
+                else "-"
+            ),
+        }
+    )
 
 
-
-@method_decorator(login_required, name='dispatch')
+@method_decorator(login_required, name="dispatch")
 class PaymentExportExcelView(View):
     def get(self, request, *args, **kwargs):
-        queryset = Payment.objects.select_related('user', 'bank', 'approved_by').all()
+        queryset = Payment.objects.select_related("user", "bank", "approved_by").all()
 
-        status = request.GET.get('status')
-        user_id = request.GET.get('user')
-        bank_id = request.GET.get('bank')
+        status = request.GET.get("status")
+        user_id = request.GET.get("user")
+        bank_id = request.GET.get("bank")
 
         if status:
             queryset = queryset.filter(status=status)
@@ -4037,36 +4176,48 @@ class PaymentExportExcelView(View):
 
         # Headers
         headers = [
-            "User", "Bank", "Amount", "Status",
-             "Created At", "Approved By", "Approved At"
+            "User",
+            "Bank",
+            "Amount",
+            "Status",
+            "Created At",
+            "Approved By",
+            "Approved At",
         ]
         ws.append(headers)
 
         # Data rows
         for payment in queryset:
-            ws.append([
-                str(payment.user),
-                str(payment.bank),
-                float(payment.amount),
-                payment.get_status_display(),
-                payment.created_at.strftime("%Y-%m-%d %H:%M"),
-                str(payment.approved_by) if payment.approved_by else '',
-                payment.approved_at.strftime("%Y-%m-%d %H:%M") if payment.approved_at else ''
-            ])
+            ws.append(
+                [
+                    str(payment.user),
+                    str(payment.bank),
+                    float(payment.amount),
+                    payment.get_status_display(),
+                    payment.created_at.strftime("%Y-%m-%d %H:%M"),
+                    str(payment.approved_by) if payment.approved_by else "",
+                    (
+                        payment.approved_at.strftime("%Y-%m-%d %H:%M")
+                        if payment.approved_at
+                        else ""
+                    ),
+                ]
+            )
 
         # Return response
         response = HttpResponse(
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-        response['Content-Disposition'] = 'attachment; filename=payments.xlsx'
+        response["Content-Disposition"] = "attachment; filename=payments.xlsx"
         wb.save(response)
         return response
-    
-    
+
 
 @login_required
 def add_beneficiary(request):
-    BeneficiaryFormSet = modelformset_factory(Beneficiary, form=BeneficiaryForm, extra=1, can_delete=True)
+    BeneficiaryFormSet = modelformset_factory(
+        Beneficiary, form=BeneficiaryForm, extra=1, can_delete=True
+    )
 
     if request.method == "POST":
         formset = BeneficiaryFormSet(request.POST, queryset=Beneficiary.objects.none())
@@ -4077,11 +4228,11 @@ def add_beneficiary(request):
                     beneficiary.user = request.user
                     beneficiary.save()
             messages.success(request, "Beneficiaries added successfully!")
-            return redirect('accounts:profile') 
+            return redirect("accounts:profile")
     else:
         formset = BeneficiaryFormSet(queryset=Beneficiary.objects.none())
 
-    return render(request, 'add_beneficiary.html', {'formset': formset})
+    return render(request, "add_beneficiary.html", {"formset": formset})
 
 
 class OfficeExpenseListView(ListView):
@@ -4089,6 +4240,7 @@ class OfficeExpenseListView(ListView):
     List of office management expenses that are not property-related.
     Only CREATED expenses are shown (approval is not required).
     """
+
     model = Expense
     template_name = "expenses/office_expense_list.html"
     context_object_name = "expenses"
@@ -4106,15 +4258,19 @@ class OfficeExpenseListView(ListView):
         All expenses that are not property-related (any status).
         CRITICAL: Approval is not required, only creation matters.
         """
-        queryset = Expense.objects.filter(
-            property__isnull=True,
-        ).select_related('created_by', 'approved_by').order_by("-created_at")
-        
+        queryset = (
+            Expense.objects.filter(
+                property__isnull=True,
+            )
+            .select_related("created_by", "approved_by")
+            .order_by("-created_at")
+        )
+
         print(f"\n{'='*60}")
         print(f"🔍 OFFICE EXPENSE QUERYSET DEBUG")
         print(f"{'='*60}")
         print(f"Total Non-Property Expenses: {queryset.count()}")
-        
+
         for expense in queryset[:5]:
             print(f"\nExpense ID: {expense.id}")
             print(f"Purpose: {expense.purpose}")
@@ -4123,44 +4279,48 @@ class OfficeExpenseListView(ListView):
             print(f"Payment Status: {expense.payment_status}")
             print(f"Property: {expense.property}")
             print(f"Created At: {expense.created_at}")
-        
+
         print(f"{'='*60}\n")
-        
+
         return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
+
         # Current balance of office manager
         office_manager = User.get_office_manager()
         context["office_manager"] = office_manager
-        context["office_manager_balance"] = office_manager.balance if office_manager else Decimal('0')
-        
+        context["office_manager_balance"] = (
+            office_manager.balance if office_manager else Decimal("0")
+        )
+
         # Total unpaid expenses (non-property)
         unpaid_total = Expense.objects.filter(
-            property__isnull=True,
-            payment_status="unpaid"
-        ).aggregate(Sum("amount"))["amount__sum"] or Decimal('0')
+            property__isnull=True, payment_status="unpaid"
+        ).aggregate(Sum("amount"))["amount__sum"] or Decimal("0")
         context["unpaid_total"] = unpaid_total
-        
+
         # Total paid expenses (non-property)
         paid_total = Expense.objects.filter(
-            property__isnull=True,
-            payment_status="paid"
-        ).aggregate(Sum("amount"))["amount__sum"] or Decimal('0')
+            property__isnull=True, payment_status="paid"
+        ).aggregate(Sum("amount"))["amount__sum"] or Decimal("0")
         context["paid_total"] = paid_total
-        
+
         # Total number of expenses
         context["total_expenses"] = self.get_queryset().count()
-        
+
         print(f"\n📊 CONTEXT DATA:")
-        print(f"Office Manager: {office_manager.get_full_name() if office_manager else 'None'}")
+        print(
+            f"Office Manager: {office_manager.get_full_name() if office_manager else 'None'}"
+        )
         print(f"Balance: ${context['office_manager_balance']}")
         print(f"Unpaid Total: ${unpaid_total}")
         print(f"Paid Total: ${paid_total}")
         print(f"Total Expenses: {context['total_expenses']}\n")
-        
+
         return context
+
+
 @login_required
 def office_expense_payment(request, expense_id):
     """
@@ -4172,21 +4332,21 @@ def office_expense_payment(request, expense_id):
     if not (request.user.is_superuser or request.user.office_management):
         messages.error(request, "You do not have permission to perform this action.")
         return redirect("accounts:office_expense_list")
-    
+
     # Fetch the expense - no status check
     expense = get_object_or_404(
-        Expense, 
-        id=expense_id, 
+        Expense,
+        id=expense_id,
         property__isnull=True,  # Only non-property expenses
-        payment_status="unpaid"  # Only unpaid expenses
+        payment_status="unpaid",  # Only unpaid expenses
     )
-    
+
     # Fetch the office manager
     office_manager = User.get_office_manager()
     if not office_manager:
         messages.error(request, "No Office Manager found. Please assign one first.")
         return redirect("accounts:office_expense_list")
-    
+
     # Initialize form
     initial_data = {
         "amount": Decimal(expense.amount).quantize(
@@ -4194,31 +4354,32 @@ def office_expense_payment(request, expense_id):
         )
     }
 
-  
     if expense.paid_by_user:
         initial_data["user"] = expense.paid_by_user
 
     form = OfficeExpensePaymentForm(
-        request.POST or None,
-        request.FILES or None,
-        initial=initial_data
+        request.POST or None, request.FILES or None, initial=initial_data
     )
 
     form.instance.expense = expense
-    
+
     if request.method == "POST":
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("📝 POST REQUEST RECEIVED")
-        print("="*60)
-        
+        print("=" * 60)
+
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    selected_user = form.cleaned_data['user']
-                    office_manager = User.objects.select_for_update().get(id=office_manager.id)
+                    selected_user = form.cleaned_data["user"]
+                    office_manager = User.objects.select_for_update().get(
+                        id=office_manager.id
+                    )
                     expense.refresh_from_db()
-                    expense_amount = Decimal(expense.amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                    
+                    expense_amount = Decimal(expense.amount).quantize(
+                        Decimal("0.01"), rounding=ROUND_HALF_UP
+                    )
+
                     print(f"\n💰 OFFICE EXPENSE PAYMENT PROCESSING")
                     print(f"{'='*60}")
                     print(f"Expense ID: {expense.id}")
@@ -4229,55 +4390,59 @@ def office_expense_payment(request, expense_id):
                     print(f"Selected User: {selected_user.get_full_name()}")
                     print(f"Office Manager: {office_manager.get_full_name()}")
                     print(f"Office Manager Balance: ${office_manager.balance}")
-                    
+
                     # Check office manager balance
                     if office_manager.balance < expense_amount:
                         messages.error(
-                            request, 
+                            request,
                             f"Insufficient balance! Office Manager's balance: ${office_manager.balance:.2f}, "
-                            f"Required: ${expense_amount:.2f}"
+                            f"Required: ${expense_amount:.2f}",
                         )
                         print(f"\n❌ INSUFFICIENT BALANCE!")
-                        return render(request, "expenses/office_expense_payment_form.html", {
-                            "form": form, 
-                            "expense": expense,
-                            "office_manager": office_manager
-                        })
-                    
+                        return render(
+                            request,
+                            "expenses/office_expense_payment_form.html",
+                            {
+                                "form": form,
+                                "expense": expense,
+                                "office_manager": office_manager,
+                            },
+                        )
+
                     # Create payment record
                     payment = form.save(commit=False)
                     payment.expense = expense
                     payment.user = selected_user
                     payment.amount = expense_amount
-                    
+
                     # Deduct from office manager balance
                     old_balance = office_manager.balance
                     office_manager.balance -= expense_amount
                     office_manager.balance = office_manager.balance.quantize(
-                        Decimal('0.000001'), 
-                        rounding=ROUND_HALF_UP
+                        Decimal("0.000001"), rounding=ROUND_HALF_UP
                     )
-                    office_manager.save(update_fields=['balance'])
-                    
+                    office_manager.save(update_fields=["balance"])
+
                     print(f"\n✅ BALANCE DEDUCTED FROM OFFICE MANAGER")
                     print(f"Old Balance: ${old_balance}")
                     print(f"Deducted: ${expense_amount}")
                     print(f"New Balance: ${office_manager.balance}")
-                    
+
                     # Update selected user's balance based on receive_type
-                    receive_type = form.cleaned_data['receive_type']
-                    
-                    if receive_type == 'account':
+                    receive_type = form.cleaned_data["receive_type"]
+
+                    if receive_type == "account":
                         # Account transfer increases user's balance
-                        selected_user_obj = User.objects.select_for_update().get(id=selected_user.id)
+                        selected_user_obj = User.objects.select_for_update().get(
+                            id=selected_user.id
+                        )
                         old_user_balance = selected_user_obj.balance
                         selected_user_obj.balance += expense_amount
                         selected_user_obj.balance = selected_user_obj.balance.quantize(
-                            Decimal('0.000001'), 
-                            rounding=ROUND_HALF_UP
+                            Decimal("0.000001"), rounding=ROUND_HALF_UP
                         )
-                        selected_user_obj.save(update_fields=['balance'])
-                        
+                        selected_user_obj.save(update_fields=["balance"])
+
                         print(f"\n💳 ACCOUNT TRANSFER TO USER")
                         print(f"User: {selected_user_obj.get_full_name()}")
                         print(f"Old Balance: ${old_user_balance}")
@@ -4286,39 +4451,47 @@ def office_expense_payment(request, expense_id):
                     else:
                         # Cash payment - only deduct from office manager
                         print(f"\n💵 CASH PAYMENT - No user balance change")
-                    
+
                     # Update expense payment status
                     expense.payment_status = "paid"
                     expense.save(update_fields=["payment_status"])
-                    
+
                     # Save payment record
                     payment.save()
-                    
+
                     print(f"\n✅ EXPENSE MARKED AS PAID")
                     print(f"✅ PAYMENT RECORD SAVED (ID: {payment.id})")
                     print(f"{'='*60}\n")
-                    
+
                     messages.success(
-                        request, 
-                        f"✅ Payment completed successfully! ${expense_amount:.2f} deducted from office manager."
+                        request,
+                        f"✅ Payment completed successfully! ${expense_amount:.2f} deducted from office manager.",
                     )
                     return redirect("accounts:office_expense_list")
-                    
+
             except Exception as e:
                 print(f"\n❌ PAYMENT ERROR: {str(e)}")
                 import traceback
+
                 traceback.print_exc()
-                messages.error(request, f"Error occurred while processing payment: {str(e)}")
+                messages.error(
+                    request, f"Error occurred while processing payment: {str(e)}"
+                )
         else:
             print(f"\n❌ FORM VALIDATION ERRORS:")
             print(form.errors)
-            messages.error(request, "There is a problem with the form. Please fill all fields correctly.")
-    
-    return render(request, "expenses/office_expense_payment_form.html", {
-        "form": form, 
-        "expense": expense,
-        "office_manager": office_manager
-    })
+            messages.error(
+                request,
+                "There is a problem with the form. Please fill all fields correctly.",
+            )
+
+    return render(
+        request,
+        "expenses/office_expense_payment_form.html",
+        {"form": form, "expense": expense, "office_manager": office_manager},
+    )
+
+
 @login_required
 def office_expense_detail(request, expense_id):
     """
@@ -4327,22 +4500,19 @@ def office_expense_detail(request, expense_id):
     if not (request.user.is_superuser or request.user.office_management):
         messages.error(request, "You do not have permission to perform this action.")
         return redirect("accounts:dashboard")
-    
-    expense = get_object_or_404(
-        Expense, 
-        id=expense_id,
-        property__isnull=True
-    )
-    
+
+    expense = get_object_or_404(Expense, id=expense_id, property__isnull=True)
+
     # Fetch payment history
-    payments = ExpensePayment.objects.filter(expense=expense).order_by('-created_at')
-    
+    payments = ExpensePayment.objects.filter(expense=expense).order_by("-created_at")
+
     context = {
-        'expense': expense,
-        'payments': payments,
+        "expense": expense,
+        "payments": payments,
     }
-    
-    return render(request, 'expenses/office_expense_detail.html', context)
+
+    return render(request, "expenses/office_expense_detail.html", context)
+
 
 @method_decorator(login_required, name="dispatch")
 class expenselist(ListView):
@@ -4380,30 +4550,35 @@ class expenselist(ListView):
         from_date = self.request.GET.get("from_date", "")
         to_date = self.request.GET.get("to_date", "")
 
-        context.update({
-            "status_filter": status_filter,
-            "created_by_filter": created_by_filter,
-            "from_date": from_date,
-            "to_date": to_date,
-            "users": User.objects.all().order_by("short_name"),
-        })
-        
+        context.update(
+            {
+                "status_filter": status_filter,
+                "created_by_filter": created_by_filter,
+                "from_date": from_date,
+                "to_date": to_date,
+                "users": User.objects.all().order_by("short_name"),
+            }
+        )
+
         filteredexpenses = self.get_queryset()
-        total_expenseamount = filteredexpenses.aggregate(
-            total=Sum("amount")
-        )["total"] or 0
+        total_expenseamount = (
+            filteredexpenses.aggregate(total=Sum("amount"))["total"] or 0
+        )
 
         context["total_expenseamount"] = total_expenseamount
 
         # Total balance logic
         if self.request.user.is_superuser:
-            total_investment = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            total_investment = (
+                User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            )
             context["total_balance"] = total_investment
         else:
             context["total_balance"] = self.request.user.balance
 
         return context
-    
+
+
 @method_decorator(login_required, name="dispatch")
 class managementexpenselist(ListView):
     model = Expense
@@ -4412,9 +4587,9 @@ class managementexpenselist(ListView):
     paginate_by = 100000
 
     def get_queryset(self):
-        expenses = Expense.objects.filter(
-            property__isnull=True
-        ).order_by("-expense_date")
+        expenses = Expense.objects.filter(property__isnull=True).order_by(
+            "-expense_date"
+        )
 
         # Get filters
         status_filter = self.request.GET.get("status", "")
@@ -4446,32 +4621,33 @@ class managementexpenselist(ListView):
         from_date = self.request.GET.get("from_date", "")
         to_date = self.request.GET.get("to_date", "")
 
-        context.update({
-            "status_filter": status_filter,
-            "created_by_filter": created_by_filter,
-            "from_date": from_date,
-            "to_date": to_date,
-            "users": User.objects.all().order_by("short_name"),
-        })
-        
+        context.update(
+            {
+                "status_filter": status_filter,
+                "created_by_filter": created_by_filter,
+                "from_date": from_date,
+                "to_date": to_date,
+                "users": User.objects.all().order_by("short_name"),
+            }
+        )
+
         filtered_expenses = self.get_queryset()
-        total_expense_amount = filtered_expenses.aggregate(
-            total=Sum("amount")
-        )["total"] or 0
+        total_expense_amount = (
+            filtered_expenses.aggregate(total=Sum("amount"))["total"] or 0
+        )
 
         context["total_expense_amount"] = total_expense_amount
 
         # Total balance logic
         if self.request.user.is_superuser:
-            total_investment = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            total_investment = (
+                User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            )
             context["total_balance"] = total_investment
         else:
             context["total_balance"] = self.request.user.balance
 
         return context
-    
-
-
 
 
 # views.py
@@ -4850,34 +5026,27 @@ HEADER_MAP = {
     "Property Name": "property_name",
     "Address": "address",
     "Address ": "address",
-
     "Neighborhood": "neighborhood_Demographic_Profile",
     "Percentage": "neighborhood_percentage",
-
     "Listing price": "estimated_price",
     "Auction Price": "auction_price",
     "Auction Price ": "auction_price",
-
     "LP-AP": "__ignore__",
-    "Comment": "__ignore__", 
-
+    "Comment": "__ignore__",
     "Bedrooms": "bedrooms",
     "Bathrooms": "bathrooms",
     "Living Area": "living_area",
     "Lot Size": "lot_area",
-
     "URL": "url",
     "Parking": "parking",
     "Property Type": "property_type",
     "Year Built": "year_build",
     "Exterior": "exterior_feature",
     "Description": "description",
-
     "Status": "status",
     "Auction Date": "auction_date",
     "Deposit": "booking_fee",
     "Deposit ": "booking_fee",
-
     "Buying Date": "buying_date",
     "Buying Price": "buying_price",
     "Service Cost": "service_cost",
@@ -4936,6 +5105,7 @@ def parse_price_excel(val):
         return (Decimal(s) * Decimal("1000")).quantize(Decimal("0.000001"))
     except:
         return None
+
 
 def clean(val):
     if val is None:
@@ -5032,7 +5202,9 @@ def normalize_neighbor(val):
 class IsSuperUserOrPropertyMixin(UserPassesTestMixin):
     def test_func(self):
         u = self.request.user
-        return u.is_authenticated and (u.is_superuser or getattr(u, "is_property", False))
+        return u.is_authenticated and (
+            u.is_superuser or getattr(u, "is_property", False)
+        )
 
 
 # ===============================
@@ -5085,7 +5257,9 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrPropertyMixin, Vi
 
                 # Update only if value exists
                 for field in [
-                    "description", "address", "url",
+                    "description",
+                    "address",
+                    "url",
                 ]:
                     if has_value(data.get(field)):
                         setattr(prop, field, clean(data.get(field)))
@@ -5094,7 +5268,9 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrPropertyMixin, Vi
                     prop.auction_price = parse_price_excel(data.get("auction_price"))
 
                 if has_value(data.get("estimated_price")):
-                    prop.estimated_price = parse_price_excel(data.get("estimated_price"))
+                    prop.estimated_price = parse_price_excel(
+                        data.get("estimated_price")
+                    )
 
                 if has_value(data.get("booking_fee")):
                     prop.booking_fee = parse_price_excel(data.get("booking_fee"))
@@ -5106,7 +5282,9 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrPropertyMixin, Vi
                     prop.service_cost = parse_price_excel(data.get("service_cost"))
 
                 if has_value(data.get("acquisition_cost")):
-                    prop.acquisition_cost = parse_price_excel(data.get("acquisition_cost"))
+                    prop.acquisition_cost = parse_price_excel(
+                        data.get("acquisition_cost")
+                    )
 
                 if has_value(data.get("asking_price")):
                     prop.asking_price = parse_price_excel(data.get("asking_price"))
@@ -5133,7 +5311,9 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrPropertyMixin, Vi
                     prop.year_build = parse_int(data.get("year_build"))
 
                 if has_value(data.get("neighborhood_percentage")):
-                    prop.neighborhood_percentage = parse_int(data.get("neighborhood_percentage"))
+                    prop.neighborhood_percentage = parse_int(
+                        data.get("neighborhood_percentage")
+                    )
 
                 if has_value(data.get("auction_date")):
                     prop.auction_date = parse_date(data.get("auction_date"))
@@ -5157,6 +5337,7 @@ class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrPropertyMixin, Vi
                 else:
                     updated += 1
 
-        messages.success(request, f"Upload done. Created: {created}, Updated: {updated}")
+        messages.success(
+            request, f"Upload done. Created: {created}, Updated: {updated}"
+        )
         return redirect(self.success_url)
-    

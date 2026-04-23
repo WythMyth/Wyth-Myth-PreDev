@@ -50,8 +50,8 @@
                         <input type="email" name="email" id="id_email" value="{{ form.instance.email }}" readonly class="w-full px-3 py-2 border border-gray-300 bg-gray-100 rounded-md cursor-not-allowed">
                     </div>
                     <div>
-                        <label for="id_phone_number" class="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
-                        <input type="text" name="phone_number" id="id_phone_number" value="{{ form.instance.phone_number }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <label for="id_phone_number" class="block text-sm font-medium text-gray-700 mb-1">USA Phone Number</label>
+                        <input type="text" name="phone_number" id="id_phone_number" value="{{ form.data.phone_number|default:form.instance.phone_number|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
                 </div>
             </div>
@@ -111,31 +111,14 @@
                     <input type="text" name="home_address_line_2" id="id_home_address_line_2" value="{{ form.instance.home_address_line_2|default_if_none:"" }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
                 </div>
 
-                <div id="international_required_row" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label for="id_country" class="block text-sm font-medium text-gray-700 mb-1">Country *</label>
-                        <input type="text" name="country" id="id_country" value="{{ form.data.country|default:form.instance.country|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
-                    </div>
-                    <div>
-                        <label for="id_country_code" class="block text-sm font-medium text-gray-700 mb-1">Country Code *</label>
-                        <input type="text" name="country_code" id="id_country_code" value="{{ form.data.country_code|default:form.instance.country_code|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <div>
+                <div id="us_row_2" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div id="field_city_wrapper">
                         <label for="id_city" class="block text-sm font-medium text-gray-700 mb-1">City</label>
-                        <input type="text" name="city" id="id_city" value="{{ form.instance.city }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <input type="text" name="city" id="id_city" value="{{ form.data.city|default:form.instance.city|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
-                    <div>
-                        <label for="id_zip_code" class="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
-                        <input type="text" name="zip_code" id="id_zip_code" value="{{ form.instance.zip_code }}" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
-                    </div>
-                </div>
-
-                <div class="mb-6 mt-4" id="us_state_wrapper">
-                        <label for="id_state" class="block text-sm font-medium text-gray-700 mb-1">State *</label>
-                        <select name="state" id="id_state" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <div id="field_state_wrapper">
+                        <label for="id_state" class="block text-sm font-medium text-gray-700 mb-1">State</label>
+                        <select name="state" id="id_state" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
                             <option value="">Select State</option>
                             {% for val, label in form.fields.state.choices %}
                                 <option value="{{ val }}" {% if form.data.state == val|stringformat:"s" or form.instance.state == val %}selected{% endif %}>
@@ -144,16 +127,43 @@
                             {% endfor %}
                         </select>
                         <span class="error-message" id="stateerror" style="color: red; font-size: 14px;"></span>
+                    </div>
+                    <div id="field_zip_wrapper">
+                        <label for="id_zip_code" class="block text-sm font-medium text-gray-700 mb-1">ZIP/Postal Code</label>
+                        <input type="text" name="zip_code" id="id_zip_code" value="{{ form.data.zip_code|default:form.instance.zip_code|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
                 </div>
 
-                <div id="international_optional_row" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <div>
+                <div id="intl_row_3" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div id="field_not_usa_state_wrapper">
+                        <label for="id_not_usa_state" class="block text-sm font-medium text-gray-700 mb-1">State</label>
+                        <input type="text" name="not_usa_state" id="id_not_usa_state" value="{{ form.data.not_usa_state|default:form.instance.not_usa_state|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div id="field_province_wrapper">
                         <label for="id_province_region_territory" class="block text-sm font-medium text-gray-700 mb-1">Province/Region/Territory</label>
                         <input type="text" name="province_region_territory" id="id_province_region_territory" value="{{ form.data.province_region_territory|default:form.instance.province_region_territory|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
-                    <div>
-                        <label for="id_zip_postalcode_ext" class="block text-sm font-medium text-gray-700 mb-1">ZIP/Postal Code Extension</label>
+                </div>
+
+                <div id="intl_row_4" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div id="field_zip_ext_wrapper">
+                        <label for="id_zip_postalcode_ext" class="block text-sm font-medium text-gray-700 mb-1">ZIP/Postal Code Ext</label>
                         <input type="text" name="zip_postalcode_ext" id="id_zip_postalcode_ext" value="{{ form.data.zip_postalcode_ext|default:form.instance.zip_postalcode_ext|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div>
+                        <label for="id_country" class="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                        <input type="text" name="country" id="id_country" value="{{ form.data.country|default:form.instance.country|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                </div>
+
+                <div id="intl_row_5" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label for="id_country_code" class="block text-sm font-medium text-gray-700 mb-1">Country Code</label>
+                        <input type="text" name="country_code" id="id_country_code" value="{{ form.data.country_code|default:form.instance.country_code|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div>
+                        <label for="id_not_usa_phone_number" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                        <input type="text" name="not_usa_phone_number" id="id_not_usa_phone_number" value="{{ form.data.not_usa_phone_number|default:form.instance.not_usa_phone_number|default_if_none:'' }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
                     </div>
                 </div>
             </div>
@@ -494,27 +504,52 @@ updateBirthDates();
         }
 
         function toggleAddressMode() {
-            const usStateWrapper = document.getElementById('us_state_wrapper');
-            const internationalRequiredRow = document.getElementById('international_required_row');
-            const internationalOptionalRow = document.getElementById('international_optional_row');
+            const usRow2 = document.getElementById('us_row_2');
+            const intlRow3 = document.getElementById('intl_row_3');
+            const intlRow4 = document.getElementById('intl_row_4');
+            const intlRow5 = document.getElementById('intl_row_5');
+
+            const cityWrapper = document.getElementById('field_city_wrapper');
+            const stateWrapper = document.getElementById('field_state_wrapper');
+            const zipWrapper = document.getElementById('field_zip_wrapper');
+            const notUsaStateWrapper = document.getElementById('field_not_usa_state_wrapper');
+            const provinceWrapper = document.getElementById('field_province_wrapper');
+            const zipExtWrapper = document.getElementById('field_zip_ext_wrapper');
+
             const stateField = document.getElementById('id_state');
-            const countryField = document.getElementById('id_country');
-            const countryCodeField = document.getElementById('id_country_code');
+            const phoneField = document.getElementById('id_phone_number');
 
             if (isUsBased()) {
-                usStateWrapper.style.display = 'block';
-                internationalRequiredRow.style.display = 'none';
-                internationalOptionalRow.style.display = 'none';
-                stateField.required = true;
-                countryField.required = false;
-                countryCodeField.required = false;
-            } else {
-                usStateWrapper.style.display = 'none';
-                internationalRequiredRow.style.display = 'grid';
-                internationalOptionalRow.style.display = 'grid';
+                usRow2.style.display = 'grid';
+                intlRow3.style.display = 'none';
+                intlRow4.style.display = 'none';
+                intlRow5.style.display = 'none';
+
+                usRow2.appendChild(cityWrapper);
+                usRow2.appendChild(stateWrapper);
+                usRow2.appendChild(zipWrapper);
+
+                intlRow3.appendChild(notUsaStateWrapper);
+                intlRow3.appendChild(provinceWrapper);
+                intlRow4.appendChild(zipExtWrapper);
+
+                phoneField.required = true;
                 stateField.required = false;
-                countryField.required = true;
-                countryCodeField.required = true;
+            } else {
+                usRow2.style.display = 'none';
+                intlRow3.style.display = 'grid';
+                intlRow4.style.display = 'grid';
+                intlRow5.style.display = 'grid';
+
+                intlRow3.prepend(provinceWrapper);
+                intlRow3.prepend(notUsaStateWrapper);
+                intlRow3.prepend(cityWrapper);
+
+                intlRow4.prepend(zipExtWrapper);
+                intlRow4.prepend(zipWrapper);
+
+                phoneField.required = false;
+                stateField.required = false;
             }
         }
 

@@ -72,3 +72,4 @@ vine==5.1.0
 wcwidth==0.2.13
 WeasyPrint==50
 webencodings==0.5.1
+paypalrestsdk==1.13.3
