@@ -112,4 +112,5 @@ urlpatterns = [
     path('managementexpense/', managementexpenselist.as_view(), name='management_expense_list'),
     path("properties/upload-excel/", PropertyExcelUploadView.as_view(), name="property_upload_excel"),
     
+    path("share-certificate/", download_share_certificate, name="download_share_certificate"),
 ]
