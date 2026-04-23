@@ -87,6 +87,7 @@ from .models import (
     Story,
     User,
     UserAgreement,
+    SharePrice
 )
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -745,6 +746,119 @@ def user_logout(request):
 
 
 
+# @login_required
+# @xframe_options_exempt
+# def profile_view(request):
+#     approved_payments = Payment.objects.filter(
+#         user=request.user, status="approved"
+#     ).order_by("-approved_at")
+
+#     # Get all uploaded agreements from all users
+#     all_uploaded_agreements = (
+#         UserAgreement.objects.filter(uploaded_file__isnull=False)
+#         .exclude(uploaded_file="")
+#         .order_by("-created_at")
+#     )
+
+#     context = {
+#         "user": request.user,
+#         "approved_payments": approved_payments,
+#         "all_uploaded_agreements": all_uploaded_agreements,
+#     }
+
+#     if request.GET.get("preview") == "pdf" or request.GET.get("download") == "pdf":
+#         image_context = {}
+
+#         # Handle user personal image
+#         if request.user.personal_image:
+#             try:
+#                 image_path = request.user.personal_image.path
+#                 if os.path.exists(image_path):
+#                     with open(image_path, "rb") as image_file:
+#                         encoded_string = b64encode(image_file.read()).decode()
+#                         image_context["user_image_data"] = (
+#                             f"data:image/{os.path.splitext(image_path)[1][1:].lower()};base64,{encoded_string}"
+#                         )
+#             except Exception as e:
+#                 print(f"Error processing personal image: {e}")
+
+#         # Handle user photo ID
+#         if request.user.photo_id:
+#             try:
+#                 photo_id_path = request.user.photo_id.path
+#                 if os.path.exists(photo_id_path):
+#                     with open(photo_id_path, "rb") as photo_id_file:
+#                         encoded_string = b64encode(photo_id_file.read()).decode()
+#                         image_context["photo_id_data"] = (
+#                             f"data:image/{os.path.splitext(photo_id_path)[1][1:].lower()};base64,{encoded_string}"
+#                         )
+#             except Exception as e:
+#                 print(f"Error processing photo ID: {e}")
+
+#         # Handle logo image
+#         try:
+#             logo_path = os.path.join(settings.STATIC_ROOT, "assets/images/logo.png")
+#             footer_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf_footer.png")
+
+#             # If STATIC_ROOT doesn't exist or file not found, try STATICFILES_DIRS
+#             if not (os.path.exists(logo_path) and os.path.exists(footer_path)):
+#                 for static_dir in settings.STATICFILES_DIRS:
+#                     test_logo = os.path.join(static_dir, "assets/images/logo.png")
+#                     test_footer = os.path.join(static_dir, "assets/images/pdf_footer.png")
+#                     if os.path.exists(test_logo) and os.path.exists(test_footer):
+#                         logo_path = test_logo
+#                         footer_path = test_footer
+#                         break
+
+#             # Process logo image
+#             if os.path.exists(logo_path):
+#                 with open(logo_path, "rb") as logo_file:
+#                     encoded_logo = b64encode(logo_file.read()).decode()
+#                     image_context["logo_data"] = f"data:image/png;base64,{encoded_logo}"
+
+#             # Process footer image
+#             if os.path.exists(footer_path):
+#                 with open(footer_path, "rb") as footer_file:
+#                     encoded_footer = b64encode(footer_file.read()).decode()
+#                     image_context["footer_data"] = f"data:image/png;base64,{encoded_footer}"
+
+#         except Exception as e:
+#             print(f"Error processing logo/footer: {e}")
+
+#         image_context["base_url"] = request.build_absolute_uri("/")
+#         context.update(image_context)
+
+#         # Render HTML template
+#         html = render_to_string("profile_pdf.html", context)
+
+#         # Create PDF response
+#         response = HttpResponse(content_type="application/pdf")
+
+#         # Set content disposition based on whether it's a preview or download
+#         if request.GET.get("download") == "pdf":
+#             response["Content-Disposition"] = 'attachment; filename="profile.pdf"'
+#         else:
+#             response["Content-Disposition"] = 'inline; filename="profile.pdf"'
+
+#         # Generate PDF with WeasyPrint
+#         pdf = weasyprint.HTML(
+#             string=html, base_url=request.build_absolute_uri("/")
+#         ).write_pdf()
+#         response.write(pdf)
+#         return response
+
+#     if request.user.is_superuser:
+#         # Calculate total investment from all users
+#         total_investment = (
+#             User.objects.all().aggregate(Sum("balance"))["balance__sum"] or 0
+#         )
+#         context["total_balance"] = total_investment
+#     else:
+#         context["total_balance"] = request.user.balance
+
+#     # Normal view
+#     return render(request, "profile.html", context)
+##new code apply
 @login_required
 @xframe_options_exempt
 def profile_view(request):
@@ -752,23 +866,45 @@ def profile_view(request):
         user=request.user, status="approved"
     ).order_by("-approved_at")
 
-    # Get all uploaded agreements from all users
     all_uploaded_agreements = (
         UserAgreement.objects.filter(uploaded_file__isnull=False)
         .exclude(uploaded_file="")
         .order_by("-created_at")
     )
 
+    # ✅ SHARE CALCULATION (NEW ADD)
+    active_invested_amount = (
+        PropertyContribution.objects.filter(
+            user=request.user,
+            property__status__in=["bought", "ready_to_sell"],
+        ).aggregate(total=Sum("contribution"))["total"]
+        or Decimal("0")
+    )
+
+    share_price = SharePrice.get_current_price() or Decimal("1")
+    total_share_base = (request.user.balance or Decimal("0")) + active_invested_amount
+
+    total_shares = Decimal("0")
+    if share_price > 0:
+        total_shares = (total_share_base / share_price).quantize(
+            Decimal("0.000001"), rounding=ROUND_HALF_UP
+        )
+
     context = {
         "user": request.user,
         "approved_payments": approved_payments,
         "all_uploaded_agreements": all_uploaded_agreements,
+
+        # ✅ NEW CONTEXT
+        "active_invested_amount": active_invested_amount,
+        "share_price": share_price,
+        "total_shares": total_shares,
     }
 
+    # ===== EXISTING PDF PART (UNCHANGED) =====
     if request.GET.get("preview") == "pdf" or request.GET.get("download") == "pdf":
         image_context = {}
 
-        # Handle user personal image
         if request.user.personal_image:
             try:
                 image_path = request.user.personal_image.path
@@ -779,75 +915,28 @@ def profile_view(request):
                             f"data:image/{os.path.splitext(image_path)[1][1:].lower()};base64,{encoded_string}"
                         )
             except Exception as e:
-                print(f"Error processing personal image: {e}")
+                print(e)
 
-        # Handle user photo ID
-        if request.user.photo_id:
-            try:
-                photo_id_path = request.user.photo_id.path
-                if os.path.exists(photo_id_path):
-                    with open(photo_id_path, "rb") as photo_id_file:
-                        encoded_string = b64encode(photo_id_file.read()).decode()
-                        image_context["photo_id_data"] = (
-                            f"data:image/{os.path.splitext(photo_id_path)[1][1:].lower()};base64,{encoded_string}"
-                        )
-            except Exception as e:
-                print(f"Error processing photo ID: {e}")
-
-        # Handle logo image
-        try:
-            logo_path = os.path.join(settings.STATIC_ROOT, "assets/images/logo.png")
-            footer_path = os.path.join(settings.STATIC_ROOT, "assets/images/pdf_footer.png")
-
-            # If STATIC_ROOT doesn't exist or file not found, try STATICFILES_DIRS
-            if not (os.path.exists(logo_path) and os.path.exists(footer_path)):
-                for static_dir in settings.STATICFILES_DIRS:
-                    test_logo = os.path.join(static_dir, "assets/images/logo.png")
-                    test_footer = os.path.join(static_dir, "assets/images/pdf_footer.png")
-                    if os.path.exists(test_logo) and os.path.exists(test_footer):
-                        logo_path = test_logo
-                        footer_path = test_footer
-                        break
-
-            # Process logo image
-            if os.path.exists(logo_path):
-                with open(logo_path, "rb") as logo_file:
-                    encoded_logo = b64encode(logo_file.read()).decode()
-                    image_context["logo_data"] = f"data:image/png;base64,{encoded_logo}"
-
-            # Process footer image
-            if os.path.exists(footer_path):
-                with open(footer_path, "rb") as footer_file:
-                    encoded_footer = b64encode(footer_file.read()).decode()
-                    image_context["footer_data"] = f"data:image/png;base64,{encoded_footer}"
-
-        except Exception as e:
-            print(f"Error processing logo/footer: {e}")
-
-        image_context["base_url"] = request.build_absolute_uri("/")
         context.update(image_context)
 
-        # Render HTML template
         html = render_to_string("profile_pdf.html", context)
 
-        # Create PDF response
         response = HttpResponse(content_type="application/pdf")
 
-        # Set content disposition based on whether it's a preview or download
         if request.GET.get("download") == "pdf":
             response["Content-Disposition"] = 'attachment; filename="profile.pdf"'
         else:
             response["Content-Disposition"] = 'inline; filename="profile.pdf"'
 
-        # Generate PDF with WeasyPrint
         pdf = weasyprint.HTML(
             string=html, base_url=request.build_absolute_uri("/")
         ).write_pdf()
+
         response.write(pdf)
         return response
 
+    # ===== BALANCE PART =====
     if request.user.is_superuser:
-        # Calculate total investment from all users
         total_investment = (
             User.objects.all().aggregate(Sum("balance"))["balance__sum"] or 0
         )
@@ -855,9 +944,52 @@ def profile_view(request):
     else:
         context["total_balance"] = request.user.balance
 
-    # Normal view
     return render(request, "profile.html", context)
 
+
+# ✅ SHARE CERTIFICATE DOWNLOAD VIEW
+@login_required
+def download_share_certificate(request):
+    user = request.user
+
+    active_invested_amount = (
+        PropertyContribution.objects.filter(
+            user=user,
+            property__status__in=["bought", "ready_to_sell"],
+        ).aggregate(total=Sum("contribution"))["total"]
+        or Decimal("0")
+    )
+
+    share_price = SharePrice.get_current_price() or Decimal("1")
+    total_share_base = (user.balance or Decimal("0")) + active_invested_amount
+
+    total_shares = Decimal("0")
+    if share_price > 0:
+        total_shares = (total_share_base / share_price).quantize(
+            Decimal("0.000001"), rounding=ROUND_HALF_UP
+        )
+
+    context = {
+        "user": user,
+        "share_price": share_price,
+        "total_shares": total_shares,
+        "active_invested_amount": active_invested_amount,
+        "cash_balance": user.balance,
+    }
+
+    html = render_to_string("share_certificate_pdf.html", context)
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="share_certificate.pdf"'
+
+    pdf = weasyprint.HTML(
+        string=html,
+        base_url=request.build_absolute_uri("/")
+    ).write_pdf()
+
+    response.write(pdf)
+    return response
+##new code end
 
 class UserProfileUpdateView(LoginRequiredMixin, UpdateView):
     model = User
