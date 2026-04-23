@@ -1,5 +1,726 @@
 {% extends "dashboard//layout/dashboardLayout.html" %}
 {% load static %}
+
+{% block content %}
+<script
+    src="https://www.paypal.com/sdk/js?client-id={{ context_paypal_advanced_client_id }}&currency=USD&components=buttons,card-fields&enable-funding=venmo"
+    data-sdk-integration-source="developer-studio">
+</script>
+
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">Payment Methods</h1>
+
+        <form id="paymentForm" method="POST" enctype="multipart/form-data"
+              class="w-full max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
+            {% csrf_token %}
+
+            <!-- Step 1 -->
+            <div id="step-1">
+                <h2 class="text-lg font-semibold text-gray-700 mb-4">Step 1: Your Information and Amount</h2>
+                <p class="text-gray-600 mb-6">Please provide your details and amount.</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-medium">Name*</label>
+                        <input type="text" name="name" id="name"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               value="{% if user.is_authenticated %}{{ user.get_full_name }}{% endif %}" required />
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-medium">Email*</label>
+                        <input type="email" name="email" id="email"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               value="{% if user.is_authenticated %}{{ user.email }}{% endif %}" required />
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-medium">Phone*</label>
+                        <input type="tel" name="phone" id="phone"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               value="{% if user.is_authenticated %}{{ user.phone_number }}{% endif %}" required />
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-medium">Amount*</label>
+                        <input type="number" name="amount" id="amount"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-[15px]"
+                               min="1" step="0.01" required
+                               placeholder="Note: Each amount is limited to $480 or less" />
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2 font-medium">Add a note (optional)</label>
+                    <textarea name="notes" rows="4" id="notes"
+                              class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Your note..."></textarea>
+                </div>
+
+                <button type="button" id="nextStep1Btn"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition duration-200">
+                    Next
+                </button>
+            </div>
+
+            <!-- Step 2 -->
+            <div id="step-2" class="hidden">
+                <h2 class="text-xl font-semibold mb-6">Payment Summary</h2>
+
+                <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div><strong>Name:</strong> <span id="summaryName"></span></div>
+                        <div><strong>Email:</strong> <span id="summaryEmail"></span></div>
+                        <div><strong>Phone:</strong> <span id="summaryPhone"></span></div>
+                        <div><strong>Amount:</strong> $<span id="summaryAmount"></span></div>
+                    </div>
+                    <div class="mt-2">
+                        <strong>Note:</strong> <span id="summaryNote"></span>
+                    </div>
+                </div>
+
+                <!-- Card Fee Notice -->
+                <div id="cardFeeNotice" class="hidden bg-blue-50 border border-blue-300 text-blue-800 px-4 py-3 rounded-lg mb-6">
+                    <p>
+                        <strong>Amount:</strong>
+                        $<span id="originalAmountDisplay">0.00</span>
+                    </p>
+                    <p class="font-medium">
+                        <strong>Processing Fee:</strong> 3% + $0.30 per transaction
+                    </p>
+                    <div class="font-semibold text-gray-800">
+                        <strong>Total Payment:</strong>
+                        $<span id="originalAmountDisplay2">0.00</span>
+                        + $<span id="percentFee">0.00</span>
+                        + $0.30 =
+                        $<span id="totalChargeAmount">0.00</span>
+                    </div>
+                    <p class="text-sm mt-3 text-gray-700 italic">
+                        Note: A total of <strong>$<span id="noteChargeAmount">0.00</span></strong>
+                        will be charged to your credit card.
+                    </p>
+                </div>
+
+                <!-- Payment Methods -->
+                <h2 class="text-xl font-semibold mt-6 mb-4">Choose Payment Method</h2>
+                <div class="space-y-4 mb-6" id="paymentMethodGroup">
+                    <!-- Stripe -->
+                    <label class="cursor-pointer border border-gray-300 rounded-lg p-4 flex justify-between items-center hover:shadow-md transition-all" data-radio-label>
+                        <input type="radio" name="payment_method" value="stripe" class="hidden peer" />
+                        <span class="text-blue-700 font-semibold">Stripe | Credit/Debit Card Checkout</span>
+                        <img src="{% static 'assets/images/stripe.jpeg' %}" alt="Stripe" class="w-20 h-12 object-contain" />
+                    </label>
+
+                    <!-- Square -->
+                    <label class="cursor-pointer border border-gray-300 rounded-lg p-4 flex justify-between items-center hover:shadow-md transition-all" data-radio-label>
+                        <input type="radio" name="payment_method" value="square" class="hidden peer" />
+                        <span class="text-green-700 font-semibold">Square | Credit/Debit Card Checkout</span>
+                        <img src="{% static 'assets/images/square.jpeg' %}" alt="Square" class="w-20 h-12 object-contain" />
+                    </label>
+
+                    <!-- PayPal Classic -->
+                    <label class="cursor-pointer border border-gray-300 rounded-lg p-4 flex justify-between items-center hover:shadow-md transition-all" data-radio-label>
+                        <input type="radio" name="payment_method" value="paypal_classic" class="hidden peer" />
+                        <span class="text-yellow-700 font-semibold">PayPal Classic | Redirect Checkout</span>
+                        <img src="{% static 'assets/images/PayPal.svg.png' %}" alt="PayPal" class="w-20 h-12 object-contain" />
+                    </label>
+
+                    <!-- PayPal Advanced -->
+                    <label class="cursor-pointer border border-gray-300 rounded-lg p-4 flex justify-between items-center hover:shadow-md transition-all" data-radio-label>
+                        <input type="radio" name="payment_method" value="paypal_advanced" class="hidden peer" />
+                        <span class="text-indigo-700 font-semibold">PayPal Advanced | Inline Checkout + Card Fields</span>
+                        <img src="{% static 'assets/images/PayPal.svg.png' %}" alt="PayPal Advanced" class="w-20 h-12 object-contain" />
+                    </label>
+
+                    <!-- Manual Methods -->
+                    {% for method in banks %}
+                        {% if not method.is_card and not method.is_square and not method.is_paypal %}
+                            <label class="cursor-pointer border border-gray-300 rounded-lg p-4 flex justify-between items-center hover:shadow-md transition-all" data-radio-label>
+                                <input type="radio" name="payment_method" value="manual_{{ method.id }}"
+                                    class="hidden peer"
+                                    data-bank-id="{{ method.id }}"
+                                    data-bank-name="{{ method.name }}"
+                                    data-bank-desc="{{ method.account_details }}"
+                                    data-bank-qr="{% if method.qr_code and method.qr_code.name %}{{ method.qr_code.url }}{% else %}{% endif %}"
+                                    data-url="{{ method.url|default_if_none:'' }}" />
+                                <span class="text-blue-700 font-semibold">{{ method.name }}</span>
+                                {% if method.logo %}
+                                    <img src="{{ method.logo.url }}" alt="{{ method.name }}" class="w-20 h-12 object-contain" />
+                                {% endif %}
+                            </label>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-4">
+                    <button type="button" id="backStepBtn"
+                            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg transition duration-200">
+                        Back
+                    </button>
+
+                    <button type="submit" id="stripePaymentBtn"
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition duration-200 hidden">
+                        Pay with Stripe
+                    </button>
+
+                    <button type="submit" id="squarePaymentBtn"
+                            class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition duration-200 hidden">
+                        Pay with Square
+                    </button>
+
+                    <button type="button" id="paypalClassicBtn"
+                            class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-3 rounded-lg transition duration-200 hidden">
+                        Pay with PayPal Classic
+                    </button>
+                </div>
+
+                <!-- New PayPal Advanced Inline Section -->
+                <div id="paypalAdvancedSection" class="hidden mt-6">
+                    <div class="bg-white border border-gray-200 rounded-xl p-5">
+                        <h3 class="text-lg font-semibold mb-4">Pay with PayPal Advanced</h3>
+
+                        <div id="paypal-button-container" class="mb-6"></div>
+
+                        <div id="card-form" class="space-y-4">
+                            <div id="card-name-field-container" class="w-full border border-gray-300 rounded-lg p-3 min-h-[50px]"></div>
+                            <div id="card-number-field-container" class="w-full border border-gray-300 rounded-lg p-3 min-h-[50px]"></div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div id="card-expiry-field-container" class="w-full border border-gray-300 rounded-lg p-3 min-h-[50px]"></div>
+                                <div id="card-cvv-field-container" class="w-full border border-gray-300 rounded-lg p-3 min-h-[50px]"></div>
+                            </div>
+
+                            <input type="text" id="card-billing-address-line-1"
+                                   class="w-full p-3 border border-gray-300 rounded-lg"
+                                   placeholder="Billing Address Line 1" />
+
+                            <input type="text" id="card-billing-address-line-2"
+                                   class="w-full p-3 border border-gray-300 rounded-lg"
+                                   placeholder="Billing Address Line 2" />
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input type="text" id="card-billing-address-admin-area-line-1"
+                                       class="w-full p-3 border border-gray-300 rounded-lg"
+                                       placeholder="State" />
+                                <input type="text" id="card-billing-address-admin-area-line-2"
+                                       class="w-full p-3 border border-gray-300 rounded-lg"
+                                       placeholder="City" />
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input type="text" id="card-billing-address-country-code"
+                                       class="w-full p-3 border border-gray-300 rounded-lg"
+                                       placeholder="Country Code (US)" />
+                                <input type="text" id="card-billing-address-postal-code"
+                                       class="w-full p-3 border border-gray-300 rounded-lg"
+                                       placeholder="ZIP / Postal Code" />
+                            </div>
+
+                            <button id="card-field-submit-button" type="button"
+                                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition duration-200">
+                                Pay now with Card
+                            </button>
+                        </div>
+
+                        <p id="result-message" class="mt-4 text-sm text-red-600"></p>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Manual Payment Modal -->
+<div id="manualPaymentModal" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden flex justify-center items-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl relative max-h-[95vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white rounded-t-2xl border-b border-gray-100 px-8 py-6">
+            <button class="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-all duration-200 text-3xl font-light w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50" id="modalCloseBtn">&times;</button>
+            <h3 id="modalMethodName" class="text-2xl font-bold text-gray-800 pr-12">Payment Method</h3>
+            <p class="text-gray-500 text-sm mt-1">Complete your payment securely</p>
+        </div>
+
+        <div class="px-8 py-6">
+            <div id="qrWrapper" class="text-center mb-8 hidden">
+                <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-4 inline-block shadow-inner">
+                    <img id="modalQrCode" src="" alt="QR Code" class="w-80 h-80 object-contain mx-auto mb-3 rounded-lg">
+                    <div class="flex items-center justify-center gap-2">
+                        <p class="text-sm font-semibold text-gray-700">Scan with your mobile device</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="url-info-box" class="bg-blue-50 border-l-4 border-blue-400 rounded-r-xl p-6 mb-6 hidden">
+                <div class="flex items-start gap-3">
+                    <div class="flex-1">
+                        <h5 class="text-base font-semibold text-blue-900 mb-2">If the QR code doesn't work, please use the following link:</h5>
+                        <a id="bank-url-link" href="#" class="text-blue-900 underline break-all" target="_blank">Visit Website</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-6 mb-6 border border-blue-100">
+                <h4 class="text-lg font-semibold text-gray-800 mb-4">Payment Details</h4>
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="flex justify-between items-center p-4 bg-white rounded-lg shadow-sm">
+                        <span class="text-sm font-medium text-gray-600">Amount to Pay:</span>
+                        <span class="text-2xl font-bold text-green-600">$<span id="modalAmount">0</span></span>
+                    </div>
+                    <div class="flex justify-between items-start p-4 bg-white rounded-lg shadow-sm">
+                        <span class="text-sm font-medium text-gray-600">Payment Note:</span>
+                        <span class="text-sm text-gray-800 text-right flex-1 ml-4 font-medium" id="modalNote">No note</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-amber-50 border-l-4 border-amber-400 rounded-r-xl p-6 mb-6">
+                <div class="flex items-start gap-3">
+                    <div class="flex-1">
+                        <h5 class="text-base font-semibold text-amber-800 mb-2">How to complete payment:</h5>
+                        <p id="modalMethodDesc" class="text-sm text-amber-700 leading-relaxed">
+                            1. Scan the QR code above with your mobile banking app<br>
+                            2. Complete the payment for the specified amount<br>
+                            3. Take a screenshot or photo of the payment confirmation<br>
+                            4. Upload the receipt below as proof of payment
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 rounded-xl p-6">
+                <form id="manualPaymentForm" method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="amount" id="modalAmountInput">
+                    <input type="hidden" name="notes" id="modalNoteInput">
+
+                    <div class="mb-6">
+                        <label class="block text-base font-semibold text-gray-700 mb-3">
+                            Upload Payment Receipt <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="file" name="receipt" accept="image/*,.pdf" required
+                                   class="block w-full text-sm text-gray-600 file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer border-2 border-dashed border-gray-300 rounded-xl p-4 hover:border-blue-400 transition-colors duration-200 focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div class="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                            <span>JPG, PNG, PDF</span>
+                            <span>Max 10MB</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200">
+                        Submit Payment Proof
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const step1 = document.getElementById("step-1");
+    const step2 = document.getElementById("step-2");
+    const nextBtn = document.getElementById("nextStep1Btn");
+    const backBtn = document.getElementById("backStepBtn");
+    const paymentForm = document.getElementById("paymentForm");
+
+    const nameInput = document.getElementById("name");
+    const emailInput = document.getElementById("email");
+    const phoneInput = document.getElementById("phone");
+    const amountInput = document.getElementById("amount");
+    const notesInput = document.getElementById("notes");
+
+    const cardFeeNotice = document.getElementById("cardFeeNotice");
+    const stripeBtn = document.getElementById("stripePaymentBtn");
+    const squareBtn = document.getElementById("squarePaymentBtn");
+    const paypalClassicBtn = document.getElementById("paypalClassicBtn");
+
+    const paypalAdvancedSection = document.getElementById("paypalAdvancedSection");
+
+    const modal = document.getElementById("manualPaymentModal");
+    const modalCloseBtn = document.getElementById("modalCloseBtn");
+    const manualForm = document.getElementById("manualPaymentForm");
+    const urlLink = document.getElementById("bank-url-link");
+    const urlBox = document.getElementById("url-info-box");
+
+    let paypalAdvancedRendered = false;
+    let cardFieldInstance = null;
+
+    function getCSRFToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+
+    function resultMessage(message) {
+        const container = document.querySelector("#result-message");
+        if (container) container.innerHTML = message || "";
+    }
+
+    function areRequiredFieldsFilled() {
+        return (
+            nameInput.value.trim() &&
+            emailInput.value.trim() &&
+            phoneInput.value.trim() &&
+            amountInput.value.trim() &&
+            parseFloat(amountInput.value) > 0
+        );
+    }
+
+    function showCardFee(amount) {
+        if (!amount || amount <= 0 || isNaN(amount)) {
+            cardFeeNotice.classList.add("hidden");
+            return;
+        }
+
+        const percent = +(amount * 0.03).toFixed(2);
+        const fee = +(percent + 0.30).toFixed(2);
+        const totalCharge = +(amount + fee).toFixed(2);
+
+        document.getElementById("originalAmountDisplay").textContent = amount.toFixed(2);
+        document.getElementById("originalAmountDisplay2").textContent = amount.toFixed(2);
+        document.getElementById("percentFee").textContent = percent.toFixed(2);
+        document.getElementById("totalChargeAmount").textContent = totalCharge.toFixed(2);
+        document.getElementById("noteChargeAmount").textContent = totalCharge.toFixed(2);
+
+        cardFeeNotice.classList.remove("hidden");
+    }
+
+    function hideCardFee() {
+        cardFeeNotice.classList.add("hidden");
+    }
+
+    function resetMethodViews() {
+        stripeBtn.classList.add("hidden");
+        squareBtn.classList.add("hidden");
+        paypalClassicBtn.classList.add("hidden");
+        paypalAdvancedSection.classList.add("hidden");
+        modal.classList.add("hidden");
+        hideCardFee();
+        resultMessage("");
+    }
+
+    nextBtn.addEventListener("click", () => {
+        if (!areRequiredFieldsFilled()) {
+            alert("Please fill in all required fields with valid values.");
+            return;
+        }
+
+        step1.classList.add("hidden");
+        step2.classList.remove("hidden");
+
+        document.getElementById("summaryName").textContent = nameInput.value;
+        document.getElementById("summaryEmail").textContent = emailInput.value;
+        document.getElementById("summaryPhone").textContent = phoneInput.value;
+        document.getElementById("summaryAmount").textContent = parseFloat(amountInput.value).toFixed(2);
+        document.getElementById("summaryNote").textContent = notesInput.value || "No note provided";
+    });
+
+    backBtn.addEventListener("click", () => {
+        step2.classList.add("hidden");
+        step1.classList.remove("hidden");
+        document.querySelectorAll('input[name="payment_method"]').forEach(input => input.checked = false);
+        resetMethodViews();
+
+        document.querySelectorAll("[data-radio-label]").forEach(label => {
+            label.classList.remove("border-blue-500", "bg-blue-50", "shadow-md");
+            label.classList.add("border-gray-300");
+        });
+    });
+
+    async function createAdvancedOrderCallback() {
+        resultMessage("");
+
+        const response = await fetch("{% url 'accounts:create_paypal_advanced_order' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken(),
+            },
+            body: JSON.stringify({
+                amount: amountInput.value,
+                notes: notesInput.value,
+            }),
+        });
+
+        const orderData = await response.json();
+
+        if (orderData.id) return orderData.id;
+
+        let errorMessage = orderData.error || "Could not initiate PayPal Advanced Checkout";
+        if (orderData.details && orderData.details.length > 0) {
+            errorMessage = orderData.details[0].description || errorMessage;
+        }
+        throw new Error(errorMessage);
+    }
+
+    async function onAdvancedApproveCallback(data) {
+        const response = await fetch(`/accounts/paypal/advanced/capture-order/${data.orderID}/`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken(),
+            },
+        });
+
+        const orderData = await response.json();
+
+        if (!response.ok) {
+            throw new Error(orderData.error || "Payment capture failed");
+        }
+
+        alert(`PayPal Advanced payment successful! $${orderData.amount} will be added after admin review.`);
+
+        if (orderData.redirect_url) {
+            window.location.href = orderData.redirect_url;
+        }
+    }
+
+    function initPayPalAdvancedCheckout() {
+        if (!window.paypal) {
+            resultMessage("PayPal SDK failed to load.");
+            return;
+        }
+        if (paypalAdvancedRendered) return;
+
+        paypalAdvancedRendered = true;
+
+        paypal.Buttons({
+            createOrder: createAdvancedOrderCallback,
+            onApprove: onAdvancedApproveCallback,
+            onError: function (error) {
+                console.error(error);
+                resultMessage("PayPal Advanced error occurred.");
+            },
+            style: {
+                shape: "rect",
+                layout: "vertical",
+                color: "gold",
+                label: "paypal",
+            },
+        }).render("#paypal-button-container");
+
+        cardFieldInstance = paypal.CardFields({
+            createOrder: createAdvancedOrderCallback,
+            onApprove: onAdvancedApproveCallback,
+            style: {
+                input: {
+                    "font-size": "16px",
+                    "font-family": "Arial, sans-serif",
+                    color: "#111827",
+                },
+                ".invalid": {
+                    color: "#dc2626",
+                },
+            },
+        });
+
+        if (cardFieldInstance.isEligible()) {
+            cardFieldInstance.NameField().render("#card-name-field-container");
+            cardFieldInstance.NumberField().render("#card-number-field-container");
+            cardFieldInstance.ExpiryField().render("#card-expiry-field-container");
+            cardFieldInstance.CVVField().render("#card-cvv-field-container");
+        } else {
+            document.getElementById("card-form").classList.add("hidden");
+        }
+    }
+
+    document.getElementById("card-field-submit-button").addEventListener("click", () => {
+        if (!cardFieldInstance) {
+            resultMessage("Card fields are not available.");
+            return;
+        }
+
+        cardFieldInstance.submit({
+            billingAddress: {
+                addressLine1: document.getElementById("card-billing-address-line-1").value,
+                addressLine2: document.getElementById("card-billing-address-line-2").value,
+                adminArea1: document.getElementById("card-billing-address-admin-area-line-1").value,
+                adminArea2: document.getElementById("card-billing-address-admin-area-line-2").value,
+                countryCode: document.getElementById("card-billing-address-country-code").value,
+                postalCode: document.getElementById("card-billing-address-postal-code").value,
+            },
+        }).catch((err) => {
+            console.error(err);
+            resultMessage(err.message || "Card payment failed");
+        });
+    });
+
+    document.querySelectorAll('input[name="payment_method"]').forEach((input) => {
+        input.addEventListener("change", () => {
+            resetMethodViews();
+            const amount = parseFloat(amountInput.value);
+
+            if (input.value === "stripe") {
+                stripeBtn.classList.remove("hidden");
+                paymentForm.action = "{% url 'accounts:stripe_payment' %}";
+                showCardFee(amount);
+
+            } else if (input.value === "square") {
+                squareBtn.classList.remove("hidden");
+                paymentForm.action = "{% url 'accounts:square_create_payment' %}";
+                showCardFee(amount);
+
+            } else if (input.value === "paypal_classic") {
+                paypalClassicBtn.classList.remove("hidden");
+                paymentForm.action = "{% url 'accounts:paypal_create_payment' %}";
+                showCardFee(amount);
+
+            } else if (input.value === "paypal_advanced") {
+                paypalAdvancedSection.classList.remove("hidden");
+                showCardFee(amount);
+                initPayPalAdvancedCheckout();
+
+            } else if (input.value.startsWith("manual_")) {
+                const bankId = input.dataset.bankId;
+                const name = input.dataset.bankName;
+                const desc = input.dataset.bankDesc;
+                const qr = input.dataset.bankQr;
+                const url = input.dataset.url;
+
+                if (url && url.trim() !== "") {
+                    urlLink.href = url;
+                    urlLink.textContent = url;
+                    urlBox.classList.remove("hidden");
+                } else {
+                    urlBox.classList.add("hidden");
+                }
+
+                const qrWrapper = document.getElementById("qrWrapper");
+                const qrImage = document.getElementById("modalQrCode");
+
+                if (qr && qr.trim() !== "") {
+                    qrImage.src = qr;
+                    qrWrapper.classList.remove("hidden");
+                } else {
+                    qrWrapper.classList.add("hidden");
+                }
+
+                document.getElementById("modalMethodName").textContent = name;
+                document.getElementById("modalMethodDesc").textContent = desc || "Complete payment using the provided method and upload your receipt.";
+                document.getElementById("modalAmount").textContent = amount && !isNaN(amount) ? amount.toFixed(2) : "0.00";
+                document.getElementById("modalNote").textContent = notesInput.value || "No note provided";
+                document.getElementById("modalAmountInput").value = amountInput.value;
+                document.getElementById("modalNoteInput").value = notesInput.value;
+
+                manualForm.action = `{% url 'accounts:make_payment' 0 %}`.replace("0", bankId);
+                modal.classList.remove("hidden");
+            }
+        });
+    });
+
+    paypalClassicBtn.addEventListener("click", () => {
+        paymentForm.submit();
+    });
+
+    paymentForm.addEventListener("submit", (e) => {
+        const selectedMethod = document.querySelector('input[name="payment_method"]:checked');
+
+        if (!selectedMethod) {
+            e.preventDefault();
+            alert("Please select a payment method.");
+            return;
+        }
+
+        if (!areRequiredFieldsFilled()) {
+            e.preventDefault();
+            alert("Please fill in all required fields with valid values.");
+            return;
+        }
+
+        if (selectedMethod.value === "paypal_advanced") {
+            e.preventDefault();
+            return;
+        }
+
+        if (selectedMethod.value.startsWith("manual_")) {
+            e.preventDefault();
+            return;
+        }
+    });
+
+    modalCloseBtn.addEventListener("click", () => {
+        modal.classList.add("hidden");
+        document.querySelectorAll('input[name="payment_method"]').forEach((input) => (input.checked = false));
+
+        document.querySelectorAll("[data-radio-label]").forEach(label => {
+            label.classList.remove("border-blue-500", "bg-blue-50", "shadow-md");
+            label.classList.add("border-gray-300");
+        });
+    });
+
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) modalCloseBtn.click();
+    });
+
+    document.querySelectorAll("[data-radio-label]").forEach((label) => {
+        const radio = label.querySelector('input[type="radio"]');
+
+        label.addEventListener("click", () => {
+            document.querySelectorAll("[data-radio-label]").forEach((l) => {
+                l.classList.remove("border-blue-500", "bg-blue-50", "shadow-md");
+                l.classList.add("border-gray-300");
+            });
+
+            setTimeout(() => {
+                if (radio.checked) {
+                    label.classList.remove("border-gray-300");
+                    label.classList.add("border-blue-500", "bg-blue-50", "shadow-md");
+                }
+            }, 10);
+        });
+    });
+
+    amountInput.addEventListener("input", () => {
+        const amount = parseFloat(amountInput.value);
+        const chosen = document.querySelector('input[name="payment_method"]:checked');
+
+        if (chosen && ["stripe", "square", "paypal_classic", "paypal_advanced"].includes(chosen.value)) {
+            showCardFee(amount);
+        }
+
+        if (!modal.classList.contains("hidden")) {
+            document.getElementById("modalAmount").textContent = amount && !isNaN(amount) ? amount.toFixed(2) : "0.00";
+            document.getElementById("modalAmountInput").value = amountInput.value;
+        }
+    });
+
+    notesInput.addEventListener("input", () => {
+        if (!modal.classList.contains("hidden")) {
+            const noteText = notesInput.value.trim() || "No note provided";
+            document.getElementById("modalNote").textContent = noteText;
+            document.getElementById("modalNoteInput").value = notesInput.value;
+        }
+    });
+
+    manualForm.addEventListener("submit", (e) => {
+        const receiptInput = manualForm.querySelector('input[name="receipt"]');
+
+        if (!receiptInput.files.length) {
+            e.preventDefault();
+            alert("Please upload a payment receipt.");
+            return;
+        }
+
+        const file = receiptInput.files[0];
+        const maxSize = 10 * 1024 * 1024;
+
+        if (file.size > maxSize) {
+            e.preventDefault();
+            alert("File size must be less than 10MB.");
+            return;
+        }
+    });
+});
+</script>
+{% endblock scripts %}
+
+
+
+
+{% comment %} {% extends "dashboard//layout/dashboardLayout.html" %}
+{% load static %}
 {% block content %}
 <div class="container mx-auto px-4 py-8">
     <div class="max-w-4xl mx-auto">
@@ -575,4 +1296,4 @@ document.addEventListener("DOMContentLoaded", function () {
 {% endblock scripts %}
 
 
-
+ {% endcomment %}

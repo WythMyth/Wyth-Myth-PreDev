@@ -113,4 +113,7 @@ urlpatterns = [
     path("properties/upload-excel/", PropertyExcelUploadView.as_view(), name="property_upload_excel"),
     
     path("share-certificate/", download_share_certificate, name="download_share_certificate"),
+    path("paypal/advanced/create-order/", create_paypal_advanced_order, name="create_paypal_advanced_order"),
+    path("paypal/advanced/capture-order/<str:order_id>/", capture_paypal_advanced_order, name="capture_paypal_advanced_order"),
+
 ]
