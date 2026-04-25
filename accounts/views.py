@@ -3606,14 +3606,203 @@ def paypal_one_capture_order(request, order_id):
         print("PAYPAL ONE CAPTURE EXCEPTION:", str(e))
         return JsonResponse({"error": str(e)}, status=500)
 
-
-
-
-
-
-
-
 ##second paypal end
+
+###new apple pay
+import json
+from decimal import Decimal, InvalidOperation
+
+import stripe
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.mail import EmailMultiAlternatives
+from django.http import JsonResponse
+from django.shortcuts import redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils.timezone import now
+from django.views.decorators.http import require_POST
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+
+@login_required
+def stripe_wallet_checkout(request):
+   if request.method != "POST":
+       return redirect("accounts:payment_banks")
+
+   amount_raw = request.POST.get("amount", "").strip()
+   notes = request.POST.get("notes", "").strip()
+
+   try:
+       amount = Decimal(amount_raw)
+       if amount <= 0:
+           raise InvalidOperation
+   except Exception:
+       messages.error(request, "Please enter a valid amount.")
+       return redirect("accounts:payment_banks")
+
+   fee = (amount * Decimal("0.03")) + Decimal("0.30")
+   fee = fee.quantize(Decimal("0.01"))
+   total_charge = (amount + fee).quantize(Decimal("0.01"))
+
+   request.session["stripe_wallet_data"] = {
+       "amount": f"{amount:.2f}",
+       "fee": f"{fee:.2f}",
+       "total_charge": f"{total_charge:.2f}",
+       "notes": notes,
+   }
+
+   return render(request, "stripe_wallet_checkout.html", {
+       "stripe_public_key": settings.STRIPE_PUBLIC_KEY,
+       "amount": f"{amount:.2f}",
+       "fee": f"{fee:.2f}",
+       "total_charge": f"{total_charge:.2f}",
+       "notes": notes,
+   })
+
+
+@login_required
+@require_POST
+def stripe_wallet_create_intent(request):
+   data = request.session.get("stripe_wallet_data")
+
+   if not data:
+       return JsonResponse({"error": "Payment session expired."}, status=400)
+
+   try:
+       total_charge = Decimal(data["total_charge"])
+       amount_in_cents = int(total_charge * 100)
+
+       intent = stripe.PaymentIntent.create(
+           amount=amount_in_cents,
+           currency="usd",
+           automatic_payment_methods={"enabled": True},
+           metadata={
+               "user_id": str(request.user.id),
+               "original_amount": data["amount"],
+               "fee": data["fee"],
+               "total_charge": data["total_charge"],
+               "notes": data.get("notes", ""),
+               "payment_method": "Stripe Wallet",
+           },
+       )
+
+       request.session["stripe_wallet_data"]["payment_intent_id"] = intent.id
+       request.session.modified = True
+
+       return JsonResponse({
+           "clientSecret": intent.client_secret,
+           "amount": data["amount"],
+           "fee": data["fee"],
+           "total_charge": data["total_charge"],
+       })
+
+   except Exception as e:
+       return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+def stripe_wallet_success(request):
+   payment_intent_id = request.GET.get("payment_intent")
+   redirect_status = request.GET.get("redirect_status")
+
+   if not payment_intent_id:
+       messages.error(request, "Invalid wallet payment session.")
+       return redirect("accounts:payment_banks")
+
+   if redirect_status and redirect_status != "succeeded":
+       messages.error(request, "Wallet payment was not completed.")
+       return redirect("accounts:payment_banks")
+
+   try:
+       intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+
+       if intent.status != "succeeded":
+           messages.error(request, "Payment was not completed.")
+           return redirect("accounts:payment_banks")
+
+       meta = intent.metadata or {}
+       original_amount = meta.get("original_amount", "0.00")
+       fee = meta.get("fee", "0.00")
+       total_charge = meta.get("total_charge", "0.00")
+       notes = meta.get("notes", "")
+
+       wallet_bank, _ = Bank.objects.get_or_create(
+           name="Apple Pay",
+           defaults={
+               "account_details": "Apple Pay / Google Pay / Link via Stripe Express Checkout",
+               "is_active": True,
+               "is_card": True,
+           },
+       )
+
+       already_exists = Payment.objects.filter(
+           user=request.user,
+           notes__icontains=payment_intent_id,
+       ).exists()
+
+       if not already_exists:
+           payment = Payment.objects.create(
+               user=request.user,
+               bank=wallet_bank,
+               amount=Decimal(original_amount),
+               paid_amount=Decimal(total_charge),
+               status="pending",
+               notes=(
+                   f"{notes}\n"
+                   f"Stripe PaymentIntent: {payment_intent_id}\n"
+                   f"Fee: ${fee}\n"
+                   f"Total Charged: ${total_charge}"
+               ).strip(),
+           )
+
+           subject = f"New Apple Pay / Stripe Wallet Payment (Pending) - {request.user.get_full_name()}"
+           from_email = settings.DEFAULT_FROM_EMAIL
+           to_email = [settings.DEFAULT_FROM_EMAIL]
+
+           context = {
+               "user": request.user,
+               "bank": wallet_bank,
+               "payment": payment,
+               "date": now().strftime("%d %b %Y"),
+           }
+
+           html_content = render_to_string("emails/admin_payment_notification.html", context)
+           text_content = (
+               f"A new Apple Pay / Stripe Wallet payment has been submitted by "
+               f"{request.user.get_full_name()} ({request.user.email}) and is pending review.\n"
+               f"Amount: ${original_amount}\n"
+               f"Fee: ${fee}\n"
+               f"Total Charged: ${total_charge}\n"
+               f"PaymentIntent: {payment_intent_id}"
+           )
+
+           email = EmailMultiAlternatives(subject, text_content, from_email, to_email)
+           email.attach_alternative(html_content, "text/html")
+           email.send()
+
+       request.session.pop("stripe_wallet_data", None)
+
+       messages.success(
+           request,
+           f"Wallet payment successful! You sent ${total_charge}. "
+           f"${original_amount} will be added to your balance after admin review."
+       )
+
+       return render(request, "payment_success.html", {
+           "original_amount": original_amount,
+           "card_fee": fee,
+           "net_amount": total_charge,
+           "payment_method": "Apple Pay / Stripe Wallet",
+       })
+
+   except Exception as e:
+       messages.error(request, f"Error verifying wallet payment: {str(e)}")
+       return redirect("accounts:payment_banks")
+
+###end apple pay
 
 @method_decorator(login_required, name="dispatch")
 class expense_list(ListView):

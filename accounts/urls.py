@@ -118,6 +118,10 @@ urlpatterns = [
     path("paypal-one/checkout/", paypal_one_checkout, name="paypal_one_checkout"),
     path("paypal-one/create-order/", paypal_one_create_order, name="paypal_one_create_order"),
     path("paypal-one/capture-order/<str:order_id>/", paypal_one_capture_order, name="paypal_one_capture_order"),
+    path("stripe-wallet/checkout/", stripe_wallet_checkout, name="stripe_wallet_checkout"),
+    path("stripe-wallet/create-intent/", stripe_wallet_create_intent, name="stripe_wallet_create_intent"),
+    path("stripe-wallet/success/", stripe_wallet_success, name="stripe_wallet_success"),
+
 
 
 

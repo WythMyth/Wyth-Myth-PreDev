@@ -1,0 +1,141 @@
+{% extends "dashboard//layout/dashboardLayout.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+        <div class="bg-black px-6 py-5 text-white">
+            <h1 class="text-2xl font-bold">Apple Pay / Stripe Wallet</h1>
+            <p class="text-sm opacity-90 mt-1">Pay securely with Apple Pay, Google Pay, or Link.</p>
+        </div>
+
+        <div class="p-6">
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 font-medium">Amount</span>
+                    <span class="text-2xl font-bold text-green-600">${{ amount }}</span>
+                </div>
+
+                <div class="flex justify-between items-center mt-2">
+                    <span class="text-gray-600 font-medium">Processing Fee</span>
+                    <span class="font-semibold">${{ fee }}</span>
+                </div>
+
+                <div class="flex justify-between items-center mt-2 pt-3 border-t border-gray-200">
+                    <span class="text-gray-700 font-bold">Total Charge</span>
+                    <span class="text-xl font-bold">${{ total_charge }}</span>
+                </div>
+
+                {% if notes %}
+                <div class="mt-3 pt-3 border-t border-gray-200">
+                    <span class="text-gray-600 font-medium">Note:</span>
+                    <p class="text-gray-800 mt-1">{{ notes }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-3">Express Checkout</h2>
+                <div id="express-checkout-element"></div>
+                <p id="wallet-message" class="text-sm text-red-600 mt-4"></p>
+            </div>
+
+            <div class="mt-6">
+                <a href="{% url 'accounts:payment_banks' %}" class="inline-block text-sm text-gray-600 hover:text-blue-700">
+                    ← Back to payment methods
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script src="https://js.stripe.com/v3/"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", async function () {
+    const stripe = Stripe("{{ stripe_public_key }}");
+
+    function getCSRFToken() {
+        const tokenInput = document.querySelector("[name=csrfmiddlewaretoken]");
+        if (tokenInput && tokenInput.value) return tokenInput.value;
+
+        const metaToken = document.querySelector('meta[name="csrf-token"]');
+        if (metaToken && metaToken.content) return metaToken.content;
+
+        const match = document.cookie.match(/csrftoken=([^;]+)/);
+        return match ? match[1] : "";
+    }
+
+    function showMessage(message) {
+        document.getElementById("wallet-message").textContent = message || "";
+    }
+
+    try {
+        const intentResponse = await fetch("{% url 'accounts:stripe_wallet_create_intent' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCSRFToken(),
+            },
+            credentials: "same-origin",
+        });
+
+        const intentData = await intentResponse.json();
+
+        if (!intentResponse.ok) {
+            showMessage(intentData.error || "Unable to initialize Apple Pay.");
+            return;
+        }
+
+        const elements = stripe.elements({
+            clientSecret: intentData.clientSecret,
+            appearance: {
+                theme: "stripe",
+            },
+        });
+
+        const expressCheckout = elements.create("expressCheckout", {
+            buttonType: {
+                applePay: "buy",
+                googlePay: "buy",
+            },
+            buttonTheme: {
+                applePay: "black",
+                googlePay: "black",
+            },
+            buttonHeight: 48,
+        });
+
+        expressCheckout.mount("#express-checkout-element");
+
+        expressCheckout.on("ready", function (event) {
+            if (!event.availablePaymentMethods) {
+                showMessage("Apple Pay is not available on this device/browser. Try Safari with Apple Pay enabled.");
+            }
+        });
+
+        expressCheckout.on("confirm", async function () {
+            const { error } = await stripe.confirmPayment({
+                elements,
+                clientSecret: intentData.clientSecret,
+                confirmParams: {
+                    return_url: window.location.origin + "{% url 'accounts:stripe_wallet_success' %}",
+                },
+            });
+
+            if (error) {
+                showMessage(error.message || "Payment failed.");
+            }
+        });
+
+    } catch (error) {
+        console.error(error);
+        showMessage(error.message || "Unable to load Apple Pay.");
+    }
+});
+</script>
+{% endblock scripts %}

@@ -108,6 +108,13 @@
                         <img src="{% static 'assets/images/stripe.jpeg' %}" alt="Stripe" class="w-20 h-12 object-contain" />
                     </label>
 
+                    <!-- Apple Pay / Stripe Wallet -->
+                    <label class="cursor-pointer border border-gray-300 rounded-lg p-4 flex justify-between items-center hover:shadow-md transition-all" data-radio-label>
+                        <input type="radio" name="payment_method" value="stripe_wallet" class="hidden peer" />
+                        <span class="text-black font-semibold">Apple Pay / Google Pay / Link | Stripe Wallet</span>
+                        <img src="{% static 'assets/images/stripe.jpeg' %}" alt="Stripe Wallet" class="w-20 h-12 object-contain" />
+                    </label>
+
                     <!-- Square -->
                     <label class="cursor-pointer border border-gray-300 rounded-lg p-4 flex justify-between items-center hover:shadow-md transition-all" data-radio-label>
                         <input type="radio" name="payment_method" value="square" class="hidden peer" />
@@ -161,6 +168,11 @@
                         Pay with Stripe
                     </button>
 
+                    <button type="button" id="stripeWalletBtn"
+                            class="flex-1 min-w-[180px] bg-black hover:bg-gray-900 text-white font-semibold py-3 rounded-lg transition duration-200 hidden">
+                        Continue to Apple Pay
+                    </button>
+
                     <button type="submit" id="squarePaymentBtn"
                             class="flex-1 min-w-[180px] bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition duration-200 hidden">
                         Pay with Square
@@ -191,7 +203,6 @@
         </div>
 
         <div class="px-8 py-6">
-            <!-- QR Code -->
             <div id="qrWrapper" class="text-center mb-8 hidden">
                 <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-4 inline-block shadow-inner">
                     <img id="modalQrCode" src="" alt="QR Code" class="w-80 h-80 object-contain mx-auto mb-3 rounded-lg">
@@ -201,7 +212,6 @@
                 </div>
             </div>
 
-            <!-- URL Info -->
             <div id="url-info-box" class="bg-blue-50 border-l-4 border-blue-400 rounded-r-xl p-6 mb-6 hidden">
                 <div class="flex items-start gap-3">
                     <div class="flex-1">
@@ -215,7 +225,6 @@
                 </div>
             </div>
 
-            <!-- Payment Details -->
             <div class="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-6 mb-6 border border-blue-100">
                 <h4 class="text-lg font-semibold text-gray-800 mb-4">Payment Details</h4>
 
@@ -232,7 +241,6 @@
                 </div>
             </div>
 
-            <!-- Instructions -->
             <div class="bg-amber-50 border-l-4 border-amber-400 rounded-r-xl p-6 mb-6">
                 <div class="flex items-start gap-3">
                     <div class="flex-1">
@@ -247,7 +255,6 @@
                 </div>
             </div>
 
-            <!-- Manual Upload Form -->
             <div class="bg-gray-50 rounded-xl p-6">
                 <form id="manualPaymentForm" method="POST" enctype="multipart/form-data">
                     {% csrf_token %}
@@ -306,6 +313,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const cardFeeNotice = document.getElementById("cardFeeNotice");
 
     const stripeBtn = document.getElementById("stripePaymentBtn");
+    const stripeWalletBtn = document.getElementById("stripeWalletBtn");
     const squareBtn = document.getElementById("squarePaymentBtn");
     const paypalOldBtn = document.getElementById("paypalOldBtn");
     const paypalOneBtn = document.getElementById("paypalOneBtn");
@@ -351,11 +359,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function resetMethodViews() {
         stripeBtn.classList.add("hidden");
+        stripeWalletBtn.classList.add("hidden");
         squareBtn.classList.add("hidden");
         paypalOldBtn.classList.add("hidden");
         paypalOneBtn.classList.add("hidden");
         modal.classList.add("hidden");
         hideCardFee();
+        paymentForm.removeAttribute("target");
     }
 
     nextBtn.addEventListener("click", () => {
@@ -396,21 +406,31 @@ document.addEventListener("DOMContentLoaded", function () {
             if (input.value === "stripe") {
                 stripeBtn.classList.remove("hidden");
                 paymentForm.action = "{% url 'accounts:stripe_payment' %}";
+                paymentForm.target = "_blank";
+                showCardFee(amount);
+
+            } else if (input.value === "stripe_wallet") {
+                stripeWalletBtn.classList.remove("hidden");
+                paymentForm.action = "{% url 'accounts:stripe_wallet_checkout' %}";
+                paymentForm.target = "_self";
                 showCardFee(amount);
 
             } else if (input.value === "square") {
                 squareBtn.classList.remove("hidden");
                 paymentForm.action = "{% url 'accounts:square_create_payment' %}";
+                paymentForm.target = "_blank";
                 showCardFee(amount);
 
             } else if (input.value === "paypal_old") {
                 paypalOldBtn.classList.remove("hidden");
                 paymentForm.action = "{% url 'accounts:paypal_create_payment' %}";
+                paymentForm.target = "_blank";
                 showCardFee(amount);
 
             } else if (input.value === "paypal_one") {
                 paypalOneBtn.classList.remove("hidden");
                 paymentForm.action = "{% url 'accounts:paypal_one_checkout' %}";
+                paymentForm.target = "_self";
                 showCardFee(amount);
 
             } else if (input.value.startsWith("manual_")) {
@@ -419,6 +439,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 const desc = input.dataset.bankDesc;
                 const qr = input.dataset.bankQr;
                 const url = input.dataset.url;
+
+                paymentForm.target = "_self";
 
                 if (url && url.trim() !== "") {
                     urlLink.href = url;
@@ -455,11 +477,24 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    paypalOldBtn.addEventListener("click", () => {
+    stripeWalletBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        paymentForm.action = "{% url 'accounts:stripe_wallet_checkout' %}";
+        paymentForm.target = "_self";
         paymentForm.submit();
     });
 
-    paypalOneBtn.addEventListener("click", () => {
+    paypalOldBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        paymentForm.action = "{% url 'accounts:paypal_create_payment' %}";
+        paymentForm.target = "_blank";
+        paymentForm.submit();
+    });
+
+    paypalOneBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        paymentForm.action = "{% url 'accounts:paypal_one_checkout' %}";
+        paymentForm.target = "_self";
         paymentForm.submit();
     });
 
@@ -529,7 +564,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const amount = parseFloat(amountInput.value);
         const chosen = document.querySelector('input[name="payment_method"]:checked');
 
-        if (chosen && ["stripe", "square", "paypal_old", "paypal_one"].includes(chosen.value)) {
+        if (chosen && ["stripe", "stripe_wallet", "square", "paypal_old", "paypal_one"].includes(chosen.value)) {
             showCardFee(amount);
         }
 
@@ -573,6 +608,8 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 {% endblock scripts %}
+
+
 
 
 
