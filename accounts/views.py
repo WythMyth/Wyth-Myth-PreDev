@@ -2052,7 +2052,9 @@ class PropertyDeleteView(PropertyUserRequiredMixin, DeleteView):
 def payment_banks(request):
     banks = Bank.objects.filter(is_active=True, is_card=False)
 
-    context = {"banks": banks}
+    context = {
+        "banks": banks,
+        }
     # Total balance logic
     if request.user.is_superuser:
         total_investment = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
@@ -3170,6 +3172,637 @@ def square_checkout(request):
     }
     return render(request, "square_checkout.html", context)
 
+##second paypal start
+# import json
+# import requests
+# from decimal import Decimal, InvalidOperation
+# from django.http import JsonResponse
+# from django.views.decorators.http import require_POST
+# from django.db import transaction
+
+# # =========================
+# # NEW PAYPAL ADVANCED CONFIG
+# # old paypalrestsdk flow থাকবে
+# # =========================
+# PAYPAL_ADVANCED_CLIENT_ID = "AVeoRo5COd9N-wfnZ70POSkVqjHQ9Ao_CL1aW48zHZafgPiUYM1447Zy1yi4M6nRiUkk9l7vdR1Yv_HT"
+# PAYPAL_ADVANCED_CLIENT_SECRET = "EJlQaw0Az6DMaONTFopgYXZxYxrJt1NeLRAzx3N2OWleK16PrLu4qipmRF2I0kL1yhZkYNM0DUtoq33T"
+# PAYPAL_ADVANCED_BASE_URL = "https://api-m.paypal.com"   # live
+# # PAYPAL_ADVANCED_BASE_URL = "https://api-m.sandbox.paypal.com"
+
+
+# def get_paypal_advanced_access_token():
+#     response = requests.post(
+#         f"{PAYPAL_ADVANCED_BASE_URL}/v1/oauth2/token",
+#         auth=(PAYPAL_ADVANCED_CLIENT_ID, PAYPAL_ADVANCED_CLIENT_SECRET),
+#         headers={"Accept": "application/json"},
+#         data={"grant_type": "client_credentials"},
+#         timeout=30,
+#     )
+#     response.raise_for_status()
+#     return response.json()["access_token"]
+
+
+# @login_required
+# @require_POST
+# def create_paypal_advanced_order(request):
+#     try:
+#         data = json.loads(request.body or "{}")
+#         amount_raw = str(data.get("amount", "")).strip()
+#         notes = str(data.get("notes", "")).strip()
+
+#         try:
+#             amount = Decimal(amount_raw)
+#             if amount <= 0:
+#                 raise InvalidOperation
+#         except Exception:
+#             return JsonResponse({"error": "Invalid amount"}, status=400)
+
+#         access_token = get_paypal_advanced_access_token()
+
+#         payload = {
+#             "intent": "CAPTURE",
+#             "purchase_units": [
+#                 {
+#                     "reference_id": f"user-{request.user.id}",
+#                     "description": notes or "Account deposit",
+#                     "custom_id": str(request.user.id),
+#                     "amount": {
+#                         "currency_code": "USD",
+#                         "value": f"{amount:.2f}",
+#                     },
+#                 }
+#             ],
+#             "payment_source": {
+#                 "paypal": {
+#                     "experience_context": {
+#                         "payment_method_preference": "IMMEDIATE_PAYMENT_REQUIRED",
+#                         "brand_name": "HFall",
+#                         "landing_page": "LOGIN",
+#                         "user_action": "PAY_NOW",
+#                         "return_url": request.build_absolute_uri(reverse("accounts:payment_banks")),
+#                         "cancel_url": request.build_absolute_uri(reverse("accounts:payment_banks")),
+#                     }
+#                 }
+#             }
+#         }
+
+#         response = requests.post(
+#             f"{PAYPAL_ADVANCED_BASE_URL}/v2/checkout/orders",
+#             headers={
+#                 "Content-Type": "application/json",
+#                 "Authorization": f"Bearer {access_token}",
+#             },
+#             json=payload,
+#             timeout=30,
+#         )
+#         response.raise_for_status()
+#         order_data = response.json()
+
+#         request.session["paypal_advanced_meta"] = {
+#             "amount": f"{amount:.2f}",
+#             "notes": notes,
+#         }
+
+#         return JsonResponse({"id": order_data["id"]})
+
+#     except requests.HTTPError as e:
+#         try:
+#             detail = e.response.json()
+#         except Exception:
+#             detail = {"error": str(e)}
+#         return JsonResponse(detail, status=400)
+#     except Exception as e:
+#         return JsonResponse({"error": str(e)}, status=500)
+
+
+# @login_required
+# @require_POST
+# def capture_paypal_advanced_order(request, order_id):
+#     try:
+#         paypal_meta = request.session.get("paypal_advanced_meta")
+#         if not paypal_meta:
+#             return JsonResponse({"error": "Payment session expired"}, status=400)
+
+#         access_token = get_paypal_advanced_access_token()
+
+#         response = requests.post(
+#             f"{PAYPAL_ADVANCED_BASE_URL}/v2/checkout/orders/{order_id}/capture",
+#             headers={
+#                 "Content-Type": "application/json",
+#                 "Authorization": f"Bearer {access_token}",
+#             },
+#             timeout=30,
+#         )
+#         response.raise_for_status()
+#         order_data = response.json()
+
+#         if order_data.get("status") != "COMPLETED":
+#             return JsonResponse(order_data, status=400)
+
+#         amount = Decimal(paypal_meta["amount"])
+#         notes = paypal_meta.get("notes", "")
+
+#         with transaction.atomic():
+#             paypal_bank, _ = Bank.objects.get_or_create(
+#                 name="PayPal Advanced",
+#                 defaults={
+#                     "account_details": "Online payment via PayPal Advanced Checkout",
+#                     "is_active": True,
+#                     "is_paypal": True,
+#                 },
+#             )
+
+#             new_payment = Payment.objects.create(
+#                 user=request.user,
+#                 bank=paypal_bank,
+#                 amount=float(amount),
+#                 paid_amount=float(amount),
+#                 status="pending",
+#                 notes=notes,
+#             )
+
+#         # admin mail
+#         subject = f"New PayPal Advanced Payment (Pending) - {request.user.get_full_name()}"
+#         from_email = settings.DEFAULT_FROM_EMAIL
+#         to_email = [settings.DEFAULT_FROM_EMAIL]
+
+#         context = {
+#             "user": request.user,
+#             "bank": paypal_bank,
+#             "payment": new_payment,
+#             "date": now().strftime("%d %b %Y"),
+#         }
+
+#         html_content = render_to_string("emails/admin_payment_notification.html", context)
+#         text_content = (
+#             f"A new PayPal Advanced payment has been submitted by "
+#             f"{request.user.get_full_name()} ({request.user.email}) "
+#             f"and is pending review."
+#         )
+
+#         email = EmailMultiAlternatives(subject, text_content, from_email, to_email)
+#         email.attach_alternative(html_content, "text/html")
+#         email.send()
+
+#         request.session.pop("paypal_advanced_meta", None)
+
+#         return JsonResponse({
+#             "status": "success",
+#             "amount": f"{amount:.2f}",
+#             "redirect_url": reverse("accounts:my_payments"),
+#         })
+
+#     except requests.HTTPError as e:
+#         try:
+#             detail = e.response.json()
+#         except Exception:
+#             detail = {"error": str(e)}
+#         return JsonResponse(detail, status=400)
+#     except Exception as e:
+#         return JsonResponse({"error": str(e)}, status=500)
+
+
+import json
+import requests
+from decimal import Decimal, InvalidOperation
+
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.mail import EmailMultiAlternatives
+from django.db import transaction
+from django.http import JsonResponse
+from django.shortcuts import redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils.timezone import now
+from django.views.decorators.http import require_POST
+
+
+PAYPAL_ONE_CLIENT_ID = "AVeoRo5COd9N-wfnZ70POSkVqjHQ9Ao_CL1aW48zHZafgPiUYM1447Zy1yi4M6nRiUkk9l7vdR1Yv_HT"
+PAYPAL_ONE_CLIENT_SECRET = "EJlQaw0Az6DMaONTFopgYXZxYxrJt1NeLRAzx3N2OWleK16PrLu4qipmRF2I0kL1yhZkYNM0DUtoq33T"
+PAYPAL_ONE_BASE_URL = "https://api-m.paypal.com"
+
+
+# Sandbox হলে:
+# PAYPAL_ONE_BASE_URL = "https://api-m.sandbox.paypal.com"
+
+
+def paypal_one_access_token():
+    response = requests.post(
+        f"{PAYPAL_ONE_BASE_URL}/v1/oauth2/token",
+        auth=(PAYPAL_ONE_CLIENT_ID, PAYPAL_ONE_CLIENT_SECRET),
+        data={"grant_type": "client_credentials"},
+        headers={
+            "Accept": "application/json",
+            "Accept-Language": "en_US",
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()["access_token"]
+
+
+@login_required
+def paypal_one_checkout(request):
+    if request.method != "POST":
+        return redirect("accounts:payment_banks")
+
+    amount_raw = request.POST.get("amount", "").strip()
+    notes = request.POST.get("notes", "").strip()
+
+    try:
+        amount = Decimal(amount_raw)
+        if amount <= 0:
+            raise InvalidOperation
+    except Exception:
+        messages.error(request, "Please enter a valid amount.")
+        return redirect("accounts:payment_banks")
+
+    request.session["paypal_one_checkout"] = {
+        "amount": f"{amount:.2f}",
+        "notes": notes,
+    }
+
+    return render(
+        request,
+        "paypal_one_checkout.html",
+        {
+            "paypal_client_id": PAYPAL_ONE_CLIENT_ID,
+            "amount": f"{amount:.2f}",
+            "notes": notes,
+        },
+    )
+
+
+@login_required
+@require_POST
+def paypal_one_create_order(request):
+    payment_data = request.session.get("paypal_one_checkout")
+
+    if not payment_data:
+        return JsonResponse({"error": "Payment session expired."}, status=400)
+
+    try:
+        amount = Decimal(payment_data["amount"])
+        notes = payment_data.get("notes", "")
+
+        access_token = paypal_one_access_token()
+
+        payload = {
+            "intent": "CAPTURE",
+            "purchase_units": [
+                {
+                    "description": notes or "Account Deposit",
+                    "custom_id": str(request.user.id),
+                    "amount": {
+                        "currency_code": "USD",
+                        "value": f"{amount:.2f}",
+                    },
+                }
+            ],
+        }
+
+        response = requests.post(
+            f"{PAYPAL_ONE_BASE_URL}/v2/checkout/orders",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {access_token}",
+            },
+            json=payload,
+            timeout=30,
+        )
+        response.raise_for_status()
+
+        order_data = response.json()
+        return JsonResponse({"id": order_data["id"]})
+
+    except requests.HTTPError as e:
+        print("PAYPAL ONE CREATE ORDER ERROR:", e.response.text)
+        try:
+            detail = e.response.json()
+        except Exception:
+            detail = {"error": e.response.text}
+        return JsonResponse(detail, status=400)
+
+    except Exception as e:
+        print("PAYPAL ONE CREATE ORDER EXCEPTION:", str(e))
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def paypal_one_capture_order(request, order_id):
+    payment_data = request.session.get("paypal_one_checkout")
+
+    if not payment_data:
+        return JsonResponse({"error": "Payment session expired."}, status=400)
+
+    try:
+        access_token = paypal_one_access_token()
+
+        capture_response = requests.post(
+            f"{PAYPAL_ONE_BASE_URL}/v2/checkout/orders/{order_id}/capture",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {access_token}",
+            },
+            timeout=30,
+        )
+        capture_response.raise_for_status()
+
+        capture_data = capture_response.json()
+
+        if capture_data.get("status") != "COMPLETED":
+            return JsonResponse({"error": "PayPal One payment was not completed."}, status=400)
+
+        amount = Decimal(payment_data["amount"])
+        notes = payment_data.get("notes", "")
+
+        capture_id = order_id
+        payer_email = ""
+
+        try:
+            capture_id = capture_data["purchase_units"][0]["payments"]["captures"][0]["id"]
+        except Exception:
+            pass
+
+        try:
+            payer_email = capture_data["payer"]["email_address"]
+        except Exception:
+            pass
+
+        with transaction.atomic():
+            paypal_bank, _ = Bank.objects.get_or_create(
+                name="PayPal One",
+                defaults={
+                    "account_details": "Online payment via PayPal One Checkout and PayPal Card Fields",
+                    "is_active": True,
+                    "is_paypal": True,
+                },
+            )
+
+            already_exists = Payment.objects.filter(
+                user=request.user,
+                notes__icontains=capture_id,
+            ).exists()
+
+            if not already_exists:
+                new_payment = Payment.objects.create(
+                    user=request.user,
+                    bank=paypal_bank,
+                    amount=amount,
+                    paid_amount=amount,
+                    status="pending",
+                    notes=(
+                        f"{notes}\n"
+                        f"PayPal One Order ID: {order_id}\n"
+                        f"PayPal One Capture ID: {capture_id}\n"
+                        f"Payer Email: {payer_email}"
+                    ).strip(),
+                )
+
+                subject = f"New PayPal One Payment (Pending) - {request.user.get_full_name()}"
+                from_email = settings.DEFAULT_FROM_EMAIL
+                to_email = [settings.DEFAULT_FROM_EMAIL]
+
+                context = {
+                    "user": request.user,
+                    "bank": paypal_bank,
+                    "payment": new_payment,
+                    "date": now().strftime("%d %b %Y"),
+                }
+
+                html_content = render_to_string("emails/admin_payment_notification.html", context)
+                text_content = (
+                    f"A new PayPal One payment has been submitted by "
+                    f"{request.user.get_full_name()} ({request.user.email}) and is pending review.\n"
+                    f"Amount: ${amount}\n"
+                    f"PayPal One Order ID: {order_id}\n"
+                    f"PayPal One Capture ID: {capture_id}"
+                )
+
+                email = EmailMultiAlternatives(subject, text_content, from_email, to_email)
+                email.attach_alternative(html_content, "text/html")
+                email.send()
+
+        request.session.pop("paypal_one_checkout", None)
+
+        return JsonResponse({
+            "status": "success",
+            "amount": f"{amount:.2f}",
+            "redirect_url": reverse("accounts:my_payments"),
+        })
+
+    except requests.HTTPError as e:
+        print("PAYPAL ONE CAPTURE ERROR:", e.response.text)
+        try:
+            detail = e.response.json()
+        except Exception:
+            detail = {"error": e.response.text}
+        return JsonResponse(detail, status=400)
+
+    except Exception as e:
+        print("PAYPAL ONE CAPTURE EXCEPTION:", str(e))
+        return JsonResponse({"error": str(e)}, status=500)
+
+##second paypal end
+
+###new apple pay
+import json
+from decimal import Decimal, InvalidOperation
+
+import stripe
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.mail import EmailMultiAlternatives
+from django.http import JsonResponse
+from django.shortcuts import redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils.timezone import now
+from django.views.decorators.http import require_POST
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+
+@login_required
+def stripe_wallet_checkout(request):
+   if request.method != "POST":
+       return redirect("accounts:payment_banks")
+
+   amount_raw = request.POST.get("amount", "").strip()
+   notes = request.POST.get("notes", "").strip()
+
+   try:
+       amount = Decimal(amount_raw)
+       if amount <= 0:
+           raise InvalidOperation
+   except Exception:
+       messages.error(request, "Please enter a valid amount.")
+       return redirect("accounts:payment_banks")
+
+   fee = (amount * Decimal("0.03")) + Decimal("0.30")
+   fee = fee.quantize(Decimal("0.01"))
+   total_charge = (amount + fee).quantize(Decimal("0.01"))
+
+   request.session["stripe_wallet_data"] = {
+       "amount": f"{amount:.2f}",
+       "fee": f"{fee:.2f}",
+       "total_charge": f"{total_charge:.2f}",
+       "notes": notes,
+   }
+
+   return render(request, "stripe_wallet_checkout.html", {
+       "stripe_public_key": settings.STRIPE_PUBLIC_KEY,
+       "amount": f"{amount:.2f}",
+       "fee": f"{fee:.2f}",
+       "total_charge": f"{total_charge:.2f}",
+       "notes": notes,
+   })
+
+
+@login_required
+@require_POST
+def stripe_wallet_create_intent(request):
+   data = request.session.get("stripe_wallet_data")
+
+   if not data:
+       return JsonResponse({"error": "Payment session expired."}, status=400)
+
+   try:
+       total_charge = Decimal(data["total_charge"])
+       amount_in_cents = int(total_charge * 100)
+
+       intent = stripe.PaymentIntent.create(
+           amount=amount_in_cents,
+           currency="usd",
+           automatic_payment_methods={"enabled": True},
+           metadata={
+               "user_id": str(request.user.id),
+               "original_amount": data["amount"],
+               "fee": data["fee"],
+               "total_charge": data["total_charge"],
+               "notes": data.get("notes", ""),
+               "payment_method": "Stripe Wallet",
+           },
+       )
+
+       request.session["stripe_wallet_data"]["payment_intent_id"] = intent.id
+       request.session.modified = True
+
+       return JsonResponse({
+           "clientSecret": intent.client_secret,
+           "amount": data["amount"],
+           "fee": data["fee"],
+           "total_charge": data["total_charge"],
+       })
+
+   except Exception as e:
+       return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+def stripe_wallet_success(request):
+   payment_intent_id = request.GET.get("payment_intent")
+   redirect_status = request.GET.get("redirect_status")
+
+   if not payment_intent_id:
+       messages.error(request, "Invalid wallet payment session.")
+       return redirect("accounts:payment_banks")
+
+   if redirect_status and redirect_status != "succeeded":
+       messages.error(request, "Wallet payment was not completed.")
+       return redirect("accounts:payment_banks")
+
+   try:
+       intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+
+       if intent.status != "succeeded":
+           messages.error(request, "Payment was not completed.")
+           return redirect("accounts:payment_banks")
+
+       meta = intent.metadata or {}
+       original_amount = meta.get("original_amount", "0.00")
+       fee = meta.get("fee", "0.00")
+       total_charge = meta.get("total_charge", "0.00")
+       notes = meta.get("notes", "")
+
+       wallet_bank, _ = Bank.objects.get_or_create(
+           name="Apple Pay",
+           defaults={
+               "account_details": "Apple Pay / Google Pay / Link via Stripe Express Checkout",
+               "is_active": True,
+               "is_card": True,
+           },
+       )
+
+       already_exists = Payment.objects.filter(
+           user=request.user,
+           notes__icontains=payment_intent_id,
+       ).exists()
+
+       if not already_exists:
+           payment = Payment.objects.create(
+               user=request.user,
+               bank=wallet_bank,
+               amount=Decimal(original_amount),
+               paid_amount=Decimal(total_charge),
+               status="pending",
+               notes=(
+                   f"{notes}\n"
+                   f"Stripe PaymentIntent: {payment_intent_id}\n"
+                   f"Fee: ${fee}\n"
+                   f"Total Charged: ${total_charge}"
+               ).strip(),
+           )
+
+           subject = f"New Apple Pay / Stripe Wallet Payment (Pending) - {request.user.get_full_name()}"
+           from_email = settings.DEFAULT_FROM_EMAIL
+           to_email = [settings.DEFAULT_FROM_EMAIL]
+
+           context = {
+               "user": request.user,
+               "bank": wallet_bank,
+               "payment": payment,
+               "date": now().strftime("%d %b %Y"),
+           }
+
+           html_content = render_to_string("emails/admin_payment_notification.html", context)
+           text_content = (
+               f"A new Apple Pay / Stripe Wallet payment has been submitted by "
+               f"{request.user.get_full_name()} ({request.user.email}) and is pending review.\n"
+               f"Amount: ${original_amount}\n"
+               f"Fee: ${fee}\n"
+               f"Total Charged: ${total_charge}\n"
+               f"PaymentIntent: {payment_intent_id}"
+           )
+
+           email = EmailMultiAlternatives(subject, text_content, from_email, to_email)
+           email.attach_alternative(html_content, "text/html")
+           email.send()
+
+       request.session.pop("stripe_wallet_data", None)
+
+       messages.success(
+           request,
+           f"Wallet payment successful! You sent ${total_charge}. "
+           f"${original_amount} will be added to your balance after admin review."
+       )
+
+       return render(request, "payment_success.html", {
+           "original_amount": original_amount,
+           "card_fee": fee,
+           "net_amount": total_charge,
+           "payment_method": "Apple Pay / Stripe Wallet",
+       })
+
+   except Exception as e:
+       messages.error(request, f"Error verifying wallet payment: {str(e)}")
+       return redirect("accounts:payment_banks")
+
+###end apple pay
 
 @method_decorator(login_required, name="dispatch")
 class expense_list(ListView):
@@ -3808,7 +4441,7 @@ class expense_payment_list(ListView):
         context.update(
             {
                 "users": User.objects.all().order_by("short_name"),
-                "properties": Property.objects.all().order_by("title"),
+                "properties": Property.objects.all().order_by("property_name"),
                 "payment_status_filter": self.request.GET.get("payment_status", ""),
                 "paid_by_filter": self.request.GET.get("paid_by", ""),
                 "property_filter": self.request.GET.get("property", ""),

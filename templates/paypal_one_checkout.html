@@ -1,0 +1,295 @@
+{% extends "dashboard//layout/dashboardLayout.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+        <div class="bg-gradient-to-r from-blue-700 to-indigo-700 px-6 py-5 text-white">
+            <h1 class="text-2xl font-bold">PayPal One Checkout</h1>
+            <p class="text-sm opacity-90 mt-1">Pay with PayPal account or credit/debit card.</p>
+        </div>
+
+        <div class="p-6">
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 font-medium">Amount</span>
+                    <span class="text-2xl font-bold text-green-600">${{ amount }}</span>
+                </div>
+
+                {% if notes %}
+                <div class="mt-3 pt-3 border-t border-gray-200">
+                    <span class="text-gray-600 font-medium">Note:</span>
+                    <p class="text-gray-800 mt-1">{{ notes }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-3">Pay with PayPal</h2>
+                <div id="paypal-button-container"></div>
+            </div>
+
+            <div class="flex items-center gap-3 my-6">
+                <div class="h-px bg-gray-200 flex-1"></div>
+                <span class="text-gray-400 text-sm">OR</span>
+                <div class="h-px bg-gray-200 flex-1"></div>
+            </div>
+
+            <div id="card-form" class="space-y-4">
+                <h2 class="text-lg font-semibold text-gray-800">Pay with Card</h2>
+
+                <div id="card-name-field-container" class="w-full border border-gray-300 rounded-lg p-3 min-h-[52px]"></div>
+                <div id="card-number-field-container" class="w-full border border-gray-300 rounded-lg p-3 min-h-[52px]"></div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div id="card-expiry-field-container" class="w-full border border-gray-300 rounded-lg p-3 min-h-[52px]"></div>
+                    <div id="card-cvv-field-container" class="w-full border border-gray-300 rounded-lg p-3 min-h-[52px]"></div>
+                </div>
+
+                <input type="text" id="card-billing-address-line-1"
+                       class="w-full p-3 border border-gray-300 rounded-lg"
+                       placeholder="Billing Address Line 1" />
+
+                <input type="text" id="card-billing-address-line-2"
+                       class="w-full p-3 border border-gray-300 rounded-lg"
+                       placeholder="Billing Address Line 2" />
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="card-billing-address-admin-area-line-1"
+                           class="w-full p-3 border border-gray-300 rounded-lg"
+                           placeholder="State" />
+
+                    <input type="text" id="card-billing-address-admin-area-line-2"
+                           class="w-full p-3 border border-gray-300 rounded-lg"
+                           placeholder="City" />
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="card-billing-address-country-code"
+                           class="w-full p-3 border border-gray-300 rounded-lg"
+                           placeholder="Country Code, e.g. US" />
+
+                    <input type="text" id="card-billing-address-postal-code"
+                           class="w-full p-3 border border-gray-300 rounded-lg"
+                           placeholder="ZIP / Postal Code" />
+                </div>
+
+                <button id="card-field-submit-button" type="button"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition duration-200">
+                    Pay now with Card
+                </button>
+            </div>
+
+            <p id="result-message" class="mt-5 text-sm text-red-600"></p>
+
+            <div class="mt-6">
+                <a href="{% url 'accounts:payment_banks' %}"
+                   class="inline-block text-sm text-gray-600 hover:text-blue-700">
+                    ← Back to payment methods
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script
+    src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD&components=buttons,card-fields&enable-funding=venmo&commit=true"
+    data-sdk-integration-source="paypal-one">
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    let cardFieldInstance = null;
+
+    function getCSRFToken() {
+        const tokenInput = document.querySelector("[name=csrfmiddlewaretoken]");
+        if (tokenInput && tokenInput.value) {
+            return tokenInput.value;
+        }
+
+        const metaToken = document.querySelector('meta[name="csrf-token"]');
+        if (metaToken && metaToken.content) {
+            return metaToken.content;
+        }
+
+        const match = document.cookie.match(/csrftoken=([^;]+)/);
+        return match ? match[1] : "";
+    }
+
+    function resultMessage(message) {
+        const container = document.getElementById("result-message");
+        if (container) {
+            container.innerHTML = message || "";
+        }
+    }
+
+    async function createOrderCallback() {
+        resultMessage("");
+
+        try {
+            const response = await fetch("{% url 'accounts:paypal_one_create_order' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken(),
+                },
+                credentials: "same-origin",
+            });
+
+            let orderData = {};
+            try {
+                orderData = await response.json();
+            } catch (e) {
+                throw new Error("Server did not return valid JSON.");
+            }
+
+            console.log("PayPal One create order status:", response.status);
+            console.log("PayPal One create order data:", orderData);
+
+            if (!response.ok) {
+                let errorMessage = orderData.error || "Could not create PayPal One order.";
+
+                if (orderData.details && orderData.details.length > 0) {
+                    errorMessage = orderData.details[0].description || errorMessage;
+                }
+
+                throw new Error(errorMessage);
+            }
+
+            if (orderData.id) {
+                return orderData.id;
+            }
+
+            throw new Error("PayPal order ID was not returned.");
+
+        } catch (error) {
+            console.error("Create order error:", error);
+            resultMessage(error.message || "Could not initiate PayPal One Checkout.");
+            throw error;
+        }
+    }
+
+    async function onApproveCallback(data) {
+        try {
+            const captureUrl = "{% url 'accounts:paypal_one_capture_order' 'ORDER_ID_PLACEHOLDER' %}"
+                .replace("ORDER_ID_PLACEHOLDER", data.orderID);
+
+            const response = await fetch(captureUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken(),
+                },
+                credentials: "same-origin",
+            });
+
+            let orderData = {};
+            try {
+                orderData = await response.json();
+            } catch (e) {
+                throw new Error("Server did not return valid JSON.");
+            }
+
+            console.log("PayPal One capture status:", response.status);
+            console.log("PayPal One capture data:", orderData);
+
+            if (!response.ok) {
+                let errorMessage = orderData.error || "PayPal One capture failed.";
+
+                if (orderData.details && orderData.details.length > 0) {
+                    errorMessage = orderData.details[0].description || errorMessage;
+                }
+
+                throw new Error(errorMessage);
+            }
+
+            if (orderData.redirect_url) {
+                window.location.href = orderData.redirect_url;
+                return;
+            }
+
+            resultMessage("Payment completed successfully.");
+
+        } catch (error) {
+            console.error("Approve/capture error:", error);
+            resultMessage(error.message || "Sorry, your transaction could not be processed.");
+        }
+    }
+
+    if (!window.paypal) {
+        resultMessage("PayPal SDK failed to load. Please check your PayPal client ID.");
+        return;
+    }
+
+    paypal.Buttons({
+        createOrder: createOrderCallback,
+        onApprove: onApproveCallback,
+        onCancel: function () {
+            resultMessage("Payment was cancelled.");
+        },
+        onError: function (error) {
+            console.error("PayPal button error:", error);
+            resultMessage("PayPal One error occurred. Please try again.");
+        },
+        style: {
+            shape: "rect",
+            layout: "vertical",
+            color: "gold",
+            label: "paypal",
+        },
+    }).render("#paypal-button-container");
+
+    cardFieldInstance = paypal.CardFields({
+        createOrder: createOrderCallback,
+        onApprove: onApproveCallback,
+        style: {
+            input: {
+                "font-size": "16px",
+                "font-family": "Arial, sans-serif",
+                color: "#111827",
+            },
+            ".invalid": {
+                color: "#dc2626",
+            },
+        },
+    });
+
+    if (cardFieldInstance.isEligible()) {
+        cardFieldInstance.NameField().render("#card-name-field-container");
+        cardFieldInstance.NumberField().render("#card-number-field-container");
+        cardFieldInstance.ExpiryField().render("#card-expiry-field-container");
+        cardFieldInstance.CVVField().render("#card-cvv-field-container");
+    } else {
+        document.getElementById("card-form").classList.add("hidden");
+    }
+
+    document.getElementById("card-field-submit-button").addEventListener("click", function () {
+        if (!cardFieldInstance) {
+            resultMessage("Card fields are not available.");
+            return;
+        }
+
+        resultMessage("");
+
+        cardFieldInstance.submit({
+            billingAddress: {
+                addressLine1: document.getElementById("card-billing-address-line-1").value,
+                addressLine2: document.getElementById("card-billing-address-line-2").value,
+                adminArea1: document.getElementById("card-billing-address-admin-area-line-1").value,
+                adminArea2: document.getElementById("card-billing-address-admin-area-line-2").value,
+                countryCode: document.getElementById("card-billing-address-country-code").value,
+                postalCode: document.getElementById("card-billing-address-postal-code").value,
+            },
+        }).catch(function (error) {
+            console.error("Card submit error:", error);
+            resultMessage(error.message || "Card payment failed.");
+        });
+    });
+});
+</script>
+{% endblock scripts %}
