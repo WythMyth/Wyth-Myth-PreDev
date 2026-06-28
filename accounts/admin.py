@@ -56,6 +56,7 @@ class UserAdmin(BaseUserAdmin):
         "get_full_name",
         "member_id",
         "user_group",
+        "investment_type",
         "balance",
         "investor",
         "is_superuser",
@@ -67,6 +68,7 @@ class UserAdmin(BaseUserAdmin):
     list_filter = (
         "is_active",
         "investor",
+        "investment_type",
         ShortNameDropdownFilter,
     )
     search_fields = ("email", "first_name", "last_name", "short_name", "member_id")
@@ -94,10 +96,13 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
         (
-            "Group & Deductions",
+            "Group, Deduction & Investment Type",
             {
-                "fields": ("user_group",),
-                "description": "Select a group to apply profit deductions for this user. Users without a group have 0% deduction.",
+                "fields": (
+                    "user_group",
+                    "investment_type",
+                ),
+                "description": "Select user group for profit deductions and select default investment type for new property contributions.",
             },
         ),
         (
@@ -172,10 +177,13 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
         (
-            "Group Assignment",
+            "Group Assignment & Investment Type",
             {
-                "fields": ("user_group",),
-                "description": "Assign user to a group for profit deductions",
+                "fields": (
+                    "user_group",
+                    "investment_type",
+                ),
+                "description": "Assign user to a group and select default investment type.",
             },
         ),
         (
@@ -237,12 +245,7 @@ class BankAdmin(admin.ModelAdmin):
     list_filter = ("is_active",)
 
 
-# @admin.register(Payment)
-# class PaymentAdmin(admin.ModelAdmin):
-#     list_display = ('user', 'bank', 'amount', 'status', 'created_at', 'approved_by', 'approved_at')
-#     list_filter = ('user', 'bank', 'status')
-#     search_fields = ('user__username', 'user__email', 'bank__name')
-#     ordering = ('-created_at',)
+
 from django.db.models.functions import Lower
 
 
@@ -330,51 +333,7 @@ class PaymentAdmin(admin.ModelAdmin):
         return redirect(request.META.get("HTTP_REFERER"))
 
 
-# @admin.register(Property)
-# class PropertyAdmin(admin.ModelAdmin):
-#     list_display = ('title', 'address', 'city', 'state', 'auction_price', 'selling_price', 'profit', 'status', 'is_contribution_locked', 'listed_by', 'created_at')
-#     list_filter = ('status', 'is_contribution_locked', 'state', 'city')
-#     search_fields = ('title', 'address', 'city', 'state', 'zip_code')
-#     readonly_fields = ('created_at', 'updated_at', 'listed_by', 'listed_date', 'profit')
 
-#     fieldsets = (
-#         (None, {
-#             'fields': ('title', 'description', 'status', 'is_contribution_locked')
-#         }),
-#         ('Price Info', {
-#             'fields': ('auction_price', 'buying_price', 'service_cost', 'acquisition_cost', 'asking_price', 'selling_price', 'profit'),
-#             'description': 'Profit is automatically calculated: Selling Price - Acquisition Cost'
-#         }),
-#         ('Property Info', {
-#             'fields': ('bedrooms', 'bathrooms', 'dining_rooms', 'square_feet')
-#         }),
-#         ('Location', {
-#             'fields': ('address', 'city', 'state', 'zip_code')
-#         }),
-#         ('Dates', {
-#             'fields': ('buying_date', 'selling_date', 'listed_date', 'created_at', 'updated_at')
-#         }),
-#         ('Listed By', {
-#             'fields': ('listed_by',)
-#         }),
-#     )
-
-#     actions = ['recalculate_profit_distribution']
-
-#     def recalculate_profit_distribution(self, request, queryset):
-#         """Admin action to recalculate profit distribution for selected properties"""
-#         count = 0
-#         for property_obj in queryset:
-#             if property_obj.status == 'sold' and property_obj.selling_price:
-#                 if property_obj.distribute_sale_proceeds():
-#                     count += 1
-
-
-#         self.message_user(
-#             request,
-#             f'Successfully recalculated profit distribution for {count} propert{"y" if count == 1 else "ies"}.'
-#         )
-#     recalculate_profit_distribution.short_description = "Recalculate profit distribution for sold properties"
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
     list_display = (
@@ -508,6 +467,7 @@ class PropertyContributionAdmin(admin.ModelAdmin):
         "user_group_display",
         "property_display",
         "level_of_investment_display",
+        "investment_type_display",
         "amount_invested_display",
         "ratio",
         "fixed_or_proportion_display",
@@ -524,6 +484,7 @@ class PropertyContributionAdmin(admin.ModelAdmin):
 
     list_filter = [
         PropertyNameFilter,
+        "investment_type",
         "is_fixed_amount",
         "investment_date",
         "user__user_group",
@@ -558,6 +519,7 @@ class PropertyContributionAdmin(admin.ModelAdmin):
                     "user",
                     "property",
                     "investment_sequence",
+                    "investment_type",
                     "investment_date",
                     "is_fixed_amount",
                 )
@@ -628,6 +590,18 @@ class PropertyContributionAdmin(admin.ModelAdmin):
         return obj.property.property_name if obj.property else "-"
 
     property_display.short_description = "Property"
+
+    def investment_type_display(self, obj):
+        if obj.investment_type == "short_term":
+            return format_html(
+                '<span style="background:#f3e8ff;color:#7e22ce;padding:3px 8px;border-radius:12px;font-weight:bold;">Short Term</span>'
+            )
+
+        return format_html(
+            '<span style="background:#dbeafe;color:#1d4ed8;padding:3px 8px;border-radius:12px;font-weight:bold;">Long Term</span>'
+        )
+
+    investment_type_display.short_description = "Investment Type"
 
     def level_of_investment_display(self, obj):
         return obj.investment_sequence
@@ -746,6 +720,7 @@ class PropertyContributionAdmin(admin.ModelAdmin):
             "deduction": "Deduction from Profit",
             "final_profit": "Profit Received ($)",
             "is_fixed_amount": "Amount Fixed/Propotion",
+            "investment_type": "Investment Type Snapshot",
             "total_days": "Total Days Invested (TDI)",
             "days_proportion": "Days Proportion(Divided by highest TDI) (DP)",
             "shares": "Number of Shares(AI/5000) (NS)",
@@ -756,178 +731,6 @@ class PropertyContributionAdmin(admin.ModelAdmin):
             formfield.label = custom_labels[db_field.name]
 
         return formfield
-
-
-# @admin.register(PropertyContribution)
-# class PropertyContributionAdmin(admin.ModelAdmin):
-#     list_display = [
-#         'user_display',
-#         'user_group_display',
-#         'property',
-#         'investment_sequence',
-#         'contribution',
-#         'invest_amount',
-#         'remaining',
-#         'investment_date',
-#         'total_days',
-#         'days_proportion',
-#         'shares',
-#         'profit_weight',
-#         'profit_display',
-#         'deduction_display',
-#         'final_profit_display',
-#         'ratio',
-
-#         'is_fixed_amount'
-#     ]
-
-#     list_filter = [
-#         PropertyNameFilter,
-#         'is_fixed_amount',
-#         'investment_date',
-#         'created_at',
-#         'user__user_group'
-#     ]
-
-#     search_fields = [
-#         'user__first_name',
-#         'user__last_name',
-#         'user__email',
-#         'property__property_name'
-#     ]
-
-#     readonly_fields = [
-#         'created_at',
-#         'updated_at',
-#         'shares'
-#     ]
-
-#     fieldsets = (
-#         ('Basic Information', {
-#             'fields': (
-#                 'user',
-#                 'property',
-#                 'investment_sequence',
-#                 'is_fixed_amount'
-#             )
-#         }),
-#         ('Investment Details', {
-#             'fields': (
-#                 'invest_amount',
-#                 'contribution',
-#                 'remaining',
-#                 'ratio'
-#             )
-#         }),
-#         ('Profit Breakdown', {
-#             'fields': (
-#                 'profit',
-#                 'deduction',
-#                 'final_profit'
-#             ),
-#             'description': 'Profit breakdown for this contribution based on user group deduction percentage'
-#         }),
-#         ('Date & Time Tracking', {
-#             'fields': (
-#                 'investment_date',
-#                 'total_days',
-#             )
-#         }),
-#         ('Shares & Weight Calculation', {
-#             'fields': (
-#                 'shares',
-#                 'days_proportion',
-#                 'investment_ratio',
-#                 'profit_weight'
-#             ),
-#             'description': 'Share-based profit calculation: Profit Weight = Days Proportion × Shares'
-#         }),
-#         ('Timestamps', {
-#             'fields': (
-#                 'created_at',
-#                 'updated_at'
-#             ),
-#             'classes': ('collapse',)
-#         })
-#     )
-
-#     def user_display(self, obj):
-#         """Display user full name"""
-#         return obj.user.get_full_name()
-#     user_display.short_description = 'User'
-#     user_display.admin_order_field = 'user__first_name'
-
-#     def user_group_display(self, obj):
-#         """Display user's group"""
-#         if obj.user.user_group:
-#             return f"{obj.user.user_group.name} ({obj.user.user_group.percentage}%)"
-#         return "No Group (0%)"
-#     user_group_display.short_description = 'User Group'
-
-#     def profit_display(self, obj):
-#         """Display profit with color coding"""
-#         if obj.profit > 0:
-#             return f"${obj.profit:,.2f}"
-#         return f"${obj.profit:,.2f}"
-#     profit_display.short_description = 'Profit'
-#     profit_display.admin_order_field = 'profit'
-
-#     def deduction_display(self, obj):
-#         """Display deduction with percentage"""
-#         if obj.deduction > 0 and obj.user.user_group:
-#             return f"${obj.deduction:,.2f} ({obj.user.user_group.percentage}%)"
-#         return f"${obj.deduction:,.2f}"
-#     deduction_display.short_description = 'Deduction'
-#     deduction_display.admin_order_field = 'deduction'
-
-#     def final_profit_display(self, obj):
-#         """Display final profit"""
-#         return f"${obj.final_profit:,.2f}"
-#     final_profit_display.short_description = 'Final Profit'
-#     final_profit_display.admin_order_field = 'final_profit'
-
-#     def save_model(self, request, obj, form, change):
-#         """
-#         Admin থেকে save করার সময় automatic calculations করে
-#         """
-#         super().save_model(request, obj, form, change)
-
-
-#         if obj.property.selling_date and obj.investment_date:
-
-#             delta = obj.property.selling_date - obj.investment_date
-#             obj.total_days = max(1, delta.days)
-
-
-#             contributions = PropertyContribution.objects.filter(property=obj.property)
-
-
-#             max_days = max([c.total_days for c in contributions if c.total_days > 0], default=1)
-
-
-#             if max_days > 0 and obj.total_days > 0:
-#                 obj.days_proportion = Decimal(str(obj.total_days)) / Decimal(str(max_days))
-#             else:
-#                 obj.days_proportion = Decimal('0')
-
-
-#             total_contribution = sum([c.contribution for c in contributions]) or Decimal('1')
-
-
-#             obj.investment_ratio = obj.contribution / total_contribution
-
-
-#             obj.profit_weight = obj.investment_ratio * obj.days_proportion
-
-#             obj.save()
-
-#     def get_queryset(self, request):
-#         """Optimize queries"""
-#         qs = super().get_queryset(request)
-#         return qs.select_related('user', 'user__user_group', 'property')
-
-#     list_per_page = 50
-#     ordering = ['-created_at']
 
 
 @admin.register(Group)
@@ -1376,7 +1179,168 @@ from django.contrib import admin
 
 from .models import WithdrawalRequest
 
+@admin.register(WithdrawalRequest)
+class WithdrawalRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        "user_display",
+        "property_display",
+        "investment_type_display",
+        "request_type",
+        "requested_amount",
+        "profit_part_amount",
+        "investment_part_amount",
+        "balance_part_amount",
+        "invest_days",
+        "payout_rule",
+        "status",
+        "approved_by",
+        "approved_at",
+        "created_at",
+    )
 
+    list_filter = (
+        "status",
+        "request_type",
+        "payout_rule",
+        "property_contribution__investment_type",
+        "created_at",
+        "approved_at",
+        "rejected_at",
+    )
+
+    search_fields = (
+        "user__email",
+        "user__first_name",
+        "user__last_name",
+        "property_contribution__property__property_name",
+    )
+
+    readonly_fields = (
+        "profit_part_amount",
+        "investment_part_amount",
+        "balance_part_amount",
+        "eligible_profit_amount",
+        "eligible_investment_amount",
+        "total_eligible_amount",
+        "invest_days",
+        "payout_rule",
+        "balance_snapshot",
+        "approved_by",
+        "approved_at",
+        "rejected_by",
+        "rejected_at",
+        "clarification_requested_by",
+        "clarification_requested_at",
+        "created_at",
+        "updated_at",
+    )
+
+    fieldsets = (
+        (
+            "Request Information",
+            {
+                "fields": (
+                    "user",
+                    "property_contribution",
+                    "request_type",
+                    "requested_amount",
+                    "status",
+                )
+            },
+        ),
+        (
+            "Calculated Amounts",
+            {
+                "fields": (
+                    "profit_part_amount",
+                    "investment_part_amount",
+                    "balance_part_amount",
+                    "eligible_profit_amount",
+                    "eligible_investment_amount",
+                    "total_eligible_amount",
+                    "invest_days",
+                    "payout_rule",
+                    "balance_snapshot",
+                )
+            },
+        ),
+        (
+            "Notes",
+            {
+                "fields": (
+                    "user_note",
+                    "finance_note",
+                    "clarification_note",
+                )
+            },
+        ),
+        (
+            "Approval / Rejection",
+            {
+                "fields": (
+                    "approved_by",
+                    "approved_at",
+                    "rejected_by",
+                    "rejected_at",
+                    "clarification_requested_by",
+                    "clarification_requested_at",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    )
+
+    ordering = ("-created_at",)
+    list_per_page = 50
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related(
+            "user",
+            "property_contribution",
+            "property_contribution__property",
+            "approved_by",
+            "rejected_by",
+        )
+
+    def user_display(self, obj):
+        return obj.user.get_full_name() if obj.user else "-"
+
+    user_display.short_description = "User"
+
+    def property_display(self, obj):
+        if obj.property_contribution and obj.property_contribution.property:
+            return obj.property_contribution.property.property_name
+
+        if obj.request_type == "balance":
+            return "Free Balance"
+
+        return "-"
+
+    property_display.short_description = "Property"
+
+    def investment_type_display(self, obj):
+        if not obj.property_contribution:
+            return "-"
+
+        if obj.property_contribution.investment_type == "short_term":
+            return format_html(
+                '<span style="background:#f3e8ff;color:#7e22ce;padding:3px 8px;border-radius:12px;font-weight:bold;">Short Term</span>'
+            )
+
+        return format_html(
+            '<span style="background:#dbeafe;color:#1d4ed8;padding:3px 8px;border-radius:12px;font-weight:bold;">Long Term</span>'
+        )
+
+    investment_type_display.short_description = "Investment Type"
 # @admin.register(WithdrawalRequest)
 # class WithdrawalRequestAdmin(admin.ModelAdmin):
 #     list_display = (

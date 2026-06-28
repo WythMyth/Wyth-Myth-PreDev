@@ -2493,6 +2493,351 @@ from django.urls import reverse_lazy
 from django.views.generic import UpdateView
 
 
+# class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
+#     model = Property
+#     form_class = PropertyForm
+#     template_name = "property_form.html"
+#     success_url = reverse_lazy("accounts:property_list")
+
+#     def get_context_data(self, **kwargs):
+#         context = super().get_context_data(**kwargs)
+
+#         all_users = list(
+#             User.objects.filter(
+#                 is_active=True,
+#                 investor=True
+#             ).order_by("id")
+#         )
+
+#         user_contributions = {}
+
+#         for user in all_users:
+#             contributions = list(
+#                 PropertyContribution.objects.filter(
+#                     property=self.object,
+#                     user=user
+#                 ).order_by("investment_sequence")
+#             )
+
+#             if contributions:
+#                 user_contributions[user.id] = contributions
+
+#         context["image_formset"] = PropertyImageFormSet(
+#             self.request.POST or None,
+#             self.request.FILES or None,
+#             instance=self.object
+#         )
+
+#         context["all_users"] = all_users
+#         context["user_contributions"] = user_contributions
+
+#         if self.request.user.is_superuser:
+#             context["total_balance"] = sum(user.balance for user in all_users)
+#         else:
+#             current_user = User.objects.get(pk=self.request.user.pk)
+#             context["total_balance"] = current_user.balance
+
+#         context["default_investment_date"] = (
+#             self.object.buying_date.strftime("%Y-%m-%d")
+#             if self.object.buying_date
+#             else date.today().strftime("%Y-%m-%d")
+#         )
+
+#         return context
+
+#     def form_valid(self, form):
+#         old_property = Property.objects.get(pk=self.object.pk)
+#         old_status = old_property.status
+#         new_status = form.cleaned_data.get("status")
+
+#         print("\n" + "=" * 80)
+#         print(f"🔄 UPDATING PROPERTY: {old_property.property_name}")
+#         print(f"OLD STATUS: {old_status}")
+#         print(f"NEW STATUS: {new_status}")
+#         print("=" * 80)
+
+#         buying_price = form.cleaned_data.get("buying_price") or Decimal("0")
+#         service_cost = form.cleaned_data.get("service_cost") or Decimal("0")
+
+#         form.instance.acquisition_cost = (
+#             buying_price + service_cost
+#             if buying_price or service_cost
+#             else None
+#         )
+
+#         context = self.get_context_data()
+#         image_formset = context["image_formset"]
+
+#         with transaction.atomic():
+#             self.object = form.save(commit=False)
+
+
+#             if new_status == "rented":
+#                 self.object.save()
+#                 form.save_m2m()
+
+#                 if image_formset.is_valid():
+#                     image_formset.instance = self.object
+#                     image_formset.save()
+
+#                 messages.success(
+#                     self.request,
+#                     "Property status changed to rented. Existing investment and user balance preserved."
+#                 )
+
+#                 print("✅ RENTED STATUS SAVED")
+#                 print("✅ No refund")
+#                 print("✅ No investment recalculation")
+#                 print("✅ User balances preserved")
+#                 print("=" * 80 + "\n")
+
+#                 return HttpResponseRedirect(self.get_success_url())
+
+
+#             if new_status == "ready_to_sell":
+#                 self.object.save()
+#                 form.save_m2m()
+
+#                 if image_formset.is_valid():
+#                     image_formset.instance = self.object
+#                     image_formset.save()
+
+#                 messages.success(
+#                     self.request,
+#                     "Property status changed to ready to sell. Existing investment preserved."
+#                 )
+
+#                 print("✅ READY TO SELL SAVED")
+#                 print("✅ No refund")
+#                 print("✅ No investment recalculation")
+#                 print("=" * 80 + "\n")
+
+#                 return HttpResponseRedirect(self.get_success_url())
+
+#             if new_status == "sold":
+#                 self.object.save()
+#                 form.save_m2m()
+
+#                 if image_formset.is_valid():
+#                     image_formset.instance = self.object
+#                     image_formset.save()
+
+#                 messages.success(
+#                     self.request,
+#                     "Property sold. Sale distribution processed if eligible."
+#                 )
+
+#                 print("✅ SOLD STATUS SAVED")
+#                 print("=" * 80 + "\n")
+
+#                 return HttpResponseRedirect(self.get_success_url())
+
+    
+#             self.object.save()
+#             form.save_m2m()
+
+#             has_investment_post_data = any(
+#                 key.startswith("invest_")
+#                 for key in self.request.POST.keys()
+#             )
+
+#             should_process_investments = (
+#                 new_status == "bought"
+#                 and (
+#                     self.request.POST.get("recalculate_investments") == "1"
+#                     or has_investment_post_data
+#                 )
+#             )
+
+#             if new_status == "bought" and should_process_investments:
+#                 existing_contributions = PropertyContribution.objects.filter(
+#                     property=self.object
+#                 ).select_related("user")
+
+#                 existing_map = {}
+
+#                 for contrib in existing_contributions:
+#                     if contrib.user_id not in existing_map:
+#                         existing_map[contrib.user_id] = {}
+
+#                     existing_map[contrib.user_id][contrib.investment_sequence] = contrib
+
+#                 investments_list = []
+#                 investment_dates_list = []
+#                 selected_contributors = set()
+#                 submitted_contributions = set()
+
+#                 print("\n📊 Parsing Updated Investment Data...")
+
+#                 for key in self.request.POST.keys():
+#                     if not key.startswith("invest_"):
+#                         continue
+
+#                     raw_key = key.replace("invest_", "")
+#                     parts = raw_key.split("_")
+
+#                     try:
+#                         if len(parts) >= 2:
+#                             user_id = int(parts[0])
+#                             sequence = int(parts[1])
+#                         elif len(parts) == 1:
+#                             user_id = int(parts[0])
+#                             sequence = 1
+#                         else:
+#                             continue
+#                     except (ValueError, TypeError):
+#                         print(f"✗ Invalid invest key: {key}")
+#                         continue
+
+#                     amount_str = self.request.POST.get(key, "").strip()
+
+#                     if amount_str in ["", "None", "null"]:
+#                         continue
+
+#                     try:
+#                         amount = Decimal(amount_str)
+#                     except (InvalidOperation, ValueError, TypeError) as e:
+#                         print(f"✗ Error parsing {key}: {e}")
+#                         continue
+
+#                     checkbox_key = f"select_user_{user_id}_{sequence}"
+#                     is_selected = self.request.POST.get(checkbox_key) is not None
+
+                  
+#                     if amount <= 0 or not is_selected:
+#                         continue
+
+#                     fixed_key = f"fixed_{user_id}_{sequence}"
+#                     is_fixed = self.request.POST.get(fixed_key) is not None
+
+#                     date_key = f"date_{user_id}_{sequence}"
+#                     date_str = self.request.POST.get(date_key, "").strip()
+
+#                     if date_str:
+#                         try:
+#                             inv_date = datetime.strptime(
+#                                 date_str,
+#                                 "%Y-%m-%d"
+#                             ).date()
+#                         except ValueError:
+#                             inv_date = self.object.buying_date or date.today()
+#                     else:
+#                         if (
+#                             user_id in existing_map
+#                             and sequence in existing_map[user_id]
+#                         ):
+#                             inv_date = (
+#                                 existing_map[user_id][sequence].investment_date
+#                                 or self.object.buying_date
+#                                 or date.today()
+#                             )
+#                         else:
+#                             inv_date = self.object.buying_date or date.today()
+
+#                     investments_list.append({
+#                         "user_id": user_id,
+#                         "invest_amount": amount,
+#                         "is_fixed": is_fixed,
+#                         "sequence": sequence,
+#                     })
+
+#                     investment_dates_list.append({
+#                         "user_id": user_id,
+#                         "sequence": sequence,
+#                         "date": inv_date,
+#                     })
+
+#                     selected_contributors.add(user_id)
+#                     submitted_contributions.add((user_id, sequence))
+
+#                     print(
+#                         f"✓ User {user_id} Investment #{sequence}: ${amount} "
+#                         f"(Fixed: {is_fixed}, Date: {inv_date})"
+#                     )
+
+#                 print("\n📝 Parsed Investment Summary")
+#                 print(f"Total investment rows: {len(investments_list)}")
+#                 print(f"Selected contributors: {len(selected_contributors)}")
+#                 print(f"Submitted contribution keys: {submitted_contributions}")
+
+#                 if investments_list:
+#                     self.object.contributors.set(
+#                         User.objects.filter(id__in=selected_contributors)
+#                     )
+
+#                     print("\n💰 Recalculating Investments...")
+
+                 
+#                     self.object.refund_all_contributions()
+
+#                     success = self.object.deduct_property_costs_with_multiple_investments(
+#                         investments_list,
+#                         investment_dates_list
+#                     )
+
+#                     if not success:
+#                         print("❌ Investment recalculation failed!")
+#                         form.add_error(
+#                             None,
+#                             "Invalid investment or insufficient balance."
+#                         )
+#                         return self.form_invalid(form)
+
+#                     print("✅ Investment recalculation completed.")
+#                     messages.success(
+#                         self.request,
+#                         "Property updated and investments recalculated successfully."
+#                     )
+
+#                 else:
+#                     print("⚠️ No selected investment data found for recalculation.")
+#                     messages.warning(
+#                         self.request,
+#                         "Property saved, but no selected investment data found for recalculation."
+#                     )
+
+#             elif new_status == "bought":
+#                 print("✅ Bought property saved without investment recalculation.")
+#                 messages.success(
+#                     self.request,
+#                     "Property saved without investment recalculation."
+#                 )
+
+            
+#             refundable_statuses = [
+#                 "wishlist",
+#                 "failed_to_bought",
+#                 "move_to_next_option",
+#                 "stayed",
+#             ]
+
+#             if old_status == "bought" and new_status in refundable_statuses:
+#                 print("\n↩️ Status changed from bought to refundable status.")
+#                 print("↩️ Refunding contributions...")
+#                 self.object.refund_all_contributions()
+
+#             if image_formset.is_valid():
+#                 image_formset.instance = self.object
+#                 image_formset.save()
+#             else:
+#                 print("⚠️ Image formset invalid.")
+#                 print(image_formset.errors)
+
+#         print("=" * 80 + "\n")
+#         return HttpResponseRedirect(self.get_success_url())
+
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
+
+from django.contrib import messages
+from django.db import transaction
+from django.http import HttpResponseRedirect
+from django.urls import reverse_lazy
+from django.views.generic import UpdateView
+
+
+
+
 class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
     model = Property
     form_class = PropertyForm
@@ -2571,70 +2916,34 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
         with transaction.atomic():
             self.object = form.save(commit=False)
 
+            # Save property first.
+            # IMPORTANT:
+            # Do not early return for rented / ready_to_sell.
+            # Otherwise investment recalculation will be skipped.
+            self.object.save()
+            form.save_m2m()
 
-            if new_status == "rented":
-                self.object.save()
-                form.save_m2m()
+            # Save image formset
+            if image_formset.is_valid():
+                image_formset.instance = self.object
+                image_formset.save()
+            else:
+                print("⚠️ Image formset invalid.")
+                print(image_formset.errors)
 
-                if image_formset.is_valid():
-                    image_formset.instance = self.object
-                    image_formset.save()
-
-                messages.success(
-                    self.request,
-                    "Property status changed to rented. Existing investment and user balance preserved."
-                )
-
-                print("✅ RENTED STATUS SAVED")
-                print("✅ No refund")
-                print("✅ No investment recalculation")
-                print("✅ User balances preserved")
-                print("=" * 80 + "\n")
-
-                return HttpResponseRedirect(self.get_success_url())
-
-
-            if new_status == "ready_to_sell":
-                self.object.save()
-                form.save_m2m()
-
-                if image_formset.is_valid():
-                    image_formset.instance = self.object
-                    image_formset.save()
-
-                messages.success(
-                    self.request,
-                    "Property status changed to ready to sell. Existing investment preserved."
-                )
-
-                print("✅ READY TO SELL SAVED")
-                print("✅ No refund")
-                print("✅ No investment recalculation")
-                print("=" * 80 + "\n")
-
-                return HttpResponseRedirect(self.get_success_url())
-
+            # Sold distribution is handled inside Property.save()
+            # Do not call distribute_sale_proceeds() again here.
             if new_status == "sold":
-                self.object.save()
-                form.save_m2m()
-
-                if image_formset.is_valid():
-                    image_formset.instance = self.object
-                    image_formset.save()
-
                 messages.success(
                     self.request,
                     "Property sold. Sale distribution processed if eligible."
                 )
 
                 print("✅ SOLD STATUS SAVED")
+                print("✅ Distribution handled by Property.save() if eligible")
                 print("=" * 80 + "\n")
 
                 return HttpResponseRedirect(self.get_success_url())
-
-    
-            self.object.save()
-            form.save_m2m()
 
             has_investment_post_data = any(
                 key.startswith("invest_")
@@ -2642,14 +2951,19 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
             )
 
             should_process_investments = (
-                new_status == "bought"
+                new_status in ["bought", "rented", "ready_to_sell"]
                 and (
                     self.request.POST.get("recalculate_investments") == "1"
                     or has_investment_post_data
                 )
             )
 
-            if new_status == "bought" and should_process_investments:
+            if should_process_investments:
+                print("\n📊 Investment recalculation requested")
+                print(f"Status: {new_status}")
+                print(f"Hidden recalculate_investments: {self.request.POST.get('recalculate_investments')}")
+                print(f"Has investment POST data: {has_investment_post_data}")
+
                 existing_contributions = PropertyContribution.objects.filter(
                     property=self.object
                 ).select_related("user")
@@ -2703,7 +3017,6 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
                     checkbox_key = f"select_user_{user_id}_{sequence}"
                     is_selected = self.request.POST.get(checkbox_key) is not None
 
-                  
                     if amount <= 0 or not is_selected:
                         continue
 
@@ -2767,8 +3080,9 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
 
                     print("\n💰 Recalculating Investments...")
 
-                 
-                    self.object.refund_all_contributions()
+                    # Do NOT call self.object.refund_all_contributions() here.
+                    # deduct_property_costs_with_multiple_investments()
+                    # already refunds old contributions internally.
 
                     success = self.object.deduct_property_costs_with_multiple_investments(
                         investments_list,
@@ -2796,14 +3110,14 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
                         "Property saved, but no selected investment data found for recalculation."
                     )
 
-            elif new_status == "bought":
-                print("✅ Bought property saved without investment recalculation.")
-                messages.success(
-                    self.request,
-                    "Property saved without investment recalculation."
-                )
+            else:
+                if new_status in ["bought", "rented", "ready_to_sell"]:
+                    print(f"✅ {new_status} property saved without investment recalculation.")
+                    messages.success(
+                        self.request,
+                        "Property saved without investment recalculation."
+                    )
 
-            
             refundable_statuses = [
                 "wishlist",
                 "failed_to_bought",
@@ -2811,17 +3125,15 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
                 "stayed",
             ]
 
-            if old_status == "bought" and new_status in refundable_statuses:
-                print("\n↩️ Status changed from bought to refundable status.")
+            if old_status in ["bought", "rented", "ready_to_sell"] and new_status in refundable_statuses:
+                print("\n↩️ Status changed from running status to refundable status.")
                 print("↩️ Refunding contributions...")
                 self.object.refund_all_contributions()
 
-            if image_formset.is_valid():
-                image_formset.instance = self.object
-                image_formset.save()
-            else:
-                print("⚠️ Image formset invalid.")
-                print(image_formset.errors)
+                messages.success(
+                    self.request,
+                    "Property moved to refundable status. Contributions refunded."
+                )
 
         print("=" * 80 + "\n")
         return HttpResponseRedirect(self.get_success_url())
@@ -7794,6 +8106,184 @@ def user_is_finance(user):
     return user.is_superuser or user.is_finnancial
 
 
+# @login_required
+# def withdrawal_dashboard(request):
+#     user = request.user
+
+#     payments = (
+#         Payment.objects
+#         .filter(user=user)
+#         .select_related("bank")
+#         .order_by("-created_at")
+#     )
+
+#     investment_rows = (
+#         PropertyContribution.objects
+#         .filter(
+#             user=user,
+#             contribution__gt=0,
+#             property__status__in=["bought", "ready_to_sell", "rented", "sold"],
+#         )
+#         .select_related("property")
+#         .order_by(
+#             "-property__selling_date",
+#             "property__property_name",
+#             "investment_sequence",
+#         )
+#     )
+
+#     running_investment_rows = (
+#         PropertyContribution.objects
+#         .filter(
+#             user=user,
+#             contribution__gt=0,
+#             property__status__in=WithdrawalRequest.running_statuses(),
+#         )
+#         .select_related("property")
+#         .order_by(
+#             "property__property_name",
+#             "investment_sequence",
+#         )
+#     )
+
+#     profit_rows = (
+#         PropertyContribution.objects
+#         .filter(
+#             user=user,
+#             property__status="sold",
+#             final_profit__gt=0,
+#         )
+#         .select_related("property")
+#         .order_by(
+#             "-property__selling_date",
+#             "property__property_name",
+#             "investment_sequence",
+#         )
+#     )
+
+#     profit_table_rows = []
+
+#     for row in profit_rows:
+#         invest_days = WithdrawalRequest.calculate_invest_days(row)
+
+#         approved_profit_taken = money(
+#             WithdrawalRequest.objects.filter(
+#                 user=user,
+#                 property_contribution=row,
+#                 status="approved",
+#             ).aggregate(total=Sum("profit_part_amount"))["total"]
+#         )
+
+#         remaining_profit = money(Decimal(str(row.final_profit or 0)) - approved_profit_taken)
+
+#         if remaining_profit < 0:
+#             remaining_profit = Decimal("0.00")
+
+#         if invest_days >= 730:
+#             eligible_percent = 100
+#             eligible_profit = remaining_profit
+#         else:
+#             if approved_profit_taken > 0:
+#                 eligible_percent = 0
+#                 eligible_profit = Decimal("0.00")
+#             else:
+#                 eligible_percent = 45
+#                 eligible_profit = money(
+#                     Decimal(str(row.final_profit or 0)) * Decimal("0.45")
+#                 )
+
+#         pending_exists = WithdrawalRequest.objects.filter(
+#             user=user,
+#             property_contribution=row,
+#             request_type__in=["profit", "both"],
+#             status="pending",
+#         ).exists()
+
+#         profit_table_rows.append({
+#             "row": row,
+#             "invest_days": invest_days,
+#             "eligible_percent": eligible_percent,
+#             "eligible_profit": eligible_profit,
+#             "approved_profit_taken": approved_profit_taken,
+#             "remaining_profit": remaining_profit,
+#             "pending_exists": pending_exists,
+#         })
+
+#     investment_withdraw_rows = []
+
+#     for row in running_investment_rows:
+#         approved_investment_taken = money(
+#             WithdrawalRequest.objects.filter(
+#                 user=user,
+#                 property_contribution=row,
+#                 status="approved",
+#             ).aggregate(total=Sum("investment_part_amount"))["total"]
+#         )
+
+#         pending_exists = WithdrawalRequest.objects.filter(
+#             user=user,
+#             property_contribution=row,
+#             request_type__in=["investment", "both"],
+#             status="pending",
+#         ).exists()
+
+#         withdrawable_investment = money(row.contribution)
+
+#         investment_withdraw_rows.append({
+#             "row": row,
+#             "approved_investment_taken": approved_investment_taken,
+#             "withdrawable_investment": withdrawable_investment,
+#             "pending_exists": pending_exists,
+#         })
+
+#     withdraw_requests = (
+#         WithdrawalRequest.objects
+#         .filter(user=user)
+#         .select_related(
+#             "property_contribution",
+#             "property_contribution__property",
+#         )
+#         .order_by("-created_at")[:30]
+#     )
+
+#     total_paid = money(
+#         payments.filter(status="approved").aggregate(total=Sum("amount"))["total"]
+#     )
+
+#     total_invested = money(
+#         investment_rows.aggregate(total=Sum("contribution"))["total"]
+#     )
+
+#     total_final_profit = money(
+#         profit_rows.aggregate(total=Sum("final_profit"))["total"]
+#     )
+
+#     current_balance = money(user.balance)
+#     free_balance = WithdrawalRequest.get_user_free_balance(user)
+#     locked_profit_balance = WithdrawalRequest.get_user_locked_profit_balance(user)
+#     running_investment_total = WithdrawalRequest.get_user_running_invest(user)
+
+#     form = WithdrawalRequestForm(user=user)
+
+#     context = {
+#         "payments": payments,
+#         "investment_rows": investment_rows,
+#         "running_investment_rows": running_investment_rows,
+#         "investment_withdraw_rows": investment_withdraw_rows,
+#         "profit_table_rows": profit_table_rows,
+#         "withdraw_requests": withdraw_requests,
+#         "form": form,
+#         "total_paid": total_paid,
+#         "total_invested": total_invested,
+#         "total_final_profit": total_final_profit,
+#         "current_balance": current_balance,
+#         "free_balance": free_balance,
+#         "locked_profit_balance": locked_profit_balance,
+#         "running_investment_total": running_investment_total,
+#         "total_balance": user.balance,
+#     }
+
+#     return render(request, "withdrawals/user_dashboard.html", context)
 @login_required
 def withdrawal_dashboard(request):
     user = request.user
@@ -7862,23 +8352,32 @@ def withdrawal_dashboard(request):
             ).aggregate(total=Sum("profit_part_amount"))["total"]
         )
 
-        remaining_profit = money(Decimal(str(row.final_profit or 0)) - approved_profit_taken)
+        remaining_profit = money(
+            Decimal(str(row.final_profit or 0)) - approved_profit_taken
+        )
 
         if remaining_profit < 0:
             remaining_profit = Decimal("0.00")
 
-        if invest_days >= 730:
+        investment_type = getattr(row, "investment_type", "long_term")
+
+        if investment_type == "short_term":
             eligible_percent = 100
             eligible_profit = remaining_profit
+
         else:
-            if approved_profit_taken > 0:
-                eligible_percent = 0
-                eligible_profit = Decimal("0.00")
+            if invest_days >= 730:
+                eligible_percent = 100
+                eligible_profit = remaining_profit
             else:
-                eligible_percent = 45
-                eligible_profit = money(
-                    Decimal(str(row.final_profit or 0)) * Decimal("0.45")
-                )
+                if approved_profit_taken > 0:
+                    eligible_percent = 0
+                    eligible_profit = Decimal("0.00")
+                else:
+                    eligible_percent = 45
+                    eligible_profit = money(
+                        Decimal(str(row.final_profit or 0)) * Decimal("0.45")
+                    )
 
         pending_exists = WithdrawalRequest.objects.filter(
             user=user,
@@ -7889,6 +8388,7 @@ def withdrawal_dashboard(request):
 
         profit_table_rows.append({
             "row": row,
+            "investment_type": investment_type,
             "invest_days": invest_days,
             "eligible_percent": eligible_percent,
             "eligible_profit": eligible_profit,
@@ -7919,6 +8419,7 @@ def withdrawal_dashboard(request):
 
         investment_withdraw_rows.append({
             "row": row,
+            "investment_type": getattr(row, "investment_type", "long_term"),
             "approved_investment_taken": approved_investment_taken,
             "withdrawable_investment": withdrawable_investment,
             "pending_exists": pending_exists,
@@ -7972,7 +8473,6 @@ def withdrawal_dashboard(request):
     }
 
     return render(request, "withdrawals/user_dashboard.html", context)
-
 
 @login_required
 def withdrawal_request_create(request):

@@ -152,6 +152,17 @@ class User(AbstractBaseUser, PermissionsMixin):
     beneficiaries = models.JSONField(default=list,null=True, blank=True, verbose_name='Beneficiaries')
     # User roles
     investor = models.BooleanField(default=True, verbose_name='Investor')
+    INVESTMENT_TYPE_CHOICES = (
+        ("long_term", "Long Term"),
+        ("short_term", "Short Term"),
+    )
+
+    investment_type = models.CharField(
+        max_length=20,
+        choices=INVESTMENT_TYPE_CHOICES,
+        default="long_term",
+        verbose_name="Investment Type",
+    )
     owner = models.BooleanField(default=False, verbose_name='Owner')
     staff = models.BooleanField(default=False, verbose_name='Staff')
     semi_superuser = models.BooleanField(default=False, verbose_name='Semi-Superuser')
@@ -421,6 +432,17 @@ class PropertyContribution(models.Model):
     invest_amount = models.DecimalField(max_digits=50, null=True, blank=True, decimal_places=2, default=0)
     remaining = models.DecimalField(max_digits=50, null=True, blank=True, decimal_places=2, default=0)
     investment_sequence = models.PositiveIntegerField(default=1, verbose_name='Investment Sequence')
+    INVESTMENT_TYPE_CHOICES = (
+        ("long_term", "Long Term"),
+        ("short_term", "Short Term"),
+    )
+
+    investment_type = models.CharField(
+        max_length=20,
+        choices=INVESTMENT_TYPE_CHOICES,
+        default="long_term",
+        verbose_name="Investment Type Snapshot",
+    )
     profit = models.DecimalField(
         max_digits=50,
         decimal_places=2,
@@ -627,6 +649,7 @@ class Property(models.Model):
                     remaining=remaining_amount,
                     ratio=(used_amount / total_cost * 100) if total_cost > 0 else 0,
                     investment_date=inv_date,
+                    investment_type=getattr(user, "investment_type", "long_term"),
                     total_days=0,
                     days_proportion=Decimal('0'),
                     investment_ratio=Decimal('0'),
@@ -786,6 +809,7 @@ class Property(models.Model):
                     ratio=(contribution / total_cost) if total_cost > 0 else Decimal('0'),
                     is_fixed_amount=True,
                     investment_date=inv_date,
+                    investment_type=getattr(user, "investment_type", "long_term"),
                     total_days=0,
                     days_proportion=Decimal('0'),
                     investment_ratio=Decimal('0'),
@@ -813,6 +837,7 @@ class Property(models.Model):
                     ratio=(contribution / total_cost) if total_cost > 0 else Decimal('0'),
                     is_fixed_amount=False,
                     investment_date=inv_date,
+                    investment_type=getattr(user, "investment_type", "long_term"),
                     total_days=0,
                     days_proportion=Decimal('0'),
                     investment_ratio=Decimal('0'),
@@ -889,6 +914,7 @@ class Property(models.Model):
                         is_fixed_amount=True,
                         investment_date=inv_date,
                         investment_sequence=1,  # Always first contribution
+                        investment_type=getattr(user, "investment_type", "long_term"),
                         total_days=0,
                         days_proportion=Decimal('0'),
                         investment_ratio=Decimal('0'),
@@ -981,6 +1007,7 @@ class Property(models.Model):
                         is_fixed_amount=False,
                         investment_date=inv_date,
                         investment_sequence=sequence,
+                        investment_type=getattr(user, "investment_type", "long_term"),
                         total_days=0,
                         days_proportion=Decimal('0'),
                         investment_ratio=Decimal('0'),
@@ -1084,6 +1111,7 @@ class Property(models.Model):
                         is_fixed_amount=True,
                         investment_date=inv_date,
                         investment_sequence=sequence,
+                        investment_type=getattr(user, "investment_type", "long_term"),
                         total_days=0,
                         days_proportion=Decimal('0'),
                         investment_ratio=Decimal('0'),
@@ -1163,6 +1191,7 @@ class Property(models.Model):
                         is_fixed_amount=False,
                         investment_date=inv_date,
                         investment_sequence=sequence,
+                        investment_type=getattr(user, "investment_type", "long_term"),
                         total_days=0,
                         days_proportion=Decimal('0'),
                         investment_ratio=Decimal('0'),
@@ -1203,6 +1232,7 @@ class Property(models.Model):
                             is_fixed_amount=False,
                             investment_date=inv_date,
                             investment_sequence=sequence,
+                            investment_type=getattr(user, "investment_type", "long_term"),
                             total_days=0,
                             days_proportion=Decimal('0'),
                             investment_ratio=Decimal('0'),
@@ -1727,6 +1757,7 @@ class Property(models.Model):
                 'remaining': invest_amount,
                 'ratio': 0,  
                 'investment_date': investment_date,
+                'investment_type': getattr(user, "investment_type", "long_term"),
                 'total_days': 0,
                 'days_proportion': Decimal('0'),
                 'investment_ratio': Decimal('0'),
@@ -1781,6 +1812,7 @@ class Property(models.Model):
                     'remaining': Decimal('0'),
                     'ratio': Decimal('0'),
                     'investment_date': default_date,
+                    'investment_type': getattr(user, "investment_type", "long_term"),
                     'total_days': 0,
                     'days_proportion': Decimal('0'),
                     'investment_ratio': Decimal('0'),
@@ -4014,13 +4046,43 @@ class WithdrawalRequest(models.Model):
 
     #     return cls.money(total)
 
+    # @classmethod
+    # def get_user_locked_profit_balance(cls, user):
+    #     """
+    #     Less than 730 days: remaining 55% profit stays locked.
+    #     45% can be withdrawn once.
+    #     After 730 days: remaining profit becomes eligible.
+    #     """
+    #     sold_rows = PropertyContribution.objects.filter(
+    #         user=user,
+    #         property__status="sold",
+    #         final_profit__gt=0,
+    #     ).select_related("property")
+
+    #     locked_total = Decimal("0.00")
+
+    #     for row in sold_rows:
+    #         invest_days = cls.calculate_invest_days(row)
+
+    #         if invest_days >= 730:
+    #             continue
+
+    #         final_profit = cls.money(row.final_profit)
+    #         profit_taken = cls.approved_profit_taken(row)
+    #         profit_left = cls.money(final_profit - profit_taken)
+
+    #         locked_55 = cls.money(final_profit * Decimal("0.55"))
+
+    #         if profit_taken <= 0:
+    #             locked_total += locked_55
+    #         else:
+    #             locked_total += profit_left
+
+    #     return cls.money(locked_total)
+
     @classmethod
     def get_user_locked_profit_balance(cls, user):
-        """
-        Less than 730 days: remaining 55% profit stays locked.
-        45% can be withdrawn once.
-        After 730 days: remaining profit becomes eligible.
-        """
+
         sold_rows = PropertyContribution.objects.filter(
             user=user,
             property__status="sold",
@@ -4030,6 +4092,11 @@ class WithdrawalRequest(models.Model):
         locked_total = Decimal("0.00")
 
         for row in sold_rows:
+            investment_type = getattr(row, "investment_type", "long_term")
+
+            if investment_type == "short_term":
+                continue
+
             invest_days = cls.calculate_invest_days(row)
 
             if invest_days >= 730:
@@ -4061,6 +4128,71 @@ class WithdrawalRequest(models.Model):
 
         return cls.money(free_balance)
 
+    # @classmethod
+    # def calculate_eligible_amounts(cls, contribution, request_type):
+    #     invest_days = cls.calculate_invest_days(contribution)
+
+    #     investment_amount = cls.money(contribution.contribution)
+    #     final_profit = cls.money(contribution.final_profit)
+
+    #     approved_profit_taken = cls.approved_profit_taken(contribution)
+    #     approved_investment_taken = cls.approved_investment_taken(contribution)
+
+    #     investment_left = cls.money(investment_amount - approved_investment_taken)
+    #     if investment_left < 0:
+    #         investment_left = Decimal("0.00")
+
+    #     # Profit rule
+    #     if invest_days >= 730:
+    #         eligible_profit = cls.money(final_profit - approved_profit_taken)
+
+    #         if eligible_profit < 0:
+    #             eligible_profit = Decimal("0.00")
+
+    #         if approved_profit_taken > 0:
+    #             payout_rule = "remaining_profit"
+    #         else:
+    #             payout_rule = "100_percent"
+
+    #     else:
+    #         # Before 2 years: 45% only once
+    #         if approved_profit_taken > 0:
+    #             eligible_profit = Decimal("0.00")
+    #         else:
+    #             eligible_profit = cls.money(final_profit * Decimal("0.45"))
+
+    #         payout_rule = "45_percent"
+
+    #     eligible_investment = Decimal("0.00")
+
+    #     if request_type == "profit":
+    #         eligible_investment = Decimal("0.00")
+    #         total = eligible_profit
+
+    #     elif request_type == "investment":
+    #         eligible_profit = Decimal("0.00")
+    #         eligible_investment = investment_left
+    #         total = eligible_investment
+    #         payout_rule = "investment_only"
+
+    #     elif request_type == "both":
+    #         eligible_investment = investment_left
+    #         total = eligible_investment + eligible_profit
+    #         payout_rule = "mixed"
+
+    #     else:
+    #         eligible_profit = Decimal("0.00")
+    #         eligible_investment = Decimal("0.00")
+    #         total = Decimal("0.00")
+
+    #     return {
+    #         "invest_days": invest_days,
+    #         "eligible_profit": cls.money(eligible_profit),
+    #         "eligible_investment": cls.money(eligible_investment),
+    #         "total": cls.money(total),
+    #         "payout_rule": payout_rule,
+    #     }
+
     @classmethod
     def calculate_eligible_amounts(cls, contribution, request_type):
         invest_days = cls.calculate_invest_days(contribution)
@@ -4075,26 +4207,39 @@ class WithdrawalRequest(models.Model):
         if investment_left < 0:
             investment_left = Decimal("0.00")
 
-        # Profit rule
-        if invest_days >= 730:
+        # snapshot from PropertyContribution
+        investment_type = getattr(contribution, "investment_type", "long_term")
+
+        if investment_type == "short_term":
+            # Short term: 100% profit eligible anytime after sold
             eligible_profit = cls.money(final_profit - approved_profit_taken)
 
             if eligible_profit < 0:
                 eligible_profit = Decimal("0.00")
 
-            if approved_profit_taken > 0:
-                payout_rule = "remaining_profit"
-            else:
-                payout_rule = "100_percent"
+            payout_rule = "100_percent"
 
         else:
-            # Before 2 years: 45% only once
-            if approved_profit_taken > 0:
-                eligible_profit = Decimal("0.00")
-            else:
-                eligible_profit = cls.money(final_profit * Decimal("0.45"))
+            # Long term: old rule
+            if invest_days >= 730:
+                eligible_profit = cls.money(final_profit - approved_profit_taken)
 
-            payout_rule = "45_percent"
+                if eligible_profit < 0:
+                    eligible_profit = Decimal("0.00")
+
+                if approved_profit_taken > 0:
+                    payout_rule = "remaining_profit"
+                else:
+                    payout_rule = "100_percent"
+
+            else:
+                # Before 2 years: 45% only once
+                if approved_profit_taken > 0:
+                    eligible_profit = Decimal("0.00")
+                else:
+                    eligible_profit = cls.money(final_profit * Decimal("0.45"))
+
+                payout_rule = "45_percent"
 
         eligible_investment = Decimal("0.00")
 

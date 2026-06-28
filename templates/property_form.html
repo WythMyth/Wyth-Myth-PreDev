@@ -1468,7 +1468,10 @@
         form.addEventListener('submit', function () {
           const statusField = document.querySelector('select[name="status"]');
 
-          if (statusField && statusField.value === 'bought') {
+          if (
+            statusField &&
+            ['bought', 'rented', 'ready_to_sell'].includes(statusField.value)
+          ) {
             recalcInput.value = '1';
           }
         });
