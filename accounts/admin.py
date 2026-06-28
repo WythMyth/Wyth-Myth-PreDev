@@ -24,6 +24,7 @@ from .models import (
     SharePrice,
     User,
     UserAgreement,
+    RentalBill
 )
 
 
@@ -1371,6 +1372,54 @@ class BuyerLevelHistoryAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
+from django.contrib import admin
+
+from .models import WithdrawalRequest
+
+
+# @admin.register(WithdrawalRequest)
+# class WithdrawalRequestAdmin(admin.ModelAdmin):
+#     list_display = (
+#         "user",
+#         "amount",
+#         "balance_snapshot",
+#         "running_invest_snapshot",
+#         "final_profit_snapshot",
+#         "total_available_snapshot",
+#         "status",
+#         "approved_by",
+#         "approved_at",
+#         "created_at",
+#     )
+
+#     list_filter = (
+#         "status",
+#         "created_at",
+#         "approved_at",
+#         "rejected_at",
+#     )
+
+#     search_fields = (
+#         "user__email",
+#         "user__first_name",
+#         "user__last_name",
+#     )
+
+#     readonly_fields = (
+#         "balance_snapshot",
+#         "running_invest_snapshot",
+#         "final_profit_snapshot",
+#         "total_available_snapshot",
+#         "approved_by",
+#         "approved_at",
+#         "rejected_by",
+#         "rejected_at",
+#         "clarification_requested_by",
+#         "clarification_requested_at",
+#         "created_at",
+#         "updated_at",
+#     )
+
 
 admin.site.register(OfficeCost)
 admin.site.register(SharePrice)
@@ -1382,3 +1431,4 @@ admin.site.register(UserAgreement)
 admin.site.register(Help)
 admin.site.register(ExpenseBalance)
 admin.site.register(ExpensePayment)
+admin.site.register(RentalBill)

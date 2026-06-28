@@ -1,0 +1,317 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto mt-6 space-y-6 px-4">
+
+        <div class="bg-white rounded-xl shadow p-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                                <h1 class="text-2xl font-bold text-gray-900">
+                                        {{ rental_bill.property.property_name }} - {{ rental_bill.bill_month|date:"F Y" }}
+                                </h1>
+                                <p class="text-sm text-gray-500">
+                                        {% if is_preview %}Preview distribution before finalizing.{% else %}Finalized
+                                        rental distribution.{% endif %}
+                                </p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-3">
+                                <a href="{% url 'accounts:rental_bill_list' %}"
+                                        class="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200">
+                                        Back
+                                </a>
+
+                                {% if rental_bill.status == "draft" %}
+                                <a href="{% url 'accounts:rental_bill_update' rental_bill.pk %}"
+                                        class="px-4 py-2 rounded-lg bg-orange-100 text-orange-700 font-semibold hover:bg-orange-200">
+                                        Edit Bill
+                                </a>
+
+                                <a href="{% url 'accounts:rental_expense_create' rental_bill.pk %}"
+                                        class="px-4 py-2 rounded-lg bg-red-100 text-red-700 font-semibold hover:bg-red-200">
+                                        + Add Expense
+                                </a>
+
+                                {% if request.user.is_superuser %}
+                                <form method="post" action="{% url 'accounts:approve_rental_bill' rental_bill.pk %}"
+                                        onsubmit="return confirm('Approve this rental bill?');">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                class="px-5 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700">
+                                                Approve Bill
+                                        </button>
+                                </form>
+                                {% endif %}
+                                {% endif %}
+
+                                {% if rental_bill.status == "approved" %}
+                                {% if request.user.is_superuser %}
+                                <form method="post" action="{% url 'accounts:finalize_rental_bill' rental_bill.pk %}"
+                                        onsubmit="return confirm('Are you sure? This will update investor balances and cannot be changed later.');">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                class="px-5 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700">
+                                                Finalize Distribution
+                                        </button>
+                                </form>
+                                {% endif %}
+                                {% endif %}
+                        </div>
+                </div>
+        </div>
+
+        {% if messages %}
+        {% for message in messages %}
+        <div
+                class="rounded-lg p-4 {% if message.tags == 'success' %}bg-green-50 text-green-700{% elif message.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-blue-50 text-blue-700{% endif %}">
+                {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="bg-white rounded-xl shadow p-5">
+                        <p class="text-sm text-gray-500">Rent Amount</p>
+                        <p class="text-2xl font-bold text-green-700">${{ rental_bill.rent_amount|floatformat:2 }}</p>
+                </div>
+
+                <div class="bg-white rounded-xl shadow p-5">
+                        <p class="text-sm text-gray-500">Approved Expense</p>
+                        <p class="text-2xl font-bold text-red-600">${{ rental_bill.total_expense|floatformat:2 }}</p>
+                </div>
+
+                <div class="bg-white rounded-xl shadow p-5">
+                        <p class="text-sm text-gray-500">Net</p>
+                        <p
+                                class="text-2xl font-bold {% if rental_bill.is_profit %}text-green-700{% elif rental_bill.is_loss %}text-red-600{% else %}text-gray-900{% endif %}">
+                                ${{ rental_bill.net_amount|floatformat:2 }}
+                        </p>
+                </div>
+
+                <div class="bg-white rounded-xl shadow p-5">
+                        <p class="text-sm text-gray-500">Status</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ rental_bill.get_status_display }}</p>
+                </div>
+
+                <div class="bg-white rounded-xl shadow p-5">
+                        <p class="text-sm text-gray-500">Mode</p>
+                        <p
+                                class="text-2xl font-bold {% if is_preview %}text-orange-600{% else %}text-green-700{% endif %}">
+                                {% if is_preview %}Preview{% else %}Final{% endif %}
+                        </p>
+                </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow overflow-hidden">
+                <div class="p-5 border-b flex items-center justify-between">
+                        <div>
+                                <h2 class="text-xl font-bold text-gray-900">Rental Expenses</h2>
+                                <p class="text-sm text-gray-500">Only approved expenses are deducted from rent.</p>
+                        </div>
+
+                        {% if rental_bill.status == "draft" %}
+                        <a href="{% url 'accounts:rental_expense_create' rental_bill.pk %}"
+                                class="px-4 py-2 rounded-lg bg-red-100 text-red-700 font-semibold hover:bg-red-200">
+                                + Add Expense
+                        </a>
+                        {% endif %}
+                </div>
+
+                <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                                <thead class="bg-gray-50 text-gray-700">
+                                        <tr>
+                                                <th class="px-4 py-3 text-left">Purpose</th>
+                                                <th class="px-4 py-3 text-left">Paid By</th>
+                                                <th class="px-4 py-3 text-right">Amount</th>
+                                                <th class="px-4 py-3 text-center">Status</th>
+                                                <th class="px-4 py-3 text-right">Action</th>
+                                        </tr>
+                                </thead>
+
+                                <tbody class="divide-y">
+                                        {% for expense in expenses %}
+                                        <tr>
+                                                <td class="px-4 py-3">
+                                                        <p class="font-semibold">{{ expense.purpose }}</p>
+                                                        {% if expense.description %}
+                                                        <p class="text-xs text-gray-500">{{ expense.description }}</p>
+                                                        {% endif %}
+                                                        {% if expense.receipt %}
+                                                        <a href="{{ expense.receipt.url }}" target="_blank"
+                                                                class="text-xs text-blue-700 hover:underline">View
+                                                                Receipt</a>
+                                                        {% endif %}
+                                                </td>
+
+                                                <td class="px-4 py-3">
+                                                        {% if expense.paid_by_user %}
+                                                        {{ expense.paid_by_user.get_full_name }}
+                                                        {% else %}
+                                                        -
+                                                        {% endif %}
+                                                </td>
+
+                                                <td class="px-4 py-3 text-right font-semibold text-red-600">
+                                                        ${{ expense.amount|floatformat:2 }}
+                                                </td>
+
+                                                <td class="px-4 py-3 text-center">
+                                                        {% if expense.status == "approved" %}
+                                                        <span
+                                                                class="px-3 py-1 rounded-full text-xs bg-green-100 text-green-700 font-semibold">Approved</span>
+                                                        {% elif expense.status == "pending" %}
+                                                        <span
+                                                                class="px-3 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700 font-semibold">Pending</span>
+                                                        {% else %}
+                                                        <span
+                                                                class="px-3 py-1 rounded-full text-xs bg-red-100 text-red-700 font-semibold">Rejected</span>
+                                                        {% endif %}
+                                                </td>
+                                                <td class="px-4 py-3 text-right">
+                                                
+                                                        {% if rental_bill.status == "draft" %}
+                                                
+                                                        {% if expense.status == "pending" %}
+                                                
+                                                        <a href="{% url 'accounts:rental_expense_update' expense.pk %}"
+                                                                class="text-blue-700 font-semibold hover:underline">
+                                                                Edit
+                                                        </a>
+                                                
+                                                        {% if request.user.is_superuser %}
+                                                        <span class="text-gray-300 mx-1">|</span>
+                                                
+                                                        <form method="post" action="{% url 'accounts:approve_rental_expense' expense.pk %}" class="inline">
+                                                                {% csrf_token %}
+                                                                <button type="submit" class="text-green-700 font-semibold hover:underline">
+                                                                        Approve
+                                                                </button>
+                                                        </form>
+                                                
+                                                        <span class="text-gray-300 mx-1">|</span>
+                                                
+                                                        <form method="post" action="{% url 'accounts:reject_rental_expense' expense.pk %}" class="inline">
+                                                                {% csrf_token %}
+                                                                <button type="submit" class="text-red-700 font-semibold hover:underline">
+                                                                        Reject
+                                                                </button>
+                                                        </form>
+                                                        {% endif %}
+                                                
+                                                        <span class="text-gray-300 mx-1">|</span>
+                                                
+                                                        <a href="{% url 'accounts:rental_expense_delete' expense.pk %}"
+                                                                class="text-red-600 font-semibold hover:underline">
+                                                                Delete
+                                                        </a>
+                                                
+                                                        {% else %}
+                                                        -
+                                                        {% endif %}
+                                                
+                                                        {% else %}
+                                                        Locked
+                                                        {% endif %}
+                                                
+                                                </td>
+
+ 
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                                <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                                                        No rental expense added.
+                                                </td>
+                                        </tr>
+                                        {% endfor %}
+                                </tbody>
+
+                                <tfoot class="bg-gray-50">
+                                        <tr>
+                                                <td colspan="2" class="px-4 py-3 text-right font-bold">Approved Expense
+                                                        Total</td>
+                                                <td class="px-4 py-3 text-right font-bold text-red-600">
+                                                        ${{ rental_bill.total_expense|floatformat:2 }}
+                                                </td>
+                                                <td colspan="2"></td>
+                                        </tr>
+                                </tfoot>
+                        </table>
+                </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow overflow-hidden">
+                <div class="p-5 border-b">
+                        <h2 class="text-xl font-bold text-gray-900">Distribution Details</h2>
+                        <p class="text-sm text-gray-500">Formula: month days proportion × shares × buyer level
+                                multiplier.</p>
+                </div>
+
+                <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                                <thead class="bg-gray-50 text-gray-700">
+                                        <tr>
+                                                <th class="px-4 py-3 text-left">Investor</th>
+                                                <th class="px-4 py-3 text-right">Contribution</th>
+                                                <th class="px-4 py-3 text-right">Month Days</th>
+                                                <th class="px-4 py-3 text-right">Days Prop</th>
+                                                <th class="px-4 py-3 text-right">Shares</th>
+                                                <th class="px-4 py-3 text-right">Buyer Level</th>
+                                                <th class="px-4 py-3 text-right">Final Weight</th>
+                                                <th class="px-4 py-3 text-right">Gross Profit</th>
+                                                <th class="px-4 py-3 text-right">HFall Deduct</th>
+                                                <th class="px-4 py-3 text-right">Final Profit</th>
+                                                <th class="px-4 py-3 text-right">Loss</th>
+                                        </tr>
+                                </thead>
+
+                                <tbody class="divide-y">
+                                        {% for row in distribution_rows %}
+                                        {% if is_preview %}
+                                        <tr class="hover:bg-gray-50">
+                                                <td class="px-4 py-3 font-semibold">{{ row.user.get_full_name }}</td>
+                                                <td class="px-4 py-3 text-right">${{ row.contribution.contribution|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-right">{{ row.month_days }}</td>
+                                                <td class="px-4 py-3 text-right">{{ row.days_proportion|floatformat:6 }}
+                                                </td>
+                                                <td class="px-4 py-3 text-right">{{ row.shares|floatformat:6 }}</td>
+                                                <td class="px-4 py-3 text-right">{% if row.buyer_level %}{{ row.buyer_level }} × {{ row.buyer_multiplier }}{% else %}Default
+                                                        × {{ row.buyer_multiplier }}{% endif %}</td>
+                                                <td class="px-4 py-3 text-right font-semibold">{{ row.final_weight|floatformat:6 }}</td>
+                                                <td class="px-4 py-3 text-right text-green-700">${{ row.gross_profit|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-right text-orange-600">${{ row.deduction|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-right font-bold text-green-700">${{ row.final_profit|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-right font-bold text-red-600">${{ row.loss_amount|floatformat:2 }}</td>
+                                        </tr>
+                                        {% else %}
+                                        <tr class="hover:bg-gray-50">
+                                                <td class="px-4 py-3 font-semibold">{{ row.user.get_full_name }}</td>
+                                                <td class="px-4 py-3 text-right">${{ row.contribution_amount|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-right">{{ row.month_days }}</td>
+                                                <td class="px-4 py-3 text-right">{{ row.days_proportion|floatformat:6 }}
+                                                </td>
+                                                <td class="px-4 py-3 text-right">{{ row.shares|floatformat:6 }}</td>
+                                                <td class="px-4 py-3 text-right">{% if row.buyer_level %}{{ row.buyer_level }} × {{ row.buyer_multiplier }}{% else %}Default
+                                                        × {{ row.buyer_multiplier }}{% endif %}</td>
+                                                <td class="px-4 py-3 text-right font-semibold">{{ row.final_weight|floatformat:6 }}</td>
+                                                <td class="px-4 py-3 text-right text-green-700">${{ row.gross_profit|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-right text-orange-600">${{ row.deduction|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-right font-bold text-green-700">${{ row.final_profit|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-right font-bold text-red-600">${{ row.loss_amount|floatformat:2 }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% empty %}
+                                        <tr>
+                                                <td colspan="11" class="px-4 py-10 text-center text-gray-500">
+                                                        No active investor found for this month.
+                                                </td>
+                                        </tr>
+                                        {% endfor %}
+                                </tbody>
+                        </table>
+                </div>
+        </div>
+
+</div>
+{% endblock %}

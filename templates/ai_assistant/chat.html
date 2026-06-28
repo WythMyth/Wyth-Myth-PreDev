@@ -1,0 +1,162 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+                        <div>
+                                <h1 class="text-3xl font-bold text-gray-900">AI Finance Assistant</h1>
+                                <p class="mt-2 text-sm text-gray-600">
+                                        Ask naturally about balance, profit, investment, withdrawal, or request status.
+                                </p>
+                        </div>
+
+                        <button type="button" id="clearChatBtn"
+                                class="inline-flex items-center justify-center rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                                Clear Chat
+                        </button>
+                </div>
+
+                <div class="mb-6 rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
+                        <strong>Read-only AI:</strong>
+                        This assistant only gives suggestions, predictions, and explanations.
+                        It cannot deduct balance, approve requests, reject requests, or update database.
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div id="chatBox" class="h-[560px] overflow-y-auto p-6 space-y-4 bg-gray-50">
+
+                                {% for msg in chat_messages %}
+                                {% if msg.role == "user" %}
+                                <div
+                                        class="ml-auto max-w-[82%] rounded-2xl bg-blue-600 p-4 text-sm text-white whitespace-pre-wrap">
+                                        {{ msg.content }}
+                                </div>
+                                {% elif msg.role == "assistant" %}
+                                <div
+                                        class="mr-auto max-w-[82%] rounded-2xl bg-white border border-gray-200 p-4 text-sm text-gray-800 whitespace-pre-wrap">
+                                        {{ msg.content }}
+                                </div>
+                                {% endif %}
+                                {% empty %}
+                                <div class="rounded-2xl bg-blue-50 border border-blue-100 p-4 text-sm text-blue-900">
+                                        Hi, I can help you understand your balance, running investment, final profit,
+                                        withdrawal limit, and request status. Ask your question naturally.
+                                </div>
+                                {% endfor %}
+
+                        </div>
+
+                        <form id="aiForm" class="p-4 border-t border-gray-200 bg-white">
+                                {% csrf_token %}
+
+                                <div class="flex flex-col sm:flex-row gap-3">
+                                        <input type="text" id="question" name="question" autocomplete="off"
+                                                placeholder="Apnar balance, profit, investment, ba withdrawal niye question korun..."
+                                                class="flex-1 rounded-xl border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none">
+
+                                        <button type="submit" id="sendBtn"
+                                                class="rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700">
+                                                Send
+                                        </button>
+                                </div>
+                        </form>
+                </div>
+
+        </div>
+</div>
+
+<script>
+        const form = document.getElementById("aiForm");
+        const questionInput = document.getElementById("question");
+        const chatBox = document.getElementById("chatBox");
+        const sendBtn = document.getElementById("sendBtn");
+        const clearChatBtn = document.getElementById("clearChatBtn");
+
+        function getCSRFToken() {
+                const csrf = document.querySelector("[name=csrfmiddlewaretoken]");
+                return csrf ? csrf.value : "";
+        }
+
+        function addMessage(text, type) {
+                const div = document.createElement("div");
+
+                if (type === "user") {
+                        div.className = "ml-auto max-w-[82%] rounded-2xl bg-blue-600 p-4 text-sm text-white whitespace-pre-wrap";
+                } else {
+                        div.className = "mr-auto max-w-[82%] rounded-2xl bg-white border border-gray-200 p-4 text-sm text-gray-800 whitespace-pre-wrap";
+                }
+
+                div.innerText = text;
+                chatBox.appendChild(div);
+                chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        form.addEventListener("submit", async function (e) {
+                e.preventDefault();
+
+                const question = questionInput.value.trim();
+                if (!question) return;
+
+                addMessage(question, "user");
+                questionInput.value = "";
+
+                sendBtn.disabled = true;
+                sendBtn.innerText = "Thinking...";
+
+                const formData = new FormData();
+                formData.append("question", question);
+                formData.append("csrfmiddlewaretoken", getCSRFToken());
+
+                try {
+                        const response = await fetch("{% url 'ai_assistant:chat_api' %}", {
+                                method: "POST",
+                                body: formData
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                                addMessage(data.answer, "assistant");
+                        } else {
+                                addMessage(data.message || "AI response failed.", "assistant");
+                        }
+                } catch (error) {
+                        addMessage("Server error. Please try again.", "assistant");
+                }
+
+                sendBtn.disabled = false;
+                sendBtn.innerText = "Send";
+        });
+
+        clearChatBtn.addEventListener("click", async function () {
+                if (!confirm("Clear this AI chat history?")) return;
+
+                const formData = new FormData();
+                formData.append("csrfmiddlewaretoken", getCSRFToken());
+
+                try {
+                        const response = await fetch("{% url 'ai_assistant:clear_chat' %}", {
+                                method: "POST",
+                                body: formData
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                                chatBox.innerHTML = `
+          <div class="rounded-2xl bg-blue-50 border border-blue-100 p-4 text-sm text-blue-900">
+            Hi, I can help you understand your balance, running investment, final profit, withdrawal limit, and request status. Ask your question naturally.
+          </div>
+        `;
+                        }
+                } catch (error) {
+                        alert("Could not clear chat.");
+                }
+        });
+
+        chatBox.scrollTop = chatBox.scrollHeight;
+</script>
+{% endblock %}

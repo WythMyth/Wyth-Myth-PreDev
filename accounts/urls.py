@@ -1,6 +1,7 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from .views import *  
+from . import views
 from .forms import CustomPasswordResetForm, CustomSetPasswordForm
 app_name = 'accounts'
 
@@ -121,6 +122,122 @@ urlpatterns = [
     path("stripe-wallet/checkout/", stripe_wallet_checkout, name="stripe_wallet_checkout"),
     path("stripe-wallet/create-intent/", stripe_wallet_create_intent, name="stripe_wallet_create_intent"),
     path("stripe-wallet/success/", stripe_wallet_success, name="stripe_wallet_success"),
+    path("rental-bills/", RentalBillListView.as_view(), name="rental_bill_list"),
+    path("rental-bills/create/", RentalBillCreateView.as_view(), name="rental_bill_create"),
+    path("rental-bills/<int:pk>/", RentalBillDetailView.as_view(), name="rental_bill_detail"),
+    path("rental-bills/<int:pk>/edit/", RentalBillUpdateView.as_view(), name="rental_bill_update"),
+    path("rental-bills/<int:pk>/delete/", RentalBillDeleteView.as_view(), name="rental_bill_delete"),
+    path("rental-bills/<int:pk>/approve/", approve_rental_bill, name="approve_rental_bill"),
+    path("rental-bills/<int:pk>/finalize/", finalize_rental_bill, name="finalize_rental_bill"),
+
+    path(
+        "rental-bills/<int:rental_bill_id>/expenses/create/",
+        RentalExpenseCreateView.as_view(),
+        name="rental_expense_create",
+    ),
+    path(
+        "rental-expenses/<int:pk>/edit/",
+        RentalExpenseUpdateView.as_view(),
+        name="rental_expense_update",
+    ),
+    path(
+        "rental-expenses/<int:pk>/delete/",
+        RentalExpenseDeleteView.as_view(),
+        name="rental_expense_delete",
+    ),
+    path(
+        "rental-expenses/<int:pk>/approve/",
+        approve_rental_expense,
+        name="approve_rental_expense",
+    ),
+    path(
+        "rental-expenses/<int:pk>/reject/",
+        reject_rental_expense,
+        name="reject_rental_expense",
+    ),
+
+    # path(
+    #     "withdrawals/dashboard/",
+    #     views.withdrawal_dashboard,
+    #     name="withdrawal_dashboard",
+    # ),
+    # path(
+    #     "withdrawals/request/",
+    #     views.withdrawal_request_create,
+    #     name="withdrawal_request_create",
+    # ),
+    # path(
+    #     "withdrawals/",
+    #     views.withdrawal_request_list,
+    #     name="withdrawal_request_list",
+    # ),
+
+    # path(
+    #     "finance/withdrawals/",
+    #     views.finance_withdrawal_request_list,
+    #     name="finance_withdrawal_request_list",
+    # ),
+    # path(
+    #     "finance/withdrawals/<int:pk>/",
+    #     views.finance_withdrawal_request_detail,
+    #     name="finance_withdrawal_request_detail",
+    # ),
+    # path(
+    #     "finance/withdrawals/<int:pk>/approve/",
+    #     views.finance_withdrawal_approve,
+    #     name="finance_withdrawal_approve",
+    # ),
+    # path(
+    #     "finance/withdrawals/<int:pk>/reject/",
+    #     views.finance_withdrawal_reject,
+    #     name="finance_withdrawal_reject",
+    # ),
+    # path(
+    #     "finance/withdrawals/<int:pk>/clarification/",
+    #     views.finance_withdrawal_more_clarification,
+    #     name="finance_withdrawal_more_clarification",
+    # ),
+
+    path(
+    "withdrawals/dashboard/",
+    views.withdrawal_dashboard,
+    name="withdrawal_dashboard",
+    ),
+    path(
+        "withdrawals/request/",
+        views.withdrawal_request_create,
+        name="withdrawal_request_create",
+    ),
+    path(
+        "withdrawals/",
+        views.withdrawal_request_list,
+        name="withdrawal_request_list",
+    ),
+    path(
+        "finance/withdrawals/",
+        views.finance_withdrawal_request_list,
+        name="finance_withdrawal_request_list",
+    ),
+    path(
+        "finance/withdrawals/<int:pk>/",
+        views.finance_withdrawal_request_detail,
+        name="finance_withdrawal_request_detail",
+    ),
+    path(
+        "finance/withdrawals/<int:pk>/approve/",
+        views.finance_withdrawal_approve,
+        name="finance_withdrawal_approve",
+    ),
+    path(
+        "finance/withdrawals/<int:pk>/reject/",
+        views.finance_withdrawal_reject,
+        name="finance_withdrawal_reject",
+    ),
+    path(
+        "finance/withdrawals/<int:pk>/clarification/",
+        views.finance_withdrawal_more_clarification,
+        name="finance_withdrawal_more_clarification",
+    ),
 
 
 

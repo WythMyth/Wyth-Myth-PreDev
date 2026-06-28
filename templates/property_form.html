@@ -9,6 +9,7 @@
 
     <form method="post" enctype="multipart/form-data" class="max-w-full mx-auto space-y-6">
       {% csrf_token %}
+      <input type="hidden" name="recalculate_investments" id="recalculate_investments" value="0">
 
       {% if form.errors %}
       <div class="bg-red-100 text-red-800 p-4 mb-4 rounded">
@@ -1460,15 +1461,32 @@
 {% block scripts %}
   <script>
     document.addEventListener('DOMContentLoaded', function () {
+      const form = document.querySelector('form');
+      const recalcInput = document.getElementById('recalculate_investments');
+
+      if (form && recalcInput) {
+        form.addEventListener('submit', function () {
+          const statusField = document.querySelector('select[name="status"]');
+
+          if (statusField && statusField.value === 'bought') {
+            recalcInput.value = '1';
+          }
+        });
+      }
+    });
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
       const statusField = document.querySelector('select[name="status"]');
       const groups = {
         wishlist: document.querySelector('.wishlist-fields'),
         bought: document.querySelector('.bought-fields'),
         ready_to_sell: document.querySelector('.ready-to-sell-fields'),
+        rented: document.querySelector('.rented-fields'),
         sold: document.querySelector('.sold-fields'),
       };
 
-      const displayOrder = ['wishlist', 'bought', 'ready_to_sell', 'sold'];
+      const displayOrder = ['wishlist', 'bought', 'ready_to_sell',  'rented', 'sold'];
 
       function toggleFields() {
         const selected = statusField.value;

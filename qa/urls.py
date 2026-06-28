@@ -27,4 +27,5 @@ urlpatterns = [
     path("", include("accounts.urls", namespace="accounts")),
     path("", include("poll.urls", namespace="polls")),
     path("", include("committee.urls", namespace="committee")),
+    path("ai/", include("ai_assistant.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

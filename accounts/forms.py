@@ -765,3 +765,311 @@ class OfficeExpensePaymentForm(forms.ModelForm):
 
 class PropertyExcelUploadForm(forms.Form):
     file = forms.FileField()
+
+from datetime import date
+
+from django import forms
+from django.contrib.auth import get_user_model
+
+from .models import Property, RentalBill, RentalExpense
+
+User = get_user_model()
+
+
+class RentalBillForm(forms.ModelForm):
+    class Meta:
+        model = RentalBill
+        fields = [
+            "property",
+            "rent_month",
+            "rent_year",
+            "rent_amount",
+            "note",
+        ]
+
+        widgets = {
+            "property": forms.Select(attrs={
+                "class": "w-full border border-gray-300 rounded-lg px-3 py-2",
+            }),
+            "rent_month": forms.Select(attrs={
+                "class": "w-full border border-gray-300 rounded-lg px-3 py-2",
+            }),
+            "rent_year": forms.NumberInput(attrs={
+                "class": "w-full border border-gray-300 rounded-lg px-3 py-2",
+                "min": "2020",
+                "max": "2100",
+                "placeholder": "Example: 2026",
+            }),
+            "rent_amount": forms.NumberInput(attrs={
+                "step": "0.01",
+                "min": "0",
+                "class": "w-full border border-gray-300 rounded-lg px-3 py-2",
+                "placeholder": "Example: 2000",
+            }),
+            "note": forms.Textarea(attrs={
+                "rows": 3,
+                "class": "w-full border border-gray-300 rounded-lg px-3 py-2",
+                "placeholder": "Optional note",
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields["property"].queryset = Property.objects.filter(
+            status="rented"
+        ).order_by("property_name")
+
+        if not self.instance.pk:
+            self.fields["rent_year"].initial = date.today().year
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        property_obj = cleaned_data.get("property")
+        rent_month = cleaned_data.get("rent_month")
+        rent_year = cleaned_data.get("rent_year")
+
+        if property_obj and property_obj.status != "rented":
+            self.add_error("property", "Only rented property can have monthly rental bill.")
+
+        if not rent_month:
+            self.add_error("rent_month", "Please select rent month.")
+
+        if not rent_year:
+            self.add_error("rent_year", "Please enter rent year.")
+
+        return cleaned_data
+
+
+class RentalExpenseForm(forms.ModelForm):
+    class Meta:
+        model = RentalExpense
+        fields = [
+            "rental_bill",
+            "purpose",
+            "description",
+            "amount",
+            "receipt",
+            "paid_by_user",
+        ]
+
+        widgets = {
+            "rental_bill": forms.Select(attrs={
+                "class": "w-full border border-gray-300 rounded-lg px-3 py-2",
+            }),
+            "purpose": forms.TextInput(attrs={
+                "class": "w-full border border-gray-300 rounded-lg px-3 py-2",
+                "placeholder": "Example: Repair, cleaning, utility bill",
+            }),
+            "description": forms.Textarea(attrs={
+                "rows": 3,
+                "class": "w-full border border-gray-300 rounded-lg px-3 py-2",
+            }),
+            "amount": forms.NumberInput(attrs={
+                "step": "0.01",
+                "min": "0",
+                "class": "w-full border border-gray-300 rounded-lg px-3 py-2",
+                "placeholder": "Example: 400",
+            }),
+            "receipt": forms.ClearableFileInput(attrs={
+                "class": "w-full border border-gray-300 rounded-lg px-3 py-2",
+            }),
+            "paid_by_user": forms.Select(attrs={
+                "class": "w-full border border-gray-300 rounded-lg px-3 py-2",
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        rental_bill = kwargs.pop("rental_bill", None)
+        super().__init__(*args, **kwargs)
+
+        self.fields["rental_bill"].queryset = RentalBill.objects.exclude(
+            status="finalized"
+        ).select_related("property").order_by("-bill_month")
+
+        self.fields["paid_by_user"].queryset = User.objects.filter(
+            is_active=True
+        ).order_by("first_name", "last_name", "email")
+
+        self.fields["paid_by_user"].required = False
+        self.fields["description"].required = False
+        self.fields["receipt"].required = False
+
+        if rental_bill:
+            self.fields["rental_bill"].initial = rental_bill
+            self.fields["rental_bill"].widget = forms.HiddenInput()
+
+    def clean_rental_bill(self):
+        rental_bill = self.cleaned_data.get("rental_bill")
+
+        if rental_bill and rental_bill.status == "finalized":
+            raise forms.ValidationError("Cannot add expense to finalized rental bill.")
+
+        return rental_bill
+    
+from decimal import Decimal, InvalidOperation
+
+
+from django.core.exceptions import ValidationError
+
+from .models import WithdrawalRequest
+
+
+
+
+# from decimal import Decimal, InvalidOperation
+
+# from django import forms
+# from django.core.exceptions import ValidationError
+
+# from .models import WithdrawalRequest
+
+
+# class WithdrawalRequestForm(forms.ModelForm):
+#     class Meta:
+#         model = WithdrawalRequest
+#         fields = ["amount", "note"]
+
+#         widgets = {
+#             "amount": forms.NumberInput(attrs={
+#                 "class": "w-full rounded-xl border border-gray-300 pl-8 pr-4 py-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none",
+#                 "placeholder": "Enter withdraw amount",
+#                 "step": "0.01",
+#                 "min": "0.01",
+#             }),
+#             "note": forms.Textarea(attrs={
+#                 "class": "w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none",
+#                 "placeholder": "Optional note",
+#                 "rows": 4,
+#             }),
+#         }
+
+#     def __init__(self, *args, **kwargs):
+#         self.user = kwargs.pop("user", None)
+#         super().__init__(*args, **kwargs)
+
+#         # IMPORTANT FIX:
+#         # form.is_valid() runs model.full_clean(), so instance.user must exist before validation.
+#         if self.user is not None:
+#             self.instance.user = self.user
+
+#     def clean_amount(self):
+#         amount = self.cleaned_data.get("amount")
+
+#         try:
+#             amount = Decimal(str(amount or 0))
+#         except (InvalidOperation, TypeError):
+#             raise ValidationError("Please enter a valid amount.")
+
+#         if amount <= 0:
+#             raise ValidationError("Withdraw amount must be greater than zero.")
+
+#         if self.user:
+#             total_limit = WithdrawalRequest.get_user_total_request_limit(self.user)
+
+#             if amount > total_limit:
+#                 raise ValidationError(
+#                     f"You cannot request more than your total request limit ${total_limit}."
+#                 )
+
+#         return amount
+
+from decimal import Decimal
+
+from django import forms
+from django.core.exceptions import ValidationError
+from django.db.models import Q
+
+from .models import WithdrawalRequest, PropertyContribution
+
+
+class WithdrawalRequestForm(forms.ModelForm):
+    class Meta:
+        model = WithdrawalRequest
+        fields = [
+            "property_contribution",
+            "request_type",
+            "requested_amount",
+            "user_note",
+        ]
+
+        widgets = {
+            "property_contribution": forms.Select(attrs={
+                "class": "w-full border border-gray-200 rounded-xl px-4 py-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none",
+            }),
+            "request_type": forms.Select(attrs={
+                "class": "w-full border border-gray-200 rounded-xl px-4 py-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none",
+            }),
+            "requested_amount": forms.NumberInput(attrs={
+                "class": "w-full border border-gray-200 rounded-xl px-4 py-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none",
+                "step": "0.01",
+                "min": "0.01",
+                "placeholder": "0.00",
+            }),
+            "user_note": forms.Textarea(attrs={
+                "class": "w-full border border-gray-200 rounded-xl px-4 py-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none",
+                "rows": 3,
+                "placeholder": "Write payment method / bank / note if needed",
+            }),
+        }
+
+        labels = {
+            "property_contribution": "Investment / Profit Row",
+            "request_type": "Withdraw Type",
+            "requested_amount": "Request Amount",
+            "user_note": "Note",
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        self.fields["property_contribution"].required = False
+
+        if self.user:
+            self.instance.user = self.user
+
+            self.fields["property_contribution"].queryset = (
+                PropertyContribution.objects.filter(
+                    Q(contribution__gt=0) | Q(final_profit__gt=0),
+                    user=self.user,
+                )
+                .select_related("property", "user")
+                .order_by(
+                    "-property__selling_date",
+                    "property__property_name",
+                    "investment_sequence",
+                    "id",
+                )
+            )
+        else:
+            self.fields["property_contribution"].queryset = PropertyContribution.objects.none()
+
+        self.fields["property_contribution"].empty_label = "Select property row"
+
+    def clean_property_contribution(self):
+        property_contribution = self.cleaned_data.get("property_contribution")
+        request_type = self.cleaned_data.get("request_type") or self.data.get("request_type")
+
+        if request_type == "balance":
+            return None
+
+        if not self.user:
+            raise ValidationError("User not found.")
+
+        if not property_contribution:
+            raise ValidationError("Please select an investment/profit row.")
+
+        if property_contribution.user_id != self.user.id:
+            raise ValidationError("This investment row does not belong to this user.")
+
+        return property_contribution
+
+    def clean_requested_amount(self):
+        requested_amount = self.cleaned_data.get("requested_amount") or Decimal("0.00")
+
+        if requested_amount <= 0:
+            raise ValidationError("Withdraw amount must be greater than zero.")
+
+        return requested_amount

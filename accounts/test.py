@@ -487,136 +487,6 @@ def build_user_overall_summary(user):
     }
 
 
-# @login_required
-# def dashboard(request):
-#     summary = calculate_user_investment_summary(request.user)
-
-#     try:
-#         properties_bought = Property.objects.filter(status="bought")
-#         properties_wishlist = Property.objects.filter(status="wishlist")
-#         properties_sold = Property.objects.filter(status="sold")
-#     except Property.DoesNotExist:
-#         properties_bought = Property.objects.none()
-#         properties_wishlist = Property.objects.none()
-#         properties_sold = Property.objects.none()
-
-#     active_users = User.objects.filter(is_active=True, investor=True)
-
-#     total_balance = active_users.aggregate(
-#         balance__sum=Coalesce(Sum("balance"), Decimal("0.00"))
-#     )["balance__sum"]
-
-#     purchased_properties = Property.objects.filter(
-#         status__in=["bought", "ready_to_sell", "pending", "sold"]
-#     )
-
-#     total_invested = purchased_properties.aggregate(
-#         total=Coalesce(Sum("buying_price"), Decimal("0.00"))
-#     )["total"]
-
-#     total_repair_cost = purchased_properties.aggregate(
-#         total=Coalesce(Sum("service_cost"), Decimal("0.00"))
-#     )["total"]
-
-#     additional_expenses = Expense.objects.filter(
-#         status="approved", property__isnull=True
-#     ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
-
-#     initial_total_balance = (
-#         total_balance + total_invested + total_repair_cost + additional_expenses
-#     )
-
-#     remaining_balance = total_balance
-
-#     user = request.user
-#     user_balance = user.balance
-
-#     contribution_percentage = Decimal("0.00")
-#     if total_balance > Decimal("0.00"):
-#         contribution_percentage = (user_balance / total_balance) * Decimal("100")
-
-#     if total_balance > Decimal("0.00"):
-#         user_already_invested = (total_invested + total_repair_cost) * (
-#             user_balance / total_balance
-#         )
-#     else:
-#         user_already_invested = Decimal("0.00")
-
-#     user_total_investment = user_balance + user_already_invested
-#     user_contribution = user_already_invested
-
-#     sold_properties = Property.objects.filter(status="sold")
-#     total_profit = Decimal("0.00")
-
-#     for prop in sold_properties:
-#         if prop.selling_price and prop.buying_price:
-#             property_profit = _safe_decimal(prop.selling_price) - (
-#                 _safe_decimal(prop.buying_price) + _safe_decimal(prop.service_cost)
-#             )
-#             total_profit += property_profit
-
-#     user_profit = (
-#         total_profit * (contribution_percentage / Decimal("100"))
-#         if total_profit > Decimal("0.00")
-#         else Decimal("0.00")
-#     )
-
-#     properties_data = []
-#     for i, prop in enumerate(purchased_properties, 0):
-#         if not prop.buying_price:
-#             continue
-
-#         total_cost = _safe_decimal(prop.buying_price) + _safe_decimal(prop.service_cost)
-#         profit_loss = _safe_decimal(prop.selling_price) - total_cost
-
-#         property_data = {
-#             "id": prop.id,
-#             "title": prop.property_name,
-#             "number": i + 1,
-#             "bought": _safe_decimal(prop.buying_price),
-#             "repair_cost": _safe_decimal(prop.service_cost),
-#             "sold": _safe_decimal(prop.selling_price),
-#             "total": profit_loss,
-#         }
-#         properties_data.append(property_data)
-
-#     sold_summary_cards, active_summary_cards = build_user_property_summary_cards(
-#         request.user
-#     )
-#     overall_summary = build_user_overall_summary(request.user)
-
-#     context = {
-#         "properties_bought": properties_bought,
-#         "properties_wishlist": properties_wishlist,
-#         "properties_sold": properties_sold,
-#         "company_total_balance": initial_total_balance,
-#         "company_invested": total_invested,
-#         "company_repair_cost": total_repair_cost,
-#         "company_remaining": remaining_balance,
-#         "user_total_investment": user_total_investment,
-#         "user_contribution": user_contribution,
-#         "user_remaining": user_balance,
-#         "user_contribution_percentage": round(contribution_percentage, 1),
-#         "user_profit": user_profit,
-#         "properties_data": properties_data,
-#         "summary": summary,
-#         # new
-#         "sold_summary_cards": sold_summary_cards,
-#         "active_summary_cards": active_summary_cards,
-#         "overall_summary": overall_summary,
-#     }
-
-#     if request.user.is_superuser:
-#         total_investment = (
-#             User.objects.all().aggregate(Sum("balance"))["balance__sum"] or 0
-#         )
-#         context["total_balance"] = total_investment
-#     else:
-#         context["total_balance"] = request.user.balance
-
-#     return render(request, "dashboard.html", context)
-
-
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from decimal import Decimal
@@ -815,138 +685,7 @@ def dashboard(request):
 
     return render(request, "dashboard.html", context)
 
-# @login_required
-# def dashboard(request):
-#     summary = calculate_user_investment_summary(request.user)
-#     try:
-#         properties_bought = Property.objects.filter(status="bought")
-#         properties_wishlist = Property.objects.filter(status="wishlist")
-#         properties_sold = Property.objects.filter(status="sold")
-#     except properties_bought.DoesNotExist:
-#         properties_bought = None
-#     except properties_wishlist.DoesNotExist:
-#         properties_wishlist = None
-#     except properties_sold.DoesNotExist:
-#         properties_sold = None
 
-#     active_users = User.objects.filter(is_active=True, investor=True)
-#     # Calculate company-wide metrics
-#     total_balance = active_users.aggregate(Sum("balance"))["balance__sum"] or Decimal(
-#         "0.00"
-#     )
-
-#     # Get properties that have been purchased
-#     purchased_properties = Property.objects.filter(
-#         status__in=["bought", "ready_to_sell", "pending", "sold"]
-#     )
-
-#     # Calculate total invested (auction price)
-#     total_invested = purchased_properties.aggregate(
-#         total=Coalesce(Sum("buying_price"), Decimal("0.00"))
-#     )["total"]
-
-#     # Calculate total repair costs (service cost)
-#     total_repair_cost = purchased_properties.aggregate(
-#         total=Coalesce(Sum("service_cost"), Decimal("0.00"))
-#     )["total"]
-
-#     # Calculate total expenses not associated with properties
-#     additional_expenses = Expense.objects.filter(
-#         status="approved", property__isnull=True
-#     ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
-
-#     # Initial total balance (before investments)
-#     initial_total_balance = (
-#         total_balance + total_invested + total_repair_cost + additional_expenses
-#     )
-
-#     # Calculate remaining balance
-#     remaining_balance = total_balance
-
-#     # Get current user's metrics
-#     user = request.user
-#     user_balance = user.balance
-
-#     # Calculate user's contribution percentage to the total current balance
-#     contribution_percentage = 0
-#     if total_balance > Decimal("0.00"):
-#         contribution_percentage = (user_balance / total_balance) * Decimal("100")
-#     if total_balance > Decimal("0.00"):
-#         user_already_invested = (total_invested + total_repair_cost) * (
-#             user_balance / total_balance
-#         )
-#     else:
-#         user_already_invested = Decimal("0.00")
-
-#     user_total_investment = user_balance + user_already_invested
-
-#     user_contribution = user_already_invested
-#     sold_properties = Property.objects.filter(status="sold")
-#     total_profit = Decimal("0.00")
-#     for prop in sold_properties:
-#         if prop.selling_price and prop.buying_price:
-#             property_profit = prop.selling_price - (
-#                 prop.buying_price + (prop.service_cost or Decimal("0.00"))
-#             )
-#             total_profit += property_profit
-#     user_profit = (
-#         total_profit * (contribution_percentage / Decimal("100"))
-#         if total_profit > Decimal("0.00")
-#         else Decimal("0.00")
-#     )
-#     properties_data = []
-#     for i, prop in enumerate(
-#         purchased_properties, 0
-#     ):  # Limit to 2 properties as in the image
-#         if not prop.buying_price:
-#             continue
-
-#         total_cost = prop.buying_price + (prop.service_cost or Decimal("0.00"))
-
-#         profit_loss = (prop.selling_price or Decimal("0.00")) - total_cost
-
-#         property_data = {
-#             "id": prop.id,
-#             "title": prop.property_name,
-#             "number": i + 1,
-#             "bought": prop.buying_price,
-#             "repair_cost": prop.service_cost or Decimal("0.00"),
-#             "sold": prop.selling_price or Decimal("0.00"),
-#             "total": profit_loss,
-#         }
-#         properties_data.append(property_data)
-
-#     context = {
-#         "properties_bought": properties_bought,
-#         "properties_wishlist": properties_wishlist,
-#         "properties_sold": properties_sold,
-#         # Company-wide data
-#         "company_total_balance": initial_total_balance,
-#         "company_invested": total_invested,
-#         "company_repair_cost": total_repair_cost,
-#         "company_remaining": remaining_balance,
-#         # Current user data
-#         "user_total_investment": user_total_investment,
-#         "user_contribution": user_already_invested,  # This shows how much they've invested in properties
-#         "user_remaining": user_balance,  # This shows their remaining balance
-#         "user_contribution_percentage": round(contribution_percentage, 1),
-#         "user_profit": user_profit,
-#         # Properties data
-#         "properties_data": properties_data,
-#         # summary data
-#         "summary": summary,
-#     }
-
-#     if request.user.is_superuser:
-#         # Calculate total investment from all users
-#         total_investment = (
-#             User.objects.all().aggregate(Sum("balance"))["balance__sum"] or 0
-#         )
-#         context["total_balance"] = total_investment
-#     else:
-#         context["total_balance"] = request.user.balance
-
-#     return render(request, "dashboard.html", context)
 
 
 @login_required
@@ -1439,44 +1178,6 @@ def member_detail(request, pk):
     return render(request, "member_detail.html", context)
 
 
-# class PropertyListView(LoginRequiredMixin, ListView):
-#     model = Property
-#     template_name = "property_list.html"
-#     context_object_name = "properties"
-
-#     def get_queryset(self):
-#         # Prefetch stories ordered by latest
-#         story_prefetch = Prefetch(
-#             "stories",
-#             queryset=Story.objects.only(
-#                 "id", "message", "created_at", "related_property"
-#             ).order_by("-created_at"),
-#         )
-
-#         queryset = Property.objects.prefetch_related("images", story_prefetch).order_by(
-#             "-created_at"
-#         )
-
-#         status = self.request.GET.get("status")
-#         if status:
-#             queryset = queryset.filter(status=status)
-#         return queryset
-
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-#         context["status_choices"] = Property.STATUS_CHOICES
-#         context["selected_status"] = self.request.GET.get("status", "")
-#         # Total balance logic
-#         if self.request.user.is_superuser:
-#             total_investment = (
-#                 User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
-#             )
-#             context["total_balance"] = total_investment
-#         else:
-#             context["total_balance"] = self.request.user.balance
-#         return context
-# start
-# today start
 import calendar
 from datetime import date, datetime
 
@@ -1629,107 +1330,6 @@ class PropertyListView(LoginRequiredMixin, ListView):
         return context
 
 
-# today end
-# views.py
-# import calendar
-# from datetime import date
-
-# from django.contrib.auth.mixins import LoginRequiredMixin
-# from django.db.models import Prefetch, Q, Sum
-# from django.utils import timezone
-# from django.views.generic import ListView
-
-# from .models import Property, User
-# from .models import Story
-
-
-# def add_one_month(d: date) -> date:
-#     """
-#     Add exactly 1 calendar month (rolling window).
-#     If next month has fewer days, clamp to last day of next month.
-#     Example: Jan 31 -> Feb 28/29
-#     """
-#     y, m = d.year, d.month
-#     if m == 12:
-#         ny, nm = y + 1, 1
-#     else:
-#         ny, nm = y, m + 1
-
-#     last_day = calendar.monthrange(ny, nm)[1]
-#     nd = min(d.day, last_day)
-#     return date(ny, nm, nd)
-
-
-# class PropertyListView(LoginRequiredMixin, ListView):
-#     model = Property
-#     template_name = "property_list.html"
-#     context_object_name = "properties"
-
-#     def get_queryset(self):
-#         story_prefetch = Prefetch(
-#             "stories",
-#             queryset=Story.objects.only("id", "message", "created_at", "related_property").order_by("-created_at"),
-#         )
-
-#         qs = Property.objects.prefetch_related("images", story_prefetch).order_by("-created_at")
-
-#         user = self.request.user
-#         today = timezone.localdate()
-#         cutoff = add_one_month(today)  # upcoming window end (exclusive below)
-
-#         # If you want "is_property" to behave like superuser, enable this:
-#         is_admin_like = bool(getattr(user, "is_superuser", False) or getattr(user, "is_property", False))
-
-#         auction_statuses = ["wishlist", "move_to_next_option"]
-
-#         # 1) Past auction_date for wishlist/move_to_next_option -> hidden for everyone
-#         qs = qs.exclude(
-#             Q(status__in=auction_statuses) &
-#             Q(auction_date__isnull=False) &
-#             Q(auction_date__lt=today)
-#         )
-
-#         # 2) auction_date NULL for wishlist/move_to_next_option -> hidden for everyone
-#         qs = qs.exclude(
-#             Q(status__in=auction_statuses) &
-#             Q(auction_date__isnull=True)
-#         )
-
-#         # 3) Upcoming vs Future rules
-#         if is_admin_like:
-#             # Show all future wishlist/move_to_next_option (today and beyond)
-#             qs = qs.filter(
-#                 Q(status__in=auction_statuses, auction_date__gte=today) |
-#                 Q(~Q(status__in=auction_statuses))
-#             )
-#         else:
-#             # Normal user: show wishlist/move_to_next_option only within 1 month window [today, cutoff)
-#             qs = qs.filter(
-#                 Q(status__in=auction_statuses, auction_date__gte=today, auction_date__lt=cutoff) |
-#                 Q(~Q(status__in=auction_statuses))
-#             )
-
-#         # Optional dropdown status filter
-#         status = self.request.GET.get("status")
-#         if status:
-#             qs = qs.filter(status=status)
-
-#         return qs
-
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-#         context["status_choices"] = Property.STATUS_CHOICES
-#         context["selected_status"] = self.request.GET.get("status", "")
-
-#         # Total balance logic
-#         if self.request.user.is_superuser:
-#             context["total_balance"] = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
-#         else:
-#             context["total_balance"] = self.request.user.balance
-
-#         return context
-
-# end
 
 
 class PropertyDetailView(DetailView):
@@ -1937,561 +1537,6 @@ class PropertyCreateView(PropertyUserRequiredMixin, CreateView):
         return HttpResponseRedirect(self.get_success_url())
 
 
-# class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
-#     model = Property
-#     form_class = PropertyForm
-#     template_name = "property_form.html"
-#     success_url = reverse_lazy("accounts:property_list")
-
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-
-#         # ✅ Get fresh user data - force evaluation with list()
-#         all_users = list(
-#             User.objects.filter(is_active=True, investor=True).order_by("id")
-#         )
-
-#         # Build user contributions map
-#         user_contributions = {}
-#         for user in all_users:
-#             # Get all contributions for this user, force fresh query
-#             contributions = list(
-#                 PropertyContribution.objects.filter(
-#                     property=self.object, user=user
-#                 ).order_by("investment_sequence")
-#             )
-
-#             if contributions:
-#                 user_contributions[user.id] = contributions
-
-#         # Build image formset
-#         context["image_formset"] = PropertyImageFormSet(
-#             self.request.POST or None, self.request.FILES or None, instance=self.object
-#         )
-
-#         context["all_users"] = all_users
-#         context["user_contributions"] = user_contributions
-
-#         # Calculate total balance from fresh data
-#         if self.request.user.is_superuser:
-#             context["total_balance"] = sum(user.balance for user in all_users)
-#         else:
-#             # Get fresh balance for current user
-#             current_user = User.objects.get(pk=self.request.user.pk)
-#             context["total_balance"] = current_user.balance
-
-#         # Set default investment date
-#         context["default_investment_date"] = (
-#             self.object.buying_date.strftime("%Y-%m-%d")
-#             if self.object.buying_date
-#             else date.today().strftime("%Y-%m-%d")
-#         )
-
-#         return context
-
-#     def form_valid(self, form):
-#         old_property = Property.objects.get(pk=self.object.pk)
-#         old_status = old_property.status
-
-#         print("\n" + "=" * 80)
-#         print(f"🔄 UPDATING PROPERTY: {old_property.property_name}")
-#         print("=" * 80)
-
-#         buying_price = form.cleaned_data.get("buying_price") or 0
-#         service_cost = form.cleaned_data.get("service_cost") or 0
-#         form.instance.acquisition_cost = (
-#             buying_price + service_cost if (buying_price or service_cost) else None
-#         )
-
-#         self.object = form.save(commit=False)
-#         self.object.save()
-
-#         if self.object.status == "bought":
-#             # Get all existing contributions with their sequences
-#             existing_contributions = PropertyContribution.objects.filter(
-#                 property=self.object
-#             ).select_related("user")
-
-#             # Create mapping: {user_id: {sequence: contribution_object}}
-#             existing_map = {}
-#             for contrib in existing_contributions:
-#                 if contrib.user_id not in existing_map:
-#                     existing_map[contrib.user_id] = {}
-#                 existing_map[contrib.user_id][contrib.investment_sequence] = contrib
-
-#             investments_list = []
-#             investment_dates_list = []
-#             selected_contributors = set()
-
-#             # Track which existing contributions are being submitted
-#             submitted_contributions = set()  # {(user_id, sequence)}
-
-#             print("\n📊 Parsing Updated Investment Data...")
-
-#             # Parse all invest_ fields with sequence
-#             for key in self.request.POST:
-#                 if key.startswith("invest_"):
-#                     parts = key.replace("invest_", "").split("_")
-#                     if len(parts) >= 2:
-#                         user_id = int(parts[0])
-#                         sequence = int(parts[1])
-#                     else:
-#                         user_id = int(parts[0])
-#                         sequence = 1
-
-#                     amount_str = self.request.POST.get(key, "").strip()
-#                     try:
-#                         amount = Decimal(amount_str)
-
-#                         # Check if checkbox is selected
-#                         checkbox_key = f"select_user_{user_id}_{sequence}"
-#                         is_selected = self.request.POST.get(checkbox_key) is not None
-
-#                         if amount > 0 and is_selected:
-#                             fixed_key = f"fixed_{user_id}_{sequence}"
-#                             is_fixed = self.request.POST.get(fixed_key) is not None
-
-#                             investments_list.append(
-#                                 {
-#                                     "user_id": user_id,
-#                                     "invest_amount": amount,
-#                                     "is_fixed": is_fixed,
-#                                     "sequence": sequence,
-#                                 }
-#                             )
-#                             selected_contributors.add(user_id)
-#                             submitted_contributions.add((user_id, sequence))
-
-#                             # Get investment date
-#                             date_key = f"date_{user_id}_{sequence}"
-#                             date_str = self.request.POST.get(date_key, "").strip()
-#                             if date_str:
-#                                 try:
-#                                     inv_date = datetime.strptime(
-#                                         date_str, "%Y-%m-%d"
-#                                     ).date()
-#                                 except ValueError:
-#                                     inv_date = self.object.buying_date or date.today()
-#                             else:
-#                                 # Use existing date if available
-#                                 if (
-#                                     user_id in existing_map
-#                                     and sequence in existing_map[user_id]
-#                                 ):
-#                                     inv_date = (
-#                                         existing_map[user_id][sequence].investment_date
-#                                         or self.object.buying_date
-#                                         or date.today()
-#                                     )
-#                                 else:
-#                                     inv_date = self.object.buying_date or date.today()
-
-#                             investment_dates_list.append(
-#                                 {
-#                                     "user_id": user_id,
-#                                     "sequence": sequence,
-#                                     "date": inv_date,
-#                                 }
-#                             )
-
-#                             print(
-#                                 f"   ✓ User {user_id} Investment #{sequence}: ${amount} (Fixed: {is_fixed})"
-#                             )
-
-#                     except (ValueError, InvalidOperation, AttributeError) as e:
-#                         print(f"   ✗ Error parsing {key}: {e}")
-#                         continue
-
-#             print(f"\n📝 Total Investments: {len(investments_list)}")
-#             print(f"   Selected Contributors: {selected_contributors}")
-
-#             # ✅ FIX: Check for NEW contributors OR NEW sequences
-#             existing_user_ids = set(existing_map.keys())
-#             truly_new_user_ids = selected_contributors - existing_user_ids
-
-#             # Check for new sequences from existing users
-#             new_sequences_added = []
-#             for user_id, sequence in submitted_contributions:
-#                 if user_id in existing_map:
-#                     if sequence not in existing_map[user_id]:
-#                         new_sequences_added.append((user_id, sequence))
-
-#             # ⚠️ CRITICAL FIX: Check if any contributions were REMOVED
-#             removed_contributions = []
-#             for user_id, sequences in existing_map.items():
-#                 for sequence in sequences:
-#                     if (user_id, sequence) not in submitted_contributions:
-#                         removed_contributions.append((user_id, sequence))
-
-#             should_refund = bool(
-#                 truly_new_user_ids or new_sequences_added or removed_contributions
-#             )
-
-#             if should_refund:
-#                 if truly_new_user_ids:
-#                     print(f"\n🆕 NEW CONTRIBUTORS: {truly_new_user_ids}")
-#                 if new_sequences_added:
-#                     print(f"\n➕ NEW SEQUENCES ADDED:")
-#                     for user_id, seq in new_sequences_added:
-#                         print(f"   User {user_id} Sequence #{seq}")
-#                 if removed_contributions:
-#                     print(f"\n🗑️  CONTRIBUTIONS REMOVED:")
-#                     for user_id, seq in removed_contributions:
-#                         print(f"   User {user_id} Sequence #{seq}")
-
-#                 print("\n🔄 Refunding all existing contributions...")
-#                 self.object.refund_all_contributions()
-#                 print("   ✅ Refund completed")
-#             else:
-#                 print(
-#                     "\n✅ No structural changes - updating existing contributions only"
-#                 )
-
-#             if investments_list:
-#                 # Set contributors
-#                 self.object.contributors.set(
-#                     User.objects.filter(id__in=selected_contributors)
-#                 )
-
-#                 print("\n💰 Processing Updated Investments...")
-#                 success = self.object.deduct_property_costs_with_multiple_investments(
-#                     investments_list, investment_dates_list
-#                 )
-
-#                 if not success:
-#                     print("❌ Update failed!")
-#                     form.add_error(None, "Invalid investment or insufficient balance.")
-#                     return self.form_invalid(form)
-
-#                 print("✅ Update successful!")
-
-#         elif old_status == "bought" and self.object.status == "sold":
-#             print("\n💵 Property sold - distributing proceeds...")
-#             self.object.distribute_sale_proceeds()
-
-#         elif old_status == "bought" and self.object.status not in [
-#             "bought",
-#             "ready_to_sell",
-#             "sold",
-#         ]:
-#             print("\n↩️  Status changed - refunding contributions...")
-#             self.object.refund_all_contributions()
-
-#         # Handle image formset
-#         context = self.get_context_data()
-#         image_formset = context["image_formset"]
-#         if image_formset.is_valid():
-#             image_formset.save()
-
-#         print("=" * 80 + "\n")
-#         return HttpResponseRedirect(self.get_success_url())
-# class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
-#     model = Property
-#     form_class = PropertyForm
-#     template_name = "property_form.html"
-#     success_url = reverse_lazy("accounts:property_list")
-
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-
-#         all_users = list(
-#             User.objects.filter(is_active=True, investor=True).order_by("id")
-#         )
-
-#         user_contributions = {}
-#         for user in all_users:
-#             contributions = list(
-#                 PropertyContribution.objects.filter(
-#                     property=self.object,
-#                     user=user
-#                 ).order_by("investment_sequence")
-#             )
-
-#             if contributions:
-#                 user_contributions[user.id] = contributions
-
-#         context["image_formset"] = PropertyImageFormSet(
-#             self.request.POST or None,
-#             self.request.FILES or None,
-#             instance=self.object
-#         )
-
-#         context["all_users"] = all_users
-#         context["user_contributions"] = user_contributions
-
-#         if self.request.user.is_superuser:
-#             context["total_balance"] = sum(user.balance for user in all_users)
-#         else:
-#             current_user = User.objects.get(pk=self.request.user.pk)
-#             context["total_balance"] = current_user.balance
-
-#         context["default_investment_date"] = (
-#             self.object.buying_date.strftime("%Y-%m-%d")
-#             if self.object.buying_date
-#             else date.today().strftime("%Y-%m-%d")
-#         )
-
-#         return context
-
-#     def form_valid(self, form):
-#         old_property = Property.objects.get(pk=self.object.pk)
-#         old_status = old_property.status
-#         new_status = form.cleaned_data.get("status")
-
-#         print("\n" + "=" * 80)
-#         print(f"🔄 UPDATING PROPERTY: {old_property.property_name}")
-#         print(f"OLD STATUS: {old_status}")
-#         print(f"NEW STATUS: {new_status}")
-#         print("=" * 80)
-
-#         buying_price = form.cleaned_data.get("buying_price") or Decimal("0")
-#         service_cost = form.cleaned_data.get("service_cost") or Decimal("0")
-
-#         form.instance.acquisition_cost = (
-#             buying_price + service_cost
-#             if (buying_price or service_cost)
-#             else None
-#         )
-
-#         context = self.get_context_data()
-#         image_formset = context["image_formset"]
-
-#         with transaction.atomic():
-#             self.object = form.save(commit=False)
-
-#             if new_status == "rented":
-#                 self.object.save()
-#                 form.save_m2m()
-
-#                 if image_formset.is_valid():
-#                     image_formset.instance = self.object
-#                     image_formset.save()
-
-#                 messages.success(
-#                     self.request,
-#                     "Property status changed to rented. Existing investment and user balance preserved."
-#                 )
-
-#                 print("✅ RENTED STATUS SAVED")
-#                 print("✅ No refund")
-#                 print("✅ No investment recalculation")
-#                 print("✅ User balances preserved")
-#                 print("=" * 80 + "\n")
-
-#                 return HttpResponseRedirect(self.get_success_url())
-
-#             # ============================================================
-#             # ✅ CASE 2: READY TO SELL
-#             # ============================================================
-#             # ready_to_sell শুধু status change.
-#             # balance/contribution touch হবে না.
-#             # ============================================================
-#             if new_status == "ready_to_sell":
-#                 self.object.save()
-#                 form.save_m2m()
-
-#                 if image_formset.is_valid():
-#                     image_formset.instance = self.object
-#                     image_formset.save()
-
-#                 messages.success(
-#                     self.request,
-#                     "Property status changed to ready to sell. Existing investment preserved."
-#                 )
-
-#                 print("✅ READY TO SELL SAVED")
-#                 print("✅ No refund")
-#                 print("✅ No investment recalculation")
-#                 print("=" * 80 + "\n")
-
-#                 return HttpResponseRedirect(self.get_success_url())
-
-#             # ============================================================
-#             # ✅ CASE 3: SOLD
-#             # ============================================================
-#             # sold হলে sale proceeds distribution হবে.
-#             # Property model save() already sold distribution handle করতে পারে.
-#             # তাই এখানে duplicate distribute_sale_proceeds() call করবো না.
-#             # ============================================================
-#             if new_status == "sold":
-#                 self.object.save()
-#                 form.save_m2m()
-
-#                 if image_formset.is_valid():
-#                     image_formset.instance = self.object
-#                     image_formset.save()
-
-#                 messages.success(
-#                     self.request,
-#                     "Property sold. Sale distribution processed if eligible."
-#                 )
-
-#                 print("✅ SOLD STATUS SAVED")
-#                 print("=" * 80 + "\n")
-
-#                 return HttpResponseRedirect(self.get_success_url())
-
-#             # ============================================================
-#             # ✅ CASE 4: BOUGHT
-#             # ============================================================
-#             # bought হলে normal save করলে investment recalculate হবে না.
-#             # শুধু hidden input recalculate_investments=1 হলে recalculation হবে.
-#             # ============================================================
-#             self.object.save()
-#             form.save_m2m()
-
-#             should_process_investments = (
-#                 new_status == "bought"
-#                 and self.request.POST.get("recalculate_investments") == "1"
-#             )
-
-#             if new_status == "bought" and should_process_investments:
-#                 existing_contributions = PropertyContribution.objects.filter(
-#                     property=self.object
-#                 ).select_related("user")
-
-#                 existing_map = {}
-#                 for contrib in existing_contributions:
-#                     if contrib.user_id not in existing_map:
-#                         existing_map[contrib.user_id] = {}
-#                     existing_map[contrib.user_id][contrib.investment_sequence] = contrib
-
-#                 investments_list = []
-#                 investment_dates_list = []
-#                 selected_contributors = set()
-#                 submitted_contributions = set()
-
-#                 print("\n📊 Parsing Updated Investment Data...")
-
-#                 for key in self.request.POST:
-#                     if key.startswith("invest_"):
-#                         parts = key.replace("invest_", "").split("_")
-
-#                         if len(parts) >= 2:
-#                             user_id = int(parts[0])
-#                             sequence = int(parts[1])
-#                         else:
-#                             user_id = int(parts[0])
-#                             sequence = 1
-
-#                         amount_str = self.request.POST.get(key, "").strip()
-
-#                         try:
-#                             amount = Decimal(amount_str)
-
-#                             checkbox_key = f"select_user_{user_id}_{sequence}"
-#                             is_selected = self.request.POST.get(checkbox_key) is not None
-
-#                             if amount > 0 and is_selected:
-#                                 fixed_key = f"fixed_{user_id}_{sequence}"
-#                                 is_fixed = self.request.POST.get(fixed_key) is not None
-
-#                                 investments_list.append({
-#                                     "user_id": user_id,
-#                                     "invest_amount": amount,
-#                                     "is_fixed": is_fixed,
-#                                     "sequence": sequence,
-#                                 })
-
-#                                 selected_contributors.add(user_id)
-#                                 submitted_contributions.add((user_id, sequence))
-
-#                                 date_key = f"date_{user_id}_{sequence}"
-#                                 date_str = self.request.POST.get(date_key, "").strip()
-
-#                                 if date_str:
-#                                     try:
-#                                         inv_date = datetime.strptime(
-#                                             date_str,
-#                                             "%Y-%m-%d"
-#                                         ).date()
-#                                     except ValueError:
-#                                         inv_date = self.object.buying_date or date.today()
-#                                 else:
-#                                     if (
-#                                         user_id in existing_map
-#                                         and sequence in existing_map[user_id]
-#                                     ):
-#                                         inv_date = (
-#                                             existing_map[user_id][sequence].investment_date
-#                                             or self.object.buying_date
-#                                             or date.today()
-#                                         )
-#                                     else:
-#                                         inv_date = self.object.buying_date or date.today()
-
-#                                 investment_dates_list.append({
-#                                     "user_id": user_id,
-#                                     "sequence": sequence,
-#                                     "date": inv_date,
-#                                 })
-
-#                                 print(
-#                                     f"✓ User {user_id} Investment #{sequence}: ${amount} "
-#                                     f"(Fixed: {is_fixed}, Date: {inv_date})"
-#                                 )
-
-#                         except (ValueError, InvalidOperation, AttributeError) as e:
-#                             print(f"✗ Error parsing {key}: {e}")
-#                             continue
-
-#                 if investments_list:
-#                     self.object.contributors.set(
-#                         User.objects.filter(id__in=selected_contributors)
-#                     )
-
-#                     print("\n💰 Recalculating Investments...")
-
-#                     success = self.object.deduct_property_costs_with_multiple_investments(
-#                         investments_list,
-#                         investment_dates_list
-#                     )
-
-#                     if not success:
-#                         print("❌ Investment recalculation failed!")
-#                         form.add_error(None, "Invalid investment or insufficient balance.")
-#                         return self.form_invalid(form)
-
-#                     print("✅ Investment recalculation completed.")
-#                 else:
-#                     print("⚠️ No investment data found for recalculation.")
-
-#             elif new_status == "bought":
-#                 print("✅ Bought property saved without investment recalculation.")
-
-#             # ============================================================
-#             # ✅ CASE 5: FAILED / MOVE / STAYED / WISHLIST
-#             # ============================================================
-#             # এই status গুলোতে যদি old_status bought হয়, তখন refund লাগতে পারে.
-#             # কিন্তু rented/ready_to_sell/sold already above handled.
-#             # ============================================================
-#             refundable_statuses = [
-#                 "wishlist",
-#                 "failed_to_bought",
-#                 "move_to_next_option",
-#                 "stayed",
-#             ]
-
-#             if old_status == "bought" and new_status in refundable_statuses:
-#                 print("\n↩️ Status changed from bought to refundable status.")
-#                 print("↩️ Refunding contributions...")
-#                 self.object.refund_all_contributions()
-
-#             if image_formset.is_valid():
-#                 image_formset.instance = self.object
-#                 image_formset.save()
-
-#         print("=" * 80 + "\n")
-#         return HttpResponseRedirect(self.get_success_url())
-from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
-
-from django.contrib import messages
-from django.db import transaction
-from django.http import HttpResponseRedirect
-from django.urls import reverse_lazy
-from django.views.generic import UpdateView
-
 
 class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
     model = Property
@@ -2503,14 +1548,10 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
         context = super().get_context_data(**kwargs)
 
         all_users = list(
-            User.objects.filter(
-                is_active=True,
-                investor=True
-            ).order_by("id")
+            User.objects.filter(is_active=True, investor=True).order_by("id")
         )
 
         user_contributions = {}
-
         for user in all_users:
             contributions = list(
                 PropertyContribution.objects.filter(
@@ -2561,7 +1602,7 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
 
         form.instance.acquisition_cost = (
             buying_price + service_cost
-            if buying_price or service_cost
+            if (buying_price or service_cost)
             else None
         )
 
@@ -2570,7 +1611,6 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
 
         with transaction.atomic():
             self.object = form.save(commit=False)
-
 
             if new_status == "rented":
                 self.object.save()
@@ -2593,7 +1633,7 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
 
                 return HttpResponseRedirect(self.get_success_url())
 
-
+           
             if new_status == "ready_to_sell":
                 self.object.save()
                 form.save_m2m()
@@ -2614,6 +1654,7 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
 
                 return HttpResponseRedirect(self.get_success_url())
 
+        
             if new_status == "sold":
                 self.object.save()
                 form.save_m2m()
@@ -2632,21 +1673,18 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
 
                 return HttpResponseRedirect(self.get_success_url())
 
-    
+            # ============================================================
+            # ✅ CASE 4: BOUGHT
+            # ============================================================
+            # bought হলে normal save করলে investment recalculate হবে না.
+            # শুধু hidden input recalculate_investments=1 হলে recalculation হবে.
+            # ============================================================
             self.object.save()
             form.save_m2m()
 
-            has_investment_post_data = any(
-                key.startswith("invest_")
-                for key in self.request.POST.keys()
-            )
-
             should_process_investments = (
                 new_status == "bought"
-                and (
-                    self.request.POST.get("recalculate_investments") == "1"
-                    or has_investment_post_data
-                )
+                and self.request.POST.get("recalculate_investments") == "1"
             )
 
             if new_status == "bought" and should_process_investments:
@@ -2655,11 +1693,9 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
                 ).select_related("user")
 
                 existing_map = {}
-
                 for contrib in existing_contributions:
                     if contrib.user_id not in existing_map:
                         existing_map[contrib.user_id] = {}
-
                     existing_map[contrib.user_id][contrib.investment_sequence] = contrib
 
                 investments_list = []
@@ -2669,96 +1705,77 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
 
                 print("\n📊 Parsing Updated Investment Data...")
 
-                for key in self.request.POST.keys():
-                    if not key.startswith("invest_"):
-                        continue
+                for key in self.request.POST:
+                    if key.startswith("invest_"):
+                        parts = key.replace("invest_", "").split("_")
 
-                    raw_key = key.replace("invest_", "")
-                    parts = raw_key.split("_")
-
-                    try:
                         if len(parts) >= 2:
                             user_id = int(parts[0])
                             sequence = int(parts[1])
-                        elif len(parts) == 1:
+                        else:
                             user_id = int(parts[0])
                             sequence = 1
-                        else:
-                            continue
-                    except (ValueError, TypeError):
-                        print(f"✗ Invalid invest key: {key}")
-                        continue
 
-                    amount_str = self.request.POST.get(key, "").strip()
+                        amount_str = self.request.POST.get(key, "").strip()
 
-                    if amount_str in ["", "None", "null"]:
-                        continue
-
-                    try:
-                        amount = Decimal(amount_str)
-                    except (InvalidOperation, ValueError, TypeError) as e:
-                        print(f"✗ Error parsing {key}: {e}")
-                        continue
-
-                    checkbox_key = f"select_user_{user_id}_{sequence}"
-                    is_selected = self.request.POST.get(checkbox_key) is not None
-
-                  
-                    if amount <= 0 or not is_selected:
-                        continue
-
-                    fixed_key = f"fixed_{user_id}_{sequence}"
-                    is_fixed = self.request.POST.get(fixed_key) is not None
-
-                    date_key = f"date_{user_id}_{sequence}"
-                    date_str = self.request.POST.get(date_key, "").strip()
-
-                    if date_str:
                         try:
-                            inv_date = datetime.strptime(
-                                date_str,
-                                "%Y-%m-%d"
-                            ).date()
-                        except ValueError:
-                            inv_date = self.object.buying_date or date.today()
-                    else:
-                        if (
-                            user_id in existing_map
-                            and sequence in existing_map[user_id]
-                        ):
-                            inv_date = (
-                                existing_map[user_id][sequence].investment_date
-                                or self.object.buying_date
-                                or date.today()
-                            )
-                        else:
-                            inv_date = self.object.buying_date or date.today()
+                            amount = Decimal(amount_str)
 
-                    investments_list.append({
-                        "user_id": user_id,
-                        "invest_amount": amount,
-                        "is_fixed": is_fixed,
-                        "sequence": sequence,
-                    })
+                            checkbox_key = f"select_user_{user_id}_{sequence}"
+                            is_selected = self.request.POST.get(checkbox_key) is not None
 
-                    investment_dates_list.append({
-                        "user_id": user_id,
-                        "sequence": sequence,
-                        "date": inv_date,
-                    })
+                            if amount > 0 and is_selected:
+                                fixed_key = f"fixed_{user_id}_{sequence}"
+                                is_fixed = self.request.POST.get(fixed_key) is not None
 
-                    selected_contributors.add(user_id)
-                    submitted_contributions.add((user_id, sequence))
+                                investments_list.append({
+                                    "user_id": user_id,
+                                    "invest_amount": amount,
+                                    "is_fixed": is_fixed,
+                                    "sequence": sequence,
+                                })
 
-                    print(
-                        f"✓ User {user_id} Investment #{sequence}: ${amount} "
-                        f"(Fixed: {is_fixed}, Date: {inv_date})"
-                    )
+                                selected_contributors.add(user_id)
+                                submitted_contributions.add((user_id, sequence))
 
-                print("\n📝 Parsed Investment Summary")
-                print(f"Total investment rows: {len(investments_list)}")
-                print(f"Selected contributors: {len(selected_contributors)}")
-                print(f"Submitted contribution keys: {submitted_contributions}")
+                                date_key = f"date_{user_id}_{sequence}"
+                                date_str = self.request.POST.get(date_key, "").strip()
+
+                                if date_str:
+                                    try:
+                                        inv_date = datetime.strptime(
+                                            date_str,
+                                            "%Y-%m-%d"
+                                        ).date()
+                                    except ValueError:
+                                        inv_date = self.object.buying_date or date.today()
+                                else:
+                                    if (
+                                        user_id in existing_map
+                                        and sequence in existing_map[user_id]
+                                    ):
+                                        inv_date = (
+                                            existing_map[user_id][sequence].investment_date
+                                            or self.object.buying_date
+                                            or date.today()
+                                        )
+                                    else:
+                                        inv_date = self.object.buying_date or date.today()
+
+                                investment_dates_list.append({
+                                    "user_id": user_id,
+                                    "sequence": sequence,
+                                    "date": inv_date,
+                                })
+
+                                print(
+                                    f"✓ User {user_id} Investment #{sequence}: ${amount} "
+                                    f"(Fixed: {is_fixed}, Date: {inv_date})"
+                                )
+
+                        except (ValueError, InvalidOperation, AttributeError) as e:
+                            print(f"✗ Error parsing {key}: {e}")
+                            continue
 
                 if investments_list:
                     self.object.contributors.set(
@@ -2767,9 +1784,6 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
 
                     print("\n💰 Recalculating Investments...")
 
-                 
-                    self.object.refund_all_contributions()
-
                     success = self.object.deduct_property_costs_with_multiple_investments(
                         investments_list,
                         investment_dates_list
@@ -2777,33 +1791,17 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
 
                     if not success:
                         print("❌ Investment recalculation failed!")
-                        form.add_error(
-                            None,
-                            "Invalid investment or insufficient balance."
-                        )
+                        form.add_error(None, "Invalid investment or insufficient balance.")
                         return self.form_invalid(form)
 
                     print("✅ Investment recalculation completed.")
-                    messages.success(
-                        self.request,
-                        "Property updated and investments recalculated successfully."
-                    )
-
                 else:
-                    print("⚠️ No selected investment data found for recalculation.")
-                    messages.warning(
-                        self.request,
-                        "Property saved, but no selected investment data found for recalculation."
-                    )
+                    print("⚠️ No investment data found for recalculation.")
 
             elif new_status == "bought":
                 print("✅ Bought property saved without investment recalculation.")
-                messages.success(
-                    self.request,
-                    "Property saved without investment recalculation."
-                )
 
-            
+      
             refundable_statuses = [
                 "wishlist",
                 "failed_to_bought",
@@ -2819,12 +1817,10 @@ class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
             if image_formset.is_valid():
                 image_formset.instance = self.object
                 image_formset.save()
-            else:
-                print("⚠️ Image formset invalid.")
-                print(image_formset.errors)
 
         print("=" * 80 + "\n")
         return HttpResponseRedirect(self.get_success_url())
+
 class PropertyGalleryView(DetailView):
     model = Property
     template_name = "property_gallery.html"
@@ -3049,60 +2045,7 @@ class my_payments(ListView):
         return context
 
 
-# @method_decorator([login_required, user_passes_test(lambda u: u.is_superuser)], name="dispatch")
-# class pending_payments(ListView):
-#     model = Payment
-#     template_name = "pending_payments.html"
-#     context_object_name = "payments"
-#     paginate_by = 1000
 
-#     def get_queryset(self):
-#         payments = Payment.objects.filter(status="pending").order_by("-created_at")
-
-#         # Filters
-#         user_id = self.request.GET.get("user")
-#         bank_id = self.request.GET.get("bank")
-#         from_date = self.request.GET.get("from_date")
-#         to_date = self.request.GET.get("to_date")
-
-#         if user_id:
-#             payments = payments.filter(user_id=user_id)
-#         if bank_id:
-#             payments = payments.filter(bank_id=bank_id)
-#         if from_date:
-#             payments = payments.filter(created_at__date__gte=parse_date(from_date))
-#         if to_date:
-#             payments = payments.filter(created_at__date__lte=parse_date(to_date))
-
-#         return payments
-
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-
-#         user_id = self.request.GET.get("user")
-#         bank_id = self.request.GET.get("bank")
-#         from_date = self.request.GET.get("from_date")
-#         to_date = self.request.GET.get("to_date")
-
-#         # Add filters to context
-#         context.update({
-#             "users": User.objects.all().order_by("short_name"),
-#             "banks": Bank.objects.all().order_by("name"),
-#             "selected_user": user_id,
-#             "selected_bank": bank_id,
-#             "from_date": from_date,
-#             "to_date": to_date,
-#         })
-
-#         # Total balance logic
-#         if self.request.user.is_superuser:
-#             total_investment = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
-#             context["total_balance"] = total_investment
-#         else:
-#             context["total_balance"] = self.request.user.balance
-
-
-#         return context
 @method_decorator(login_required, name="dispatch")
 class pending_payments(ListView):
     model = Payment
@@ -4008,194 +2951,7 @@ def square_checkout(request):
     }
     return render(request, "square_checkout.html", context)
 
-##second paypal start
-# import json
-# import requests
-# from decimal import Decimal, InvalidOperation
-# from django.http import JsonResponse
-# from django.views.decorators.http import require_POST
-# from django.db import transaction
 
-# # =========================
-# # NEW PAYPAL ADVANCED CONFIG
-# # old paypalrestsdk flow থাকবে
-# # =========================
-# PAYPAL_ADVANCED_CLIENT_ID = "AVeoRo5COd9N-wfnZ70POSkVqjHQ9Ao_CL1aW48zHZafgPiUYM1447Zy1yi4M6nRiUkk9l7vdR1Yv_HT"
-# PAYPAL_ADVANCED_CLIENT_SECRET = "EJlQaw0Az6DMaONTFopgYXZxYxrJt1NeLRAzx3N2OWleK16PrLu4qipmRF2I0kL1yhZkYNM0DUtoq33T"
-# PAYPAL_ADVANCED_BASE_URL = "https://api-m.paypal.com"   # live
-# # PAYPAL_ADVANCED_BASE_URL = "https://api-m.sandbox.paypal.com"
-
-
-# def get_paypal_advanced_access_token():
-#     response = requests.post(
-#         f"{PAYPAL_ADVANCED_BASE_URL}/v1/oauth2/token",
-#         auth=(PAYPAL_ADVANCED_CLIENT_ID, PAYPAL_ADVANCED_CLIENT_SECRET),
-#         headers={"Accept": "application/json"},
-#         data={"grant_type": "client_credentials"},
-#         timeout=30,
-#     )
-#     response.raise_for_status()
-#     return response.json()["access_token"]
-
-
-# @login_required
-# @require_POST
-# def create_paypal_advanced_order(request):
-#     try:
-#         data = json.loads(request.body or "{}")
-#         amount_raw = str(data.get("amount", "")).strip()
-#         notes = str(data.get("notes", "")).strip()
-
-#         try:
-#             amount = Decimal(amount_raw)
-#             if amount <= 0:
-#                 raise InvalidOperation
-#         except Exception:
-#             return JsonResponse({"error": "Invalid amount"}, status=400)
-
-#         access_token = get_paypal_advanced_access_token()
-
-#         payload = {
-#             "intent": "CAPTURE",
-#             "purchase_units": [
-#                 {
-#                     "reference_id": f"user-{request.user.id}",
-#                     "description": notes or "Account deposit",
-#                     "custom_id": str(request.user.id),
-#                     "amount": {
-#                         "currency_code": "USD",
-#                         "value": f"{amount:.2f}",
-#                     },
-#                 }
-#             ],
-#             "payment_source": {
-#                 "paypal": {
-#                     "experience_context": {
-#                         "payment_method_preference": "IMMEDIATE_PAYMENT_REQUIRED",
-#                         "brand_name": "HFall",
-#                         "landing_page": "LOGIN",
-#                         "user_action": "PAY_NOW",
-#                         "return_url": request.build_absolute_uri(reverse("accounts:payment_banks")),
-#                         "cancel_url": request.build_absolute_uri(reverse("accounts:payment_banks")),
-#                     }
-#                 }
-#             }
-#         }
-
-#         response = requests.post(
-#             f"{PAYPAL_ADVANCED_BASE_URL}/v2/checkout/orders",
-#             headers={
-#                 "Content-Type": "application/json",
-#                 "Authorization": f"Bearer {access_token}",
-#             },
-#             json=payload,
-#             timeout=30,
-#         )
-#         response.raise_for_status()
-#         order_data = response.json()
-
-#         request.session["paypal_advanced_meta"] = {
-#             "amount": f"{amount:.2f}",
-#             "notes": notes,
-#         }
-
-#         return JsonResponse({"id": order_data["id"]})
-
-#     except requests.HTTPError as e:
-#         try:
-#             detail = e.response.json()
-#         except Exception:
-#             detail = {"error": str(e)}
-#         return JsonResponse(detail, status=400)
-#     except Exception as e:
-#         return JsonResponse({"error": str(e)}, status=500)
-
-
-# @login_required
-# @require_POST
-# def capture_paypal_advanced_order(request, order_id):
-#     try:
-#         paypal_meta = request.session.get("paypal_advanced_meta")
-#         if not paypal_meta:
-#             return JsonResponse({"error": "Payment session expired"}, status=400)
-
-#         access_token = get_paypal_advanced_access_token()
-
-#         response = requests.post(
-#             f"{PAYPAL_ADVANCED_BASE_URL}/v2/checkout/orders/{order_id}/capture",
-#             headers={
-#                 "Content-Type": "application/json",
-#                 "Authorization": f"Bearer {access_token}",
-#             },
-#             timeout=30,
-#         )
-#         response.raise_for_status()
-#         order_data = response.json()
-
-#         if order_data.get("status") != "COMPLETED":
-#             return JsonResponse(order_data, status=400)
-
-#         amount = Decimal(paypal_meta["amount"])
-#         notes = paypal_meta.get("notes", "")
-
-#         with transaction.atomic():
-#             paypal_bank, _ = Bank.objects.get_or_create(
-#                 name="PayPal Advanced",
-#                 defaults={
-#                     "account_details": "Online payment via PayPal Advanced Checkout",
-#                     "is_active": True,
-#                     "is_paypal": True,
-#                 },
-#             )
-
-#             new_payment = Payment.objects.create(
-#                 user=request.user,
-#                 bank=paypal_bank,
-#                 amount=float(amount),
-#                 paid_amount=float(amount),
-#                 status="pending",
-#                 notes=notes,
-#             )
-
-#         # admin mail
-#         subject = f"New PayPal Advanced Payment (Pending) - {request.user.get_full_name()}"
-#         from_email = settings.DEFAULT_FROM_EMAIL
-#         to_email = [settings.DEFAULT_FROM_EMAIL]
-
-#         context = {
-#             "user": request.user,
-#             "bank": paypal_bank,
-#             "payment": new_payment,
-#             "date": now().strftime("%d %b %Y"),
-#         }
-
-#         html_content = render_to_string("emails/admin_payment_notification.html", context)
-#         text_content = (
-#             f"A new PayPal Advanced payment has been submitted by "
-#             f"{request.user.get_full_name()} ({request.user.email}) "
-#             f"and is pending review."
-#         )
-
-#         email = EmailMultiAlternatives(subject, text_content, from_email, to_email)
-#         email.attach_alternative(html_content, "text/html")
-#         email.send()
-
-#         request.session.pop("paypal_advanced_meta", None)
-
-#         return JsonResponse({
-#             "status": "success",
-#             "amount": f"{amount:.2f}",
-#             "redirect_url": reverse("accounts:my_payments"),
-#         })
-
-#     except requests.HTTPError as e:
-#         try:
-#             detail = e.response.json()
-#         except Exception:
-#             detail = {"error": str(e)}
-#         return JsonResponse(detail, status=400)
-#     except Exception as e:
-#         return JsonResponse({"error": str(e)}, status=500)
 
 
 import json
@@ -5174,48 +3930,7 @@ def expense_payment_create(request, expense_id):
     )
 
 
-# @method_decorator(login_required, name="dispatch")
-# class expense_payment_list(ListView):
-#     model = Expense
-#     template_name = "expenses/user_expense_paylist.html"
-#     context_object_name = "expenses"
-#     paginate_by = 1000000
 
-#     def get_queryset(self):
-#         """
-#         Only show approved expenses that should be paid:
-#         1. Non-property expenses (always need payment), OR
-#         2. Property expenses with paid_by_user set (need reimbursement)
-#         """
-#         from django.db.models import Q
-
-#         # Get all approved expenses
-#         queryset = Expense.objects.filter(status="approved").select_related(
-#             'paid_by_user', 'property', 'created_by', 'approved_by'
-#         ).order_by("-created_at")
-
-#         payable_expenses = queryset.filter(
-#             Q(property__isnull=True) |  # Non-property expenses
-#             Q(property__isnull=False, paid_by_user__isnull=False)  # Property expenses with user
-#         )
-
-#         return payable_expenses
-
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-
-#         # Total balance logic
-#         if self.request.user.is_superuser:
-#             total_investment = User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
-#             context["total_balance"] = total_investment
-#         else:
-#             context["total_balance"] = self.request.user.balance
-
-#         # Add expense balance for display
-#         from .models import ExpenseBalance
-#         context["expense_balance"] = ExpenseBalance.objects.filter(id=1).first()
-
-#         return context
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Sum
 from django.utils.decorators import method_decorator
@@ -6119,996 +4834,7 @@ class managementexpenselist(ListView):
         return context
 
 
-# views.py
-# from decimal import Decimal
-# from datetime import datetime, date
-# import openpyxl
 
-# from django.contrib import messages
-# from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-# from django.db import transaction
-# from django.shortcuts import redirect, render
-# from django.urls import reverse_lazy
-# from django.views import View
-
-# from .forms import PropertyExcelUploadForm
-# from .models import Property, User
-
-
-# # ==============================
-# # Excel Header (Form label) -> model field
-# # ==============================
-# PROPERTY_EXCEL_HEADER_MAP = {
-#     "Property Name": "property_name",
-#     "Description of the property": "description",
-#     "Address of the property": "address",
-
-#     "Bedrooms": "bedrooms",
-#     "Bathrooms": "bathrooms",
-#     "Parking": "parking",
-#     "Living Area (Sq ft)": "living_area",
-#     "Lot Size (Sq ft)": "lot_area",
-
-#     "Property Type": "property_type",
-#     "Year Built": "year_build",
-#     "Exterior Feature": "exterior_feature",
-
-#     "Neighborhood Demographic Profile": "neighborhood_Demographic_Profile",
-#     "Neighborhood Percentage": "neighborhood_percentage",
-
-#     "Status": "status",
-#     "Auction Date": "auction_date",
-#     "Auction Price ($)": "auction_price",
-#     "Original listing price [Zillow/Redfine] ($)": "estimated_price",
-#     "Earnest money deposit ($)": "booking_fee",
-#     "URL": "url",
-
-#     "Buying Date": "buying_date",
-#     "Buying Price ($) [bp]": "buying_price",
-#     "Service Cost ($) [sc]": "service_cost",
-#     "Acquisition cost ($) [bp + sc]": "acquisition_cost",
-
-#     "New listing Price ($)": "asking_price",
-#     "Final Sold Price ($)": "selling_price",
-#     "Selling Date": "selling_date",
-
-#     "Listed By Email (optional)": "listed_by_email",
-# }
-
-# ALLOWED_FIELD_HEADERS = set(PROPERTY_EXCEL_HEADER_MAP.values()) | {"listed_by_email"}
-
-
-# # ✅ Must match your STATUS_CHOICES keys
-# VALID_STATUSES = {
-#     "wishlist",
-#     "failed_to_bought",
-#     "move_to_next_option",
-#     "bought",
-#     "ready_to_sell",
-#     "sold",
-# }
-
-
-# def _clean_str(v):
-#     if v is None:
-#         return ""
-#     s = str(v).strip()
-#     if s.lower() in ("none", "null", "nan"):
-#         return ""
-#     return s
-
-
-# def _to_decimal(val, default=None):
-#     s = _clean_str(val)
-#     if s == "":
-#         return default
-#     try:
-#         return Decimal(s)
-#     except Exception:
-#         return default
-
-
-# def _to_int(val, default=None):
-#     s = _clean_str(val)
-#     if s == "":
-#         return default
-#     try:
-#         return int(float(s))
-#     except Exception:
-#         return default
-
-
-# def _to_float(val, default=None):
-#     s = _clean_str(val)
-#     if s == "":
-#         return default
-#     try:
-#         return float(s)
-#     except Exception:
-#         return default
-
-
-# def _to_date(val, default=None):
-#     if val is None or val == "":
-#         return default
-
-#     # Excel datetime
-#     if hasattr(val, "date"):
-#         try:
-#             return val.date()
-#         except Exception:
-#             pass
-
-#     s = _clean_str(val)
-#     if s == "":
-#         return default
-
-#     for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y"):
-#         try:
-#             return datetime.strptime(s, fmt).date()
-#         except Exception:
-#             continue
-
-#     return default
-
-
-# class IsSuperUserOrPropertyMixin(UserPassesTestMixin):
-#     def test_func(self):
-#         u = self.request.user
-#         return u.is_authenticated and (u.is_superuser or getattr(u, "is_property", False) or u.is_staff)
-
-
-# class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrPropertyMixin, View):
-#     template_name = "property_excel_upload.html"
-#     success_url = reverse_lazy("accounts:property_list")
-
-#     def get(self, request):
-#         return render(request, self.template_name, {"form": PropertyExcelUploadForm()})
-
-#     def post(self, request):
-#         form = PropertyExcelUploadForm(request.POST, request.FILES)
-#         if not form.is_valid():
-#             return render(request, self.template_name, {"form": form})
-
-#         f = form.cleaned_data["file"]
-#         if not f.name.lower().endswith(".xlsx"):
-#             messages.error(request, "Please upload a valid .xlsx file.")
-#             return render(request, self.template_name, {"form": form})
-
-#         try:
-#             wb = openpyxl.load_workbook(f, data_only=True)
-#         except Exception as e:
-#             messages.error(request, f"Excel read failed: {e}")
-#             return render(request, self.template_name, {"form": form})
-
-#         # ✅ only property required
-#         if "property" not in wb.sheetnames:
-#             messages.error(request, "Required sheet missing: property")
-#             return render(request, self.template_name, {"form": form})
-
-#         ws_prop = wb["property"]
-#         ws_inv = wb["investments"] if "investments" in wb.sheetnames else None  # optional
-
-#         # -------------------------
-#         # Validate property headers
-#         # -------------------------
-#         raw_headers = [(_clean_str(c.value)) for c in next(ws_prop.iter_rows(min_row=1, max_row=1))]
-
-#         mapped_headers = []
-#         unknown = []
-#         for h in raw_headers:
-#             if not h:
-#                 mapped_headers.append("")
-#                 continue
-
-#             if h in PROPERTY_EXCEL_HEADER_MAP:
-#                 mapped_headers.append(PROPERTY_EXCEL_HEADER_MAP[h])
-#             else:
-#                 # allow direct field names
-#                 mapped_headers.append(h)
-#                 if h not in ALLOWED_FIELD_HEADERS:
-#                     unknown.append(h)
-
-#         if unknown:
-#             messages.error(request, f"Unknown column header(s): {', '.join(unknown)}")
-#             return render(request, self.template_name, {"form": form})
-
-#         # -------------------------
-#         # Read investments (optional)
-#         # -------------------------
-#         inv_by_property = {}
-#         inv_dates_by_property = {}
-
-#         if ws_inv:
-#             inv_headers = [(_clean_str(c.value)) for c in next(ws_inv.iter_rows(min_row=1, max_row=1))]
-
-#             for row in ws_inv.iter_rows(min_row=2, values_only=True):
-#                 if not any(v is not None and v != "" for v in row):
-#                     continue
-
-#                 d = dict(zip(inv_headers, row))
-#                 p_name = _clean_str(d.get("property_name"))
-#                 if not p_name:
-#                     continue
-
-#                 email = _clean_str(d.get("user_email"))
-#                 if not email:
-#                     continue
-
-#                 user = User.objects.filter(email__iexact=email).first()
-#                 if not user:
-#                     messages.error(request, f"User not found for email: {email}")
-#                     return render(request, self.template_name, {"form": form})
-
-#                 invest_amount = _to_decimal(d.get("invest_amount"), default=Decimal("0"))
-#                 if invest_amount <= 0:
-#                     continue
-
-#                 is_fixed_raw = d.get("is_fixed")
-#                 if isinstance(is_fixed_raw, bool):
-#                     is_fixed = is_fixed_raw
-#                 else:
-#                     is_fixed = _clean_str(is_fixed_raw).lower() in ("true", "yes", "1")
-
-#                 sequence = _to_int(d.get("sequence"), default=1) or 1
-#                 inv_date = _to_date(d.get("investment_date"), default=None)
-
-#                 inv_by_property.setdefault(p_name, []).append({
-#                     "user_id": user.id,
-#                     "invest_amount": invest_amount,
-#                     "is_fixed": is_fixed,
-#                     "sequence": sequence,
-#                 })
-
-#                 if inv_date:
-#                     inv_dates_by_property.setdefault(p_name, []).append({
-#                         "user_id": user.id,
-#                         "sequence": sequence,
-#                         "date": inv_date,
-#                     })
-
-#         created_count = 0
-#         updated_count = 0
-
-#         try:
-#             with transaction.atomic():
-#                 for row in ws_prop.iter_rows(min_row=2, values_only=True):
-#                     if not any(v is not None and v != "" for v in row):
-#                         continue
-
-#                     prop_data = dict(zip(mapped_headers, row))
-#                     property_name = _clean_str(prop_data.get("property_name"))
-#                     if not property_name:
-#                         continue
-
-#                     # ✅ status blank => wishlist
-#                     raw_status = _clean_str(prop_data.get("status")).lower()
-#                     status = raw_status or "wishlist"
-
-#                     # ✅ validate against your STATUS_CHOICES keys
-#                     if status not in VALID_STATUSES:
-#                         raise ValueError(
-#                             f"Invalid status '{status}' for property '{property_name}'. "
-#                             f"Allowed: {', '.join(sorted(VALID_STATUSES))}"
-#                         )
-
-#                     # optional listed_by from email
-#                     listed_by = None
-#                     listed_by_email = _clean_str(prop_data.get("listed_by_email"))
-#                     if listed_by_email:
-#                         listed_by = User.objects.filter(email__iexact=listed_by_email).first()
-
-#                     defaults = {
-#                         "description": prop_data.get("description"),
-#                         "status": status,
-#                         "address": prop_data.get("address"),
-#                         "url": (_clean_str(prop_data.get("url")) or None),
-
-#                         "auction_date": _to_date(prop_data.get("auction_date")),
-#                         "auction_price": _to_decimal(prop_data.get("auction_price")),
-#                         "estimated_price": _to_decimal(prop_data.get("estimated_price")),
-#                         "booking_fee": _to_decimal(prop_data.get("booking_fee")),
-
-#                         "buying_date": _to_date(prop_data.get("buying_date")),
-#                         "buying_price": _to_decimal(prop_data.get("buying_price")),
-#                         "service_cost": _to_decimal(prop_data.get("service_cost")),
-#                         "acquisition_cost": _to_decimal(prop_data.get("acquisition_cost")),
-
-#                         "asking_price": _to_decimal(prop_data.get("asking_price")),
-#                         "selling_price": _to_decimal(prop_data.get("selling_price")),
-#                         "selling_date": _to_date(prop_data.get("selling_date")),
-
-#                         "bedrooms": _to_int(prop_data.get("bedrooms")),
-#                         "bathrooms": _to_float(prop_data.get("bathrooms")),
-#                         "living_area": _to_int(prop_data.get("living_area")),
-#                         "lot_area": _to_int(prop_data.get("lot_area")),
-#                         "parking": _to_int(prop_data.get("parking")),
-#                         "year_build": _to_int(prop_data.get("year_build")),
-
-#                         "property_type": _clean_str(prop_data.get("property_type")) or "single_family",
-#                         "exterior_feature": _clean_str(prop_data.get("exterior_feature")) or "brick",
-#                         "neighborhood_Demographic_Profile": _clean_str(prop_data.get("neighborhood_Demographic_Profile")) or "White (Non-Hispanic)",
-#                         "neighborhood_percentage": _to_int(prop_data.get("neighborhood_percentage")),
-#                     }
-
-#                     # ✅ update existing by property_name, else create new
-#                     prop, created = Property.objects.update_or_create(
-#                         property_name=property_name,
-#                         defaults=defaults
-#                     )
-
-#                     if listed_by:
-#                         prop.listed_by = listed_by
-#                         prop.save(update_fields=["listed_by"])
-
-#                     if created:
-#                         created_count += 1
-#                     else:
-#                         updated_count += 1
-
-#                     # ✅ optional deduction
-#                     investments_list = inv_by_property.get(property_name, [])
-#                     investment_dates_list = inv_dates_by_property.get(property_name, [])
-
-#                     total_cost = (prop.buying_price or Decimal("0")) + (prop.service_cost or Decimal("0"))
-#                     should_run_deduction = (total_cost > 0) and bool(investments_list)
-
-#                     if should_run_deduction:
-#                         user_ids = list({inv["user_id"] for inv in investments_list})
-#                         contributors = User.objects.filter(id__in=user_ids, is_active=True)
-#                         prop.contributors.add(*contributors)
-
-#                         ok = prop.deduct_property_costs_with_multiple_investments(
-#                             investments_list=investments_list,
-#                             investment_dates_list=investment_dates_list or None,
-#                         )
-#                         if not ok:
-#                             raise ValueError(f"Contribution deduction failed for: {property_name}")
-
-#         except Exception as e:
-#             messages.error(request, f"Upload failed: {e}")
-#             return render(request, self.template_name, {"form": form})
-
-#         messages.success(request, f"Excel processed. Created: {created_count}, Updated: {updated_count}")
-#         return redirect(self.success_url)
-
-
-import re
-from datetime import datetime
-from decimal import Decimal
-
-import openpyxl
-from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.db import transaction
-from django.shortcuts import redirect, render
-from django.urls import reverse_lazy
-from django.views import View
-
-from .forms import PropertyExcelUploadForm
-from .models import Property, User
-
-# ===============================
-# Exact Excel Header Mapping
-# ===============================
-HEADER_MAP = {
-    "Property Name": "property_name",
-    "Address": "address",
-    "Address ": "address",
-    "Neighborhood": "neighborhood_Demographic_Profile",
-    "Percentage": "neighborhood_percentage",
-    "Listing price": "estimated_price",
-    "Auction Price": "auction_price",
-    "Auction Price ": "auction_price",
-    "LP-AP": "__ignore__",
-    "Comment": "__ignore__",
-    "Bedrooms": "bedrooms",
-    "Bathrooms": "bathrooms",
-    "Living Area": "living_area",
-    "Lot Size": "lot_area",
-    "URL": "url",
-    "Parking": "parking",
-    "Property Type": "property_type",
-    "Year Built": "year_build",
-    "Exterior": "exterior_feature",
-    "Description": "description",
-    "Status": "status",
-    "Auction Date": "auction_date",
-    "Deposit": "booking_fee",
-    "Deposit ": "booking_fee",
-    "Buying Date": "buying_date",
-    "Buying Price": "buying_price",
-    "Service Cost": "service_cost",
-    "Acquisition Cost": "acquisition_cost",
-    "New listing Price": "asking_price",
-    "Final Sold Price": "selling_price",
-    "Selling Date": "selling_date",
-    "Listed By (Email)": "listed_by_email",
-}
-
-
-# ===============================
-# Status & Neighbor Mapping
-# ===============================
-STATUS_MAP = {
-    "1": "wishlist",
-    "2": "failed_to_bought",
-    "3": "move_to_next_option",
-    "4": "bought",
-    "5": "ready_to_sell",
-    "6": "sold",
-    "7": "stayed",
-}
-
-NEIGHBOR_MAP = {
-    "white": "White (Non-Hispanic)",
-    "black": "Black or African American",
-    "asian": "Asian",
-    "latino": "Hispanic or Latino",
-}
-
-
-# ===============================
-# Helpers
-# ===============================
-def parse_price_excel(val):
-    """
-    Excel input will be treated as K-unit.
-    Example:
-        15   -> 15000
-        15.5 -> 15500
-        15K  -> 15000
-    """
-    if not has_value(val):
-        return None
-
-    if isinstance(val, (int, float)):
-        return (Decimal(str(val)) * Decimal("1000")).quantize(Decimal("0.000001"))
-
-    s = str(val).replace("$", "").replace(",", "").strip().lower()
-
-    if s.endswith("k"):
-        s = s[:-1].strip()
-
-    try:
-        return (Decimal(s) * Decimal("1000")).quantize(Decimal("0.000001"))
-    except:
-        return None
-
-
-def clean(val):
-    if val is None:
-        return ""
-    return str(val).strip()
-
-
-def has_value(val):
-    if val is None:
-        return False
-    if isinstance(val, str) and val.strip() == "":
-        return False
-    return True
-
-
-def parse_decimal(val):
-    if not has_value(val):
-        return None
-
-    if isinstance(val, (int, float)):
-        return Decimal(str(val))
-
-    s = str(val).replace("$", "").replace(",", "").strip().lower()
-
-    if s.endswith("k"):
-        s = str(Decimal(s[:-1]) * 1000)
-
-    try:
-        return Decimal(s)
-    except:
-        return None
-
-
-def parse_int(val):
-    if not has_value(val):
-        return None
-    try:
-        return int(float(val))
-    except:
-        return None
-
-
-def parse_float(val):
-    if not has_value(val):
-        return None
-    try:
-        return float(val)
-    except:
-        return None
-
-
-def parse_date(val):
-    if hasattr(val, "date"):
-        return val.date()
-
-    if not has_value(val):
-        return None
-
-    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y"):
-        try:
-            return datetime.strptime(str(val), fmt).date()
-        except:
-            continue
-    return None
-
-
-def normalize_status(val):
-    if not has_value(val):
-        return STATUS_MAP["1"]
-
-    if isinstance(val, (int, float)):
-        val = str(int(val))
-
-    val = str(val).lower().strip()
-
-    if val in STATUS_MAP:
-        return STATUS_MAP[val]
-
-    return val
-
-
-def normalize_neighbor(val):
-    if not has_value(val):
-        return None
-
-    val = str(val).strip().lower()
-
-    return NEIGHBOR_MAP.get(val, None)
-
-
-# ===============================
-# Permission
-# ===============================
-class IsSuperUserOrPropertyMixin(UserPassesTestMixin):
-    def test_func(self):
-        u = self.request.user
-        return u.is_authenticated and (
-            u.is_superuser or getattr(u, "is_property", False)
-        )
-
-
-# ===============================
-# FINAL VIEW
-# ===============================
-class PropertyExcelUploadView(LoginRequiredMixin, IsSuperUserOrPropertyMixin, View):
-    template_name = "property_excel_upload.html"
-    success_url = reverse_lazy("accounts:property_list")
-
-    def get(self, request):
-        return render(request, self.template_name, {"form": PropertyExcelUploadForm()})
-
-    def post(self, request):
-        form = PropertyExcelUploadForm(request.POST, request.FILES)
-        if not form.is_valid():
-            return render(request, self.template_name, {"form": form})
-
-        file = form.cleaned_data["file"]
-
-        wb = openpyxl.load_workbook(file, data_only=True)
-        ws = wb.active
-
-        raw_headers = [clean(c.value) for c in next(ws.iter_rows(max_row=1))]
-        headers = [HEADER_MAP.get(h, h) for h in raw_headers]
-
-        created = 0
-        updated = 0
-
-        with transaction.atomic():
-            for row in ws.iter_rows(min_row=2, values_only=True):
-                if not any(has_value(v) for v in row):
-                    continue
-
-                data = dict(zip(headers, row))
-                data.pop("__ignore__", None)
-
-                property_name = clean(data.get("property_name"))
-                if not property_name:
-                    continue
-
-                prop, was_created = Property.objects.get_or_create(
-                    property_name=property_name
-                )
-
-                # Always set defaults
-                prop.status = normalize_status(data.get("status"))
-                prop.neighborhood_Demographic_Profile = normalize_neighbor(
-                    data.get("neighborhood_Demographic_Profile")
-                )
-
-                # Update only if value exists
-                for field in [
-                    "description",
-                    "address",
-                    "url",
-                ]:
-                    if has_value(data.get(field)):
-                        setattr(prop, field, clean(data.get(field)))
-
-                if has_value(data.get("auction_price")):
-                    prop.auction_price = parse_price_excel(data.get("auction_price"))
-
-                if has_value(data.get("estimated_price")):
-                    prop.estimated_price = parse_price_excel(
-                        data.get("estimated_price")
-                    )
-
-                if has_value(data.get("booking_fee")):
-                    prop.booking_fee = parse_price_excel(data.get("booking_fee"))
-
-                if has_value(data.get("buying_price")):
-                    prop.buying_price = parse_price_excel(data.get("buying_price"))
-
-                if has_value(data.get("service_cost")):
-                    prop.service_cost = parse_price_excel(data.get("service_cost"))
-
-                if has_value(data.get("acquisition_cost")):
-                    prop.acquisition_cost = parse_price_excel(
-                        data.get("acquisition_cost")
-                    )
-
-                if has_value(data.get("asking_price")):
-                    prop.asking_price = parse_price_excel(data.get("asking_price"))
-
-                if has_value(data.get("selling_price")):
-                    prop.selling_price = parse_price_excel(data.get("selling_price"))
-
-                if has_value(data.get("bedrooms")):
-                    prop.bedrooms = parse_int(data.get("bedrooms"))
-
-                if has_value(data.get("bathrooms")):
-                    prop.bathrooms = parse_float(data.get("bathrooms"))
-
-                if has_value(data.get("living_area")):
-                    prop.living_area = parse_int(data.get("living_area"))
-
-                if has_value(data.get("lot_area")):
-                    prop.lot_area = parse_int(data.get("lot_area"))
-
-                if has_value(data.get("parking")):
-                    prop.parking = parse_int(data.get("parking"))
-
-                if has_value(data.get("year_build")):
-                    prop.year_build = parse_int(data.get("year_build"))
-
-                if has_value(data.get("neighborhood_percentage")):
-                    prop.neighborhood_percentage = parse_int(
-                        data.get("neighborhood_percentage")
-                    )
-
-                if has_value(data.get("auction_date")):
-                    prop.auction_date = parse_date(data.get("auction_date"))
-
-                if has_value(data.get("buying_date")):
-                    prop.buying_date = parse_date(data.get("buying_date"))
-
-                if has_value(data.get("selling_date")):
-                    prop.selling_date = parse_date(data.get("selling_date"))
-
-                listed_email = clean(data.get("listed_by_email"))
-                if listed_email:
-                    user = User.objects.filter(email__iexact=listed_email).first()
-                    if user:
-                        prop.listed_by = user
-
-                prop.save()
-
-                if was_created:
-                    created += 1
-                else:
-                    updated += 1
-
-        messages.success(
-            request, f"Upload done. Created: {created}, Updated: {updated}"
-        )
-        return redirect(self.success_url)
-
-
-# from django.contrib import messages
-# from django.contrib.auth.mixins import LoginRequiredMixin
-# from django.db.models import Sum
-# from django.shortcuts import get_object_or_404, redirect
-# from django.urls import reverse, reverse_lazy
-# from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
-
-# from .forms import RentalBillForm, RentalExpenseForm
-# from .models import Property, RentalBill, RentalExpense
-
-
-# class RentalBillListView(LoginRequiredMixin, ListView):
-#     model = RentalBill
-#     template_name = "rental_bill_list.html"
-#     context_object_name = "rental_bills"
-#     paginate_by = 20
-
-#     def get_queryset(self):
-#         queryset = (
-#             RentalBill.objects
-#             .select_related("property", "finalized_by")
-#             .prefetch_related("expenses")
-#             .order_by("-bill_month", "-created_at")
-#         )
-
-#         property_id = self.request.GET.get("property")
-#         status = self.request.GET.get("status")
-
-#         if property_id:
-#             queryset = queryset.filter(property_id=property_id)
-
-#         if status:
-#             queryset = queryset.filter(status=status)
-
-#         return queryset
-
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-
-#         queryset = self.get_queryset()
-
-#         context["rented_properties"] = Property.objects.filter(
-#             status="rented"
-#         ).order_by("property_name")
-
-#         context["selected_property"] = self.request.GET.get("property", "")
-#         context["selected_status"] = self.request.GET.get("status", "")
-
-#         context["total_rent"] = queryset.aggregate(
-#             total=Sum("rent_amount")
-#         )["total"] or 0
-
-#         context["total_expense"] = sum(bill.total_expense for bill in queryset)
-#         context["total_net"] = sum(bill.net_amount for bill in queryset)
-
-#         return context
-
-
-# class RentalBillCreateView(LoginRequiredMixin, CreateView):
-#     model = RentalBill
-#     form_class = RentalBillForm
-#     template_name = "rental_bill_form.html"
-
-#     def get_success_url(self):
-#         return reverse("accounts:rental_bill_detail", kwargs={"pk": self.object.pk})
-
-#     def form_valid(self, form):
-#         messages.success(self.request, "Rental bill created successfully.")
-#         return super().form_valid(form)
-
-
-# class RentalBillUpdateView(LoginRequiredMixin, UpdateView):
-#     model = RentalBill
-#     form_class = RentalBillForm
-#     template_name = "rental_bill_form.html"
-
-#     def dispatch(self, request, *args, **kwargs):
-#         self.object = self.get_object()
-
-#         if self.object.status == "finalized":
-#             messages.error(request, "Finalized rental bill cannot be changed.")
-#             return redirect("accounts:rental_bill_detail", pk=self.object.pk)
-
-#         return super().dispatch(request, *args, **kwargs)
-
-#     def get_success_url(self):
-#         return reverse("accounts:rental_bill_detail", kwargs={"pk": self.object.pk})
-
-#     def form_valid(self, form):
-#         messages.success(self.request, "Rental bill updated successfully.")
-#         return super().form_valid(form)
-
-
-# class RentalBillDetailView(LoginRequiredMixin, DetailView):
-#     model = RentalBill
-#     template_name = "rental_bill_detail.html"
-#     context_object_name = "rental_bill"
-
-#     def get_queryset(self):
-#         return (
-#             RentalBill.objects
-#             .select_related("property", "finalized_by")
-#             .prefetch_related(
-#                 "expenses",
-#                 "expenses__paid_by_user",
-#                 "expenses__created_by",
-#                 "expenses__approved_by",
-#                 "distribution_lines",
-#                 "distribution_lines__user",
-#                 "distribution_lines__property_contribution",
-#             )
-#         )
-
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-#         rental_bill = self.object
-
-#         if rental_bill.status == "finalized":
-#             context["distribution_rows"] = rental_bill.distribution_lines.select_related(
-#                 "user",
-#                 "property_contribution",
-#             ).all()
-#             context["is_preview"] = False
-#         else:
-#             context["distribution_rows"] = rental_bill.preview_distribution()
-#             context["is_preview"] = True
-
-#         context["expenses"] = rental_bill.expenses.select_related(
-#             "paid_by_user",
-#             "created_by",
-#             "approved_by",
-#         ).all()
-
-#         return context
-
-
-# class RentalBillDeleteView(LoginRequiredMixin, DeleteView):
-#     model = RentalBill
-#     template_name = "rental_bill_confirm_delete.html"
-#     success_url = reverse_lazy("accounts:rental_bill_list")
-
-#     def dispatch(self, request, *args, **kwargs):
-#         self.object = self.get_object()
-
-#         if self.object.status == "finalized":
-#             messages.error(request, "Finalized rental bill cannot be deleted.")
-#             return redirect("accounts:rental_bill_detail", pk=self.object.pk)
-
-#         return super().dispatch(request, *args, **kwargs)
-
-#     def delete(self, request, *args, **kwargs):
-#         messages.success(request, "Rental bill deleted successfully.")
-#         return super().delete(request, *args, **kwargs)
-
-
-# def finalize_rental_bill(request, pk):
-#     rental_bill = get_object_or_404(RentalBill, pk=pk)
-
-#     if request.method != "POST":
-#         messages.error(request, "Invalid request.")
-#         return redirect("accounts:rental_bill_detail", pk=rental_bill.pk)
-
-#     result = rental_bill.finalize_distribution(finalized_by=request.user)
-
-#     if result.get("success"):
-#         messages.success(request, result.get("message"))
-#     else:
-#         messages.error(request, result.get("message"))
-
-#     return redirect("accounts:rental_bill_detail", pk=rental_bill.pk)
-
-
-# class RentalExpenseCreateView(LoginRequiredMixin, CreateView):
-#     model = RentalExpense
-#     form_class = RentalExpenseForm
-#     template_name = "rental_expense_form.html"
-
-#     def dispatch(self, request, *args, **kwargs):
-#         self.rental_bill = None
-
-#         rental_bill_id = kwargs.get("rental_bill_id")
-
-#         if rental_bill_id:
-#             self.rental_bill = get_object_or_404(RentalBill, pk=rental_bill_id)
-
-#             if self.rental_bill.status == "finalized":
-#                 messages.error(request, "Cannot add expense to finalized rental bill.")
-#                 return redirect("accounts:rental_bill_detail", pk=self.rental_bill.pk)
-
-#         return super().dispatch(request, *args, **kwargs)
-
-#     def get_form_kwargs(self):
-#         kwargs = super().get_form_kwargs()
-
-#         if self.rental_bill:
-#             kwargs["rental_bill"] = self.rental_bill
-
-#         return kwargs
-
-#     def form_valid(self, form):
-#         form.instance.created_by = self.request.user
-#         messages.success(self.request, "Rental expense created successfully.")
-#         return super().form_valid(form)
-
-#     def get_success_url(self):
-#         return reverse("accounts:rental_bill_detail", kwargs={
-#             "pk": self.object.rental_bill.pk
-#         })
-
-
-# class RentalExpenseUpdateView(LoginRequiredMixin, UpdateView):
-#     model = RentalExpense
-#     form_class = RentalExpenseForm
-#     template_name = "rental_expense_form.html"
-
-#     def dispatch(self, request, *args, **kwargs):
-#         self.object = self.get_object()
-
-#         if self.object.rental_bill.status == "finalized":
-#             messages.error(request, "Cannot edit expense after rental bill is finalized.")
-#             return redirect("accounts:rental_bill_detail", pk=self.object.rental_bill.pk)
-
-#         if self.object.status == "approved":
-#             messages.error(request, "Approved expense cannot be edited.")
-#             return redirect("accounts:rental_bill_detail", pk=self.object.rental_bill.pk)
-
-#         return super().dispatch(request, *args, **kwargs)
-
-#     def get_success_url(self):
-#         return reverse("accounts:rental_bill_detail", kwargs={
-#             "pk": self.object.rental_bill.pk
-#         })
-
-#     def form_valid(self, form):
-#         messages.success(self.request, "Rental expense updated successfully.")
-#         return super().form_valid(form)
-
-
-# class RentalExpenseDeleteView(LoginRequiredMixin, DeleteView):
-#     model = RentalExpense
-#     template_name = "rental_expense_confirm_delete.html"
-
-#     def dispatch(self, request, *args, **kwargs):
-#         self.object = self.get_object()
-
-#         if self.object.rental_bill.status == "finalized":
-#             messages.error(request, "Cannot delete expense after rental bill is finalized.")
-#             return redirect("accounts:rental_bill_detail", pk=self.object.rental_bill.pk)
-
-#         if self.object.status == "approved":
-#             messages.error(request, "Approved expense cannot be deleted.")
-#             return redirect("accounts:rental_bill_detail", pk=self.object.rental_bill.pk)
-
-#         return super().dispatch(request, *args, **kwargs)
-
-#     def get_success_url(self):
-#         return reverse("accounts:rental_bill_detail", kwargs={
-#             "pk": self.object.rental_bill.pk
-#         })
-
-#     def delete(self, request, *args, **kwargs):
-#         messages.success(request, "Rental expense deleted successfully.")
-#         return super().delete(request, *args, **kwargs)
-
-
-# def approve_rental_expense(request, pk):
-#     expense = get_object_or_404(RentalExpense, pk=pk)
-
-#     if request.method != "POST":
-#         messages.error(request, "Invalid request.")
-#         return redirect("accounts:rental_bill_detail", pk=expense.rental_bill.pk)
-
-#     success = expense.approve(request.user)
-
-#     if success:
-#         messages.success(request, "Rental expense approved successfully.")
-#     else:
-#         messages.error(request, "Rental expense could not be approved.")
-
-#     return redirect("accounts:rental_bill_detail", pk=expense.rental_bill.pk)
-
-
-# def reject_rental_expense(request, pk):
-#     expense = get_object_or_404(RentalExpense, pk=pk)
-
-#     if request.method != "POST":
-#         messages.error(request, "Invalid request.")
-#         return redirect("accounts:rental_bill_detail", pk=expense.rental_bill.pk)
-
-#     success = expense.reject(request.user)
-
-#     if success:
-#         messages.success(request, "Rental expense rejected successfully.")
-#     else:
-#         messages.error(request, "Rental expense could not be rejected.")
-
-#     return redirect("accounts:rental_bill_detail", pk=expense.rental_bill.pk)
 
 
 from django.contrib import messages
@@ -7436,356 +5162,16 @@ from .forms import WithdrawalRequestForm
 from .models import User, PropertyContribution, WithdrawalRequest
 
 
-# def money(value):
-#     return Decimal(str(value or 0)).quantize(
-#         Decimal("0.01"),
-#         rounding=ROUND_HALF_UP,
-#     )
-
-
-# def precise_money(value):
-#     return Decimal(str(value or 0)).quantize(
-#         Decimal("0.000001"),
-#         rounding=ROUND_HALF_UP,
-#     )
-
-
-# def user_is_finance(user):
-#     return user.is_superuser or user.is_finnancial
-
-
-# def get_user_balance_summary(user):
-#     current_balance = money(user.balance)
-#     running_invest = WithdrawalRequest.get_user_running_invest(user)
-#     final_profit = WithdrawalRequest.get_user_final_profit(user)
-#     total_request_limit = money(current_balance + running_invest)
-
-#     return {
-#         "current_balance": current_balance,
-#         "running_invest": running_invest,
-#         "final_profit": final_profit,
-#         "total_request_limit": total_request_limit,
-#     }
-
-
-# @login_required
-# def withdrawal_dashboard(request):
-#     summary = get_user_balance_summary(request.user)
-
-#     recent_requests = WithdrawalRequest.objects.filter(
-#         user=request.user,
-#     ).order_by("-created_at")[:10]
-
-#     running_invest_rows = PropertyContribution.objects.filter(
-#         user=request.user,
-#         property__status__in=WithdrawalRequest.get_running_statuses(),
-#         property__is_contribution_locked=False,
-#         contribution__gt=0,
-#     ).select_related("property").order_by(
-#         "property__property_name",
-#         "investment_sequence",
-#     )
-
-#     sold_profit_rows = PropertyContribution.objects.filter(
-#         user=request.user,
-#         property__status="sold",
-#     ).select_related("property").order_by(
-#         "-property__selling_date",
-#         "property__property_name",
-#         "investment_sequence",
-#     )
-
-#     context = {
-#         **summary,
-#         "recent_requests": recent_requests,
-#         "running_invest_rows": running_invest_rows,
-#         "sold_profit_rows": sold_profit_rows,
-#     }
-
-#     return render(request, "withdrawals/user_dashboard.html", context)
-
-
-# @login_required
-# def withdrawal_request_create(request):
-#     summary = get_user_balance_summary(request.user)
-
-#     if request.method == "POST":
-#         form = WithdrawalRequestForm(request.POST, user=request.user)
-
-#         if form.is_valid():
-#             withdrawal = form.save(commit=False)
-#             withdrawal.user = request.user
-#             withdrawal.status = "pending"
-#             withdrawal.full_clean()
-#             withdrawal.save()
-
-#             messages.success(request, "Withdrawal request submitted successfully.")
-#             return redirect("accounts:withdrawal_request_list")
-#     else:
-#         form = WithdrawalRequestForm(user=request.user)
-
-#     context = {
-#         "form": form,
-#         **summary,
-#     }
-
-#     return render(request, "withdrawals/request_create.html", context)
-
-
-# @login_required
-# def withdrawal_request_list(request):
-#     summary = get_user_balance_summary(request.user)
-
-#     requests = WithdrawalRequest.objects.filter(
-#         user=request.user,
-#     ).select_related(
-#         "approved_by",
-#         "rejected_by",
-#         "clarification_requested_by",
-#     ).order_by("-created_at")
-
-#     context = {
-#         **summary,
-#         "requests": requests,
-#     }
-
-#     return render(request, "withdrawals/request_list.html", context)
-
-
-# @login_required
-# def finance_withdrawal_request_list(request):
-#     if not user_is_finance(request.user):
-#         messages.error(request, "You do not have permission.")
-#         return redirect("accounts:dashboard")
-
-#     requests = WithdrawalRequest.objects.filter(
-#         status="pending",
-#     ).select_related(
-#         "user",
-#     ).order_by("-updated_at", "-created_at")
-
-#     context = {
-#         "requests": requests,
-#     }
-
-#     return render(request, "withdrawals/finance_list.html", context)
-
-
-# @login_required
-# def finance_withdrawal_request_detail(request, pk):
-#     if not user_is_finance(request.user):
-#         messages.error(request, "You do not have permission.")
-#         return redirect("accounts:dashboard")
-
-#     withdrawal = get_object_or_404(
-#         WithdrawalRequest.objects.select_related(
-#             "user",
-#             "approved_by",
-#             "rejected_by",
-#             "clarification_requested_by",
-#         ),
-#         pk=pk,
-#     )
-
-#     user = withdrawal.user
-
-#     current_balance = money(user.balance)
-#     running_invest = WithdrawalRequest.get_user_running_invest(user)
-#     final_profit = WithdrawalRequest.get_user_final_profit(user)
-#     total_request_limit = money(current_balance + running_invest)
-
-#     balance_shortage = money(withdrawal.amount - current_balance)
-#     if balance_shortage < 0:
-#         balance_shortage = Decimal("0.00")
-
-#     can_approve_now = (
-#         withdrawal.status == "pending" and current_balance >= withdrawal.amount
-#     )
-
-#     running_invest_rows = PropertyContribution.objects.filter(
-#         user=user,
-#         property__status__in=WithdrawalRequest.get_running_statuses(),
-#         property__is_contribution_locked=False,
-#         contribution__gt=0,
-#     ).select_related("property").order_by(
-#         "property__property_name",
-#         "investment_sequence",
-#     )
-
-#     sold_profit_rows = PropertyContribution.objects.filter(
-#         user=user,
-#         property__status="sold",
-#     ).select_related("property").order_by(
-#         "-property__selling_date",
-#         "property__property_name",
-#         "investment_sequence",
-#     )
-
-#     context = {
-#         "withdrawal": withdrawal,
-#         "current_balance": current_balance,
-#         "running_invest": running_invest,
-#         "final_profit": final_profit,
-#         "total_request_limit": total_request_limit,
-#         "balance_shortage": balance_shortage,
-#         "can_approve_now": can_approve_now,
-#         "running_invest_rows": running_invest_rows,
-#         "sold_profit_rows": sold_profit_rows,
-#     }
-
-#     return render(request, "withdrawals/finance_detail.html", context)
-
-
-# @login_required
-# def finance_withdrawal_approve(request, pk):
-#     if not user_is_finance(request.user):
-#         messages.error(request, "You do not have permission.")
-#         return redirect("accounts:dashboard")
-
-#     if request.method != "POST":
-#         return redirect("accounts:finance_withdrawal_request_detail", pk=pk)
-
-#     finance_note = request.POST.get("finance_note", "").strip()
-
-#     try:
-#         with transaction.atomic():
-#             withdrawal = WithdrawalRequest.objects.select_for_update().select_related(
-#                 "user"
-#             ).get(pk=pk, status="pending")
-
-#             user = User.objects.select_for_update().get(pk=withdrawal.user_id)
-
-#             amount = money(withdrawal.amount)
-#             current_balance = money(user.balance)
-
-#             if current_balance < amount:
-#                 shortage = money(amount - current_balance)
-
-#                 messages.error(
-#                     request,
-#                     f"Cannot approve now. User balance is ${current_balance}, "
-#                     f"requested ${amount}. Need ${shortage} more balance. "
-#                     f"Please reduce running investment first, then approve."
-#                 )
-#                 return redirect("finance_withdrawal_request_detail", pk=pk)
-
-#             user.balance = precise_money(Decimal(str(user.balance or 0)) - amount)
-#             user.save(update_fields=["balance"])
-
-#             withdrawal.status = "approved"
-#             withdrawal.approved_by = request.user
-#             withdrawal.approved_at = timezone.now()
-
-#             if finance_note:
-#                 withdrawal.finance_note = finance_note
-
-#             withdrawal.save(
-#                 update_fields=[
-#                     "status",
-#                     "approved_by",
-#                     "approved_at",
-#                     "finance_note",
-#                     "updated_at",
-#                 ]
-#             )
-
-#         messages.success(request, "Withdrawal approved and user balance deducted successfully.")
-
-#     except WithdrawalRequest.DoesNotExist:
-#         messages.error(request, "Withdrawal request not found or already processed.")
-
-#     return redirect("accounts:finance_withdrawal_request_list")
-
-
-# @login_required
-# def finance_withdrawal_reject(request, pk):
-#     if not user_is_finance(request.user):
-#         messages.error(request, "You do not have permission.")
-#         return redirect("accounts:dashboard")
-
-#     if request.method != "POST":
-#         return redirect("accounts:finance_withdrawal_request_detail", pk=pk)
-
-#     finance_note = request.POST.get("finance_note", "").strip()
-
-#     withdrawal = get_object_or_404(
-#         WithdrawalRequest,
-#         pk=pk,
-#         status="pending",
-#     )
-
-#     withdrawal.status = "rejected"
-#     withdrawal.rejected_by = request.user
-#     withdrawal.rejected_at = timezone.now()
-#     withdrawal.finance_note = finance_note
-#     withdrawal.save(
-#         update_fields=[
-#             "status",
-#             "rejected_by",
-#             "rejected_at",
-#             "finance_note",
-#             "updated_at",
-#         ]
-#     )
-
-#     messages.success(request, "Withdrawal request rejected successfully.")
-#     return redirect("accounts:finance_withdrawal_request_list")
-
-
-# @login_required
-# def finance_withdrawal_more_clarification(request, pk):
-#     if not user_is_finance(request.user):
-#         messages.error(request, "You do not have permission.")
-#         return redirect("accounts:dashboard")
-
-#     if request.method != "POST":
-#         return redirect("accounts:finance_withdrawal_request_detail", pk=pk)
-
-#     clarification_note = request.POST.get("clarification_note", "").strip()
-
-#     if not clarification_note:
-#         messages.error(request, "Please write a clarification note.")
-#         return redirect("accounts:finance_withdrawal_request_detail", pk=pk)
-
-#     withdrawal = get_object_or_404(
-#         WithdrawalRequest,
-#         pk=pk,
-#         status="pending",
-#     )
-
-#     # Status remains pending. No balance change.
-#     withdrawal.clarification_note = clarification_note
-#     withdrawal.clarification_requested_by = request.user
-#     withdrawal.clarification_requested_at = timezone.now()
-#     withdrawal.save(
-#         update_fields=[
-#             "clarification_note",
-#             "clarification_requested_by",
-#             "clarification_requested_at",
-#             "updated_at",
-#         ]
-#     )
-
-#     messages.success(request, "Clarification requested. Status remains pending.")
-#     return redirect("accounts:finance_withdrawal_request_detail", pk=pk)
-
-
-
-###today apply
-from decimal import Decimal, ROUND_HALF_UP
-
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, Q
-from django.shortcuts import get_object_or_404, redirect, render
-
-from .forms import WithdrawalRequestForm
-from .models import Payment, PropertyContribution, WithdrawalRequest, User
-
-
 def money(value):
     return Decimal(str(value or 0)).quantize(
         Decimal("0.01"),
+        rounding=ROUND_HALF_UP,
+    )
+
+
+def precise_money(value):
+    return Decimal(str(value or 0)).quantize(
+        Decimal("0.000001"),
         rounding=ROUND_HALF_UP,
     )
 
@@ -7794,181 +5180,52 @@ def user_is_finance(user):
     return user.is_superuser or user.is_finnancial
 
 
+def get_user_balance_summary(user):
+    current_balance = money(user.balance)
+    running_invest = WithdrawalRequest.get_user_running_invest(user)
+    final_profit = WithdrawalRequest.get_user_final_profit(user)
+    total_request_limit = money(current_balance + running_invest)
+
+    return {
+        "current_balance": current_balance,
+        "running_invest": running_invest,
+        "final_profit": final_profit,
+        "total_request_limit": total_request_limit,
+    }
+
+
 @login_required
 def withdrawal_dashboard(request):
-    user = request.user
+    summary = get_user_balance_summary(request.user)
 
-    payments = (
-        Payment.objects
-        .filter(user=user)
-        .select_related("bank")
-        .order_by("-created_at")
+    recent_requests = WithdrawalRequest.objects.filter(
+        user=request.user,
+    ).order_by("-created_at")[:10]
+
+    running_invest_rows = PropertyContribution.objects.filter(
+        user=request.user,
+        property__status__in=WithdrawalRequest.get_running_statuses(),
+        property__is_contribution_locked=False,
+        contribution__gt=0,
+    ).select_related("property").order_by(
+        "property__property_name",
+        "investment_sequence",
     )
 
-    investment_rows = (
-        PropertyContribution.objects
-        .filter(
-            user=user,
-            contribution__gt=0,
-            property__status__in=["bought", "ready_to_sell", "rented", "sold"],
-        )
-        .select_related("property")
-        .order_by(
-            "-property__selling_date",
-            "property__property_name",
-            "investment_sequence",
-        )
+    sold_profit_rows = PropertyContribution.objects.filter(
+        user=request.user,
+        property__status="sold",
+    ).select_related("property").order_by(
+        "-property__selling_date",
+        "property__property_name",
+        "investment_sequence",
     )
-
-    running_investment_rows = (
-        PropertyContribution.objects
-        .filter(
-            user=user,
-            contribution__gt=0,
-            property__status__in=WithdrawalRequest.running_statuses(),
-        )
-        .select_related("property")
-        .order_by(
-            "property__property_name",
-            "investment_sequence",
-        )
-    )
-
-    profit_rows = (
-        PropertyContribution.objects
-        .filter(
-            user=user,
-            property__status="sold",
-            final_profit__gt=0,
-        )
-        .select_related("property")
-        .order_by(
-            "-property__selling_date",
-            "property__property_name",
-            "investment_sequence",
-        )
-    )
-
-    profit_table_rows = []
-
-    for row in profit_rows:
-        invest_days = WithdrawalRequest.calculate_invest_days(row)
-
-        approved_profit_taken = money(
-            WithdrawalRequest.objects.filter(
-                user=user,
-                property_contribution=row,
-                status="approved",
-            ).aggregate(total=Sum("profit_part_amount"))["total"]
-        )
-
-        remaining_profit = money(Decimal(str(row.final_profit or 0)) - approved_profit_taken)
-
-        if remaining_profit < 0:
-            remaining_profit = Decimal("0.00")
-
-        if invest_days >= 730:
-            eligible_percent = 100
-            eligible_profit = remaining_profit
-        else:
-            if approved_profit_taken > 0:
-                eligible_percent = 0
-                eligible_profit = Decimal("0.00")
-            else:
-                eligible_percent = 45
-                eligible_profit = money(
-                    Decimal(str(row.final_profit or 0)) * Decimal("0.45")
-                )
-
-        pending_exists = WithdrawalRequest.objects.filter(
-            user=user,
-            property_contribution=row,
-            request_type__in=["profit", "both"],
-            status="pending",
-        ).exists()
-
-        profit_table_rows.append({
-            "row": row,
-            "invest_days": invest_days,
-            "eligible_percent": eligible_percent,
-            "eligible_profit": eligible_profit,
-            "approved_profit_taken": approved_profit_taken,
-            "remaining_profit": remaining_profit,
-            "pending_exists": pending_exists,
-        })
-
-    investment_withdraw_rows = []
-
-    for row in running_investment_rows:
-        approved_investment_taken = money(
-            WithdrawalRequest.objects.filter(
-                user=user,
-                property_contribution=row,
-                status="approved",
-            ).aggregate(total=Sum("investment_part_amount"))["total"]
-        )
-
-        pending_exists = WithdrawalRequest.objects.filter(
-            user=user,
-            property_contribution=row,
-            request_type__in=["investment", "both"],
-            status="pending",
-        ).exists()
-
-        withdrawable_investment = money(row.contribution)
-
-        investment_withdraw_rows.append({
-            "row": row,
-            "approved_investment_taken": approved_investment_taken,
-            "withdrawable_investment": withdrawable_investment,
-            "pending_exists": pending_exists,
-        })
-
-    withdraw_requests = (
-        WithdrawalRequest.objects
-        .filter(user=user)
-        .select_related(
-            "property_contribution",
-            "property_contribution__property",
-        )
-        .order_by("-created_at")[:30]
-    )
-
-    total_paid = money(
-        payments.filter(status="approved").aggregate(total=Sum("amount"))["total"]
-    )
-
-    total_invested = money(
-        investment_rows.aggregate(total=Sum("contribution"))["total"]
-    )
-
-    total_final_profit = money(
-        profit_rows.aggregate(total=Sum("final_profit"))["total"]
-    )
-
-    current_balance = money(user.balance)
-    free_balance = WithdrawalRequest.get_user_free_balance(user)
-    locked_profit_balance = WithdrawalRequest.get_user_locked_profit_balance(user)
-    running_investment_total = WithdrawalRequest.get_user_running_invest(user)
-
-    form = WithdrawalRequestForm(user=user)
 
     context = {
-        "payments": payments,
-        "investment_rows": investment_rows,
-        "running_investment_rows": running_investment_rows,
-        "investment_withdraw_rows": investment_withdraw_rows,
-        "profit_table_rows": profit_table_rows,
-        "withdraw_requests": withdraw_requests,
-        "form": form,
-        "total_paid": total_paid,
-        "total_invested": total_invested,
-        "total_final_profit": total_final_profit,
-        "current_balance": current_balance,
-        "free_balance": free_balance,
-        "locked_profit_balance": locked_profit_balance,
-        "running_investment_total": running_investment_total,
-        "total_balance": user.balance,
+        **summary,
+        "recent_requests": recent_requests,
+        "running_invest_rows": running_invest_rows,
+        "sold_profit_rows": sold_profit_rows,
     }
 
     return render(request, "withdrawals/user_dashboard.html", context)
@@ -7976,49 +5233,46 @@ def withdrawal_dashboard(request):
 
 @login_required
 def withdrawal_request_create(request):
-    if request.method != "POST":
-        return redirect("accounts:withdrawal_dashboard")
+    summary = get_user_balance_summary(request.user)
 
-    form = WithdrawalRequestForm(request.POST, user=request.user)
+    if request.method == "POST":
+        form = WithdrawalRequestForm(request.POST, user=request.user)
 
-    if form.is_valid():
-        withdrawal = form.save(commit=False)
-        withdrawal.user = request.user
-        withdrawal.status = "pending"
-
-        try:
+        if form.is_valid():
+            withdrawal = form.save(commit=False)
+            withdrawal.user = request.user
+            withdrawal.status = "pending"
             withdrawal.full_clean()
             withdrawal.save()
 
             messages.success(request, "Withdrawal request submitted successfully.")
-            return redirect("accounts:withdrawal_dashboard")
+            return redirect("accounts:withdrawal_request_list")
+    else:
+        form = WithdrawalRequestForm(user=request.user)
 
-        except Exception as e:
-            messages.error(request, str(e))
-            return redirect("accounts:withdrawal_dashboard")
+    context = {
+        "form": form,
+        **summary,
+    }
 
-    messages.error(request, form.errors.as_text())
-    return redirect("accounts:withdrawal_dashboard")
+    return render(request, "withdrawals/request_create.html", context)
 
 
 @login_required
 def withdrawal_request_list(request):
-    requests = (
-        WithdrawalRequest.objects
-        .filter(user=request.user)
-        .select_related(
-            "property_contribution",
-            "property_contribution__property",
-            "approved_by",
-            "rejected_by",
-            "clarification_requested_by",
-        )
-        .order_by("-created_at")
-    )
+    summary = get_user_balance_summary(request.user)
+
+    requests = WithdrawalRequest.objects.filter(
+        user=request.user,
+    ).select_related(
+        "approved_by",
+        "rejected_by",
+        "clarification_requested_by",
+    ).order_by("-created_at")
 
     context = {
+        **summary,
         "requests": requests,
-        "total_balance": request.user.balance,
     }
 
     return render(request, "withdrawals/request_list.html", context)
@@ -8030,26 +5284,14 @@ def finance_withdrawal_request_list(request):
         messages.error(request, "You do not have permission.")
         return redirect("accounts:dashboard")
 
-    status = request.GET.get("status", "pending")
-
-    requests = (
-        WithdrawalRequest.objects
-        .select_related(
-            "user",
-            "property_contribution",
-            "property_contribution__property",
-        )
-        .order_by("-created_at")
-    )
-
-    if status and status != "all":
-        requests = requests.filter(status=status)
+    requests = WithdrawalRequest.objects.filter(
+        status="pending",
+    ).select_related(
+        "user",
+    ).order_by("-updated_at", "-created_at")
 
     context = {
         "requests": requests,
-        "selected_status": status,
-        "statuses": WithdrawalRequest.STATUS_CHOICES,
-        "total_balance": request.user.balance,
     }
 
     return render(request, "withdrawals/finance_list.html", context)
@@ -8064,55 +5306,57 @@ def finance_withdrawal_request_detail(request, pk):
     withdrawal = get_object_or_404(
         WithdrawalRequest.objects.select_related(
             "user",
-            "property_contribution",
-            "property_contribution__property",
             "approved_by",
             "rejected_by",
+            "clarification_requested_by",
         ),
         pk=pk,
     )
 
     user = withdrawal.user
 
-    user_payments = (
-        Payment.objects
-        .filter(user=user, status="approved")
-        .select_related("bank")
-        .order_by("-approved_at")
-    )
-
-    user_investments = (
-        PropertyContribution.objects
-        .filter(user=user, contribution__gt=0)
-        .select_related("property")
-        .order_by("property__property_name", "investment_sequence")
-    )
-
     current_balance = money(user.balance)
-    free_balance = WithdrawalRequest.get_user_free_balance(user)
+    running_invest = WithdrawalRequest.get_user_running_invest(user)
+    final_profit = WithdrawalRequest.get_user_final_profit(user)
+    total_request_limit = money(current_balance + running_invest)
 
-    can_approve_now = withdrawal.status == "pending"
+    balance_shortage = money(withdrawal.amount - current_balance)
+    if balance_shortage < 0:
+        balance_shortage = Decimal("0.00")
 
-    if withdrawal.request_type in ["balance", "profit", "both"] and withdrawal.property_contribution:
-        if withdrawal.property_contribution.property.status == "sold":
-            can_approve_now = current_balance >= money(withdrawal.requested_amount)
+    can_approve_now = (
+        withdrawal.status == "pending" and current_balance >= withdrawal.amount
+    )
 
-    if withdrawal.request_type == "balance":
-        can_approve_now = free_balance >= money(withdrawal.requested_amount)
+    running_invest_rows = PropertyContribution.objects.filter(
+        user=user,
+        property__status__in=WithdrawalRequest.get_running_statuses(),
+        property__is_contribution_locked=False,
+        contribution__gt=0,
+    ).select_related("property").order_by(
+        "property__property_name",
+        "investment_sequence",
+    )
 
-    shortage = money(money(withdrawal.requested_amount) - current_balance)
-    if shortage < 0:
-        shortage = Decimal("0.00")
+    sold_profit_rows = PropertyContribution.objects.filter(
+        user=user,
+        property__status="sold",
+    ).select_related("property").order_by(
+        "-property__selling_date",
+        "property__property_name",
+        "investment_sequence",
+    )
 
     context = {
         "withdrawal": withdrawal,
-        "user_payments": user_payments,
-        "user_investments": user_investments,
         "current_balance": current_balance,
-        "free_balance": free_balance,
+        "running_invest": running_invest,
+        "final_profit": final_profit,
+        "total_request_limit": total_request_limit,
+        "balance_shortage": balance_shortage,
         "can_approve_now": can_approve_now,
-        "shortage": shortage,
-        "total_balance": request.user.balance,
+        "running_invest_rows": running_invest_rows,
+        "sold_profit_rows": sold_profit_rows,
     }
 
     return render(request, "withdrawals/finance_detail.html", context)
@@ -8127,15 +5371,54 @@ def finance_withdrawal_approve(request, pk):
     if request.method != "POST":
         return redirect("accounts:finance_withdrawal_request_detail", pk=pk)
 
-    withdrawal = get_object_or_404(WithdrawalRequest, pk=pk)
     finance_note = request.POST.get("finance_note", "").strip()
 
-    success, message = withdrawal.approve(request.user, finance_note)
+    try:
+        with transaction.atomic():
+            withdrawal = WithdrawalRequest.objects.select_for_update().select_related(
+                "user"
+            ).get(pk=pk, status="pending")
 
-    if success:
-        messages.success(request, message)
-    else:
-        messages.error(request, message)
+            user = User.objects.select_for_update().get(pk=withdrawal.user_id)
+
+            amount = money(withdrawal.amount)
+            current_balance = money(user.balance)
+
+            if current_balance < amount:
+                shortage = money(amount - current_balance)
+
+                messages.error(
+                    request,
+                    f"Cannot approve now. User balance is ${current_balance}, "
+                    f"requested ${amount}. Need ${shortage} more balance. "
+                    f"Please reduce running investment first, then approve."
+                )
+                return redirect("finance_withdrawal_request_detail", pk=pk)
+
+            user.balance = precise_money(Decimal(str(user.balance or 0)) - amount)
+            user.save(update_fields=["balance"])
+
+            withdrawal.status = "approved"
+            withdrawal.approved_by = request.user
+            withdrawal.approved_at = timezone.now()
+
+            if finance_note:
+                withdrawal.finance_note = finance_note
+
+            withdrawal.save(
+                update_fields=[
+                    "status",
+                    "approved_by",
+                    "approved_at",
+                    "finance_note",
+                    "updated_at",
+                ]
+            )
+
+        messages.success(request, "Withdrawal approved and user balance deducted successfully.")
+
+    except WithdrawalRequest.DoesNotExist:
+        messages.error(request, "Withdrawal request not found or already processed.")
 
     return redirect("accounts:finance_withdrawal_request_list")
 
@@ -8149,16 +5432,29 @@ def finance_withdrawal_reject(request, pk):
     if request.method != "POST":
         return redirect("accounts:finance_withdrawal_request_detail", pk=pk)
 
-    withdrawal = get_object_or_404(WithdrawalRequest, pk=pk)
     finance_note = request.POST.get("finance_note", "").strip()
 
-    success, message = withdrawal.reject(request.user, finance_note)
+    withdrawal = get_object_or_404(
+        WithdrawalRequest,
+        pk=pk,
+        status="pending",
+    )
 
-    if success:
-        messages.success(request, message)
-    else:
-        messages.error(request, message)
+    withdrawal.status = "rejected"
+    withdrawal.rejected_by = request.user
+    withdrawal.rejected_at = timezone.now()
+    withdrawal.finance_note = finance_note
+    withdrawal.save(
+        update_fields=[
+            "status",
+            "rejected_by",
+            "rejected_at",
+            "finance_note",
+            "updated_at",
+        ]
+    )
 
+    messages.success(request, "Withdrawal request rejected successfully.")
     return redirect("accounts:finance_withdrawal_request_list")
 
 
@@ -8171,25 +5467,24 @@ def finance_withdrawal_more_clarification(request, pk):
     if request.method != "POST":
         return redirect("accounts:finance_withdrawal_request_detail", pk=pk)
 
+    clarification_note = request.POST.get("clarification_note", "").strip()
+
+    if not clarification_note:
+        messages.error(request, "Please write a clarification note.")
+        return redirect("accounts:finance_withdrawal_request_detail", pk=pk)
+
     withdrawal = get_object_or_404(
         WithdrawalRequest,
         pk=pk,
         status="pending",
     )
 
-    clarification_note = request.POST.get("clarification_note", "").strip()
-
-    if not clarification_note:
-        messages.error(request, "Please write clarification note.")
-        return redirect("accounts:finance_withdrawal_request_detail", pk=pk)
-
-    withdrawal.status = "clarification"
+    # Status remains pending. No balance change.
     withdrawal.clarification_note = clarification_note
     withdrawal.clarification_requested_by = request.user
     withdrawal.clarification_requested_at = timezone.now()
     withdrawal.save(
         update_fields=[
-            "status",
             "clarification_note",
             "clarification_requested_by",
             "clarification_requested_at",
@@ -8197,5 +5492,5 @@ def finance_withdrawal_more_clarification(request, pk):
         ]
     )
 
-    messages.success(request, "Clarification requested successfully.")
-    return redirect("accounts:finance_withdrawal_request_list")
+    messages.success(request, "Clarification requested. Status remains pending.")
+    return redirect("accounts:finance_withdrawal_request_detail", pk=pk)

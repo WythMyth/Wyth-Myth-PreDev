@@ -3738,6 +3738,9 @@ class RentalBillDistribution(models.Model):
 
     def __str__(self):
         return f"{self.rental_bill} - {self.user.get_full_name()}"
+    
+
+
 
 
 class WithdrawalRequest(models.Model):
@@ -3745,142 +3748,131 @@ class WithdrawalRequest(models.Model):
         ("pending", "Pending"),
         ("approved", "Approved / Paid"),
         ("rejected", "Rejected"),
-        ("clarification", "Need Clarification"),
         ("cancelled", "Cancelled"),
-    )
-
-    REQUEST_TYPE_CHOICES = (
-        ("balance", "Free Balance"),
-        ("profit", "Profit Only"),
-        ("investment", "Investment Only"),
-        ("both", "Investment + Profit"),
-    )
-
-    PAYOUT_RULE_CHOICES = (
-        ("balance", "Free Balance"),
-        ("100_percent", "100% Profit Eligible"),
-        ("45_percent", "45% Profit Eligible"),
-        ("remaining_profit", "Remaining Profit"),
-        ("investment_only", "Investment Only"),
-        ("mixed", "Investment + Profit"),
     )
 
     user = models.ForeignKey(
         "User",
         on_delete=models.CASCADE,
         related_name="withdrawal_requests",
+        verbose_name="User",
     )
 
-    property_contribution = models.ForeignKey(
-        "PropertyContribution",
-        on_delete=models.CASCADE,
-        related_name="withdrawal_requests",
-        null=True,
-        blank=True,
-    )
-
-    request_type = models.CharField(
-        max_length=20,
-        choices=REQUEST_TYPE_CHOICES,
-        default="profit",
-    )
-
-    requested_amount = models.DecimalField(
+    amount = models.DecimalField(
         max_digits=50,
         decimal_places=2,
-        default=Decimal("0.00"),
-    )
-
-    # approved amount split tracking
-    profit_part_amount = models.DecimalField(
-        max_digits=50,
-        decimal_places=2,
-        default=Decimal("0.00"),
-    )
-
-    investment_part_amount = models.DecimalField(
-        max_digits=50,
-        decimal_places=2,
-        default=Decimal("0.00"),
-    )
-
-    balance_part_amount = models.DecimalField(
-        max_digits=50,
-        decimal_places=2,
-        default=Decimal("0.00"),
-    )
-
-    eligible_profit_amount = models.DecimalField(
-        max_digits=50,
-        decimal_places=2,
-        default=Decimal("0.00"),
-    )
-
-    eligible_investment_amount = models.DecimalField(
-        max_digits=50,
-        decimal_places=2,
-        default=Decimal("0.00"),
-    )
-
-    total_eligible_amount = models.DecimalField(
-        max_digits=50,
-        decimal_places=2,
-        default=Decimal("0.00"),
-    )
-
-    invest_days = models.PositiveIntegerField(default=0)
-
-    payout_rule = models.CharField(
-        max_length=30,
-        choices=PAYOUT_RULE_CHOICES,
-        default="45_percent",
+        verbose_name="Withdraw Amount",
     )
 
     balance_snapshot = models.DecimalField(
         max_digits=50,
         decimal_places=2,
         default=Decimal("0.00"),
+        verbose_name="Balance Snapshot",
+    )
+
+    running_invest_snapshot = models.DecimalField(
+        max_digits=50,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        verbose_name="Running Invest Snapshot",
+    )
+
+    final_profit_snapshot = models.DecimalField(
+        max_digits=50,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        verbose_name="Final Profit Snapshot",
+    )
+
+    total_available_snapshot = models.DecimalField(
+        max_digits=50,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        verbose_name="Total Request Limit Snapshot",
+        help_text="Balance + running investment at request time.",
     )
 
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default="pending",
+        verbose_name="Status",
     )
 
-    user_note = models.TextField(null=True, blank=True)
-    finance_note = models.TextField(null=True, blank=True)
-
-    approved_by = models.ForeignKey(
-        "User",
-        on_delete=models.SET_NULL,
+    note = models.TextField(
         null=True,
         blank=True,
-        related_name="approved_withdrawals",
+        verbose_name="User Note",
     )
-    approved_at = models.DateTimeField(null=True, blank=True)
 
-    rejected_by = models.ForeignKey(
-        "User",
-        on_delete=models.SET_NULL,
+    finance_note = models.TextField(
         null=True,
         blank=True,
-        related_name="rejected_withdrawals",
+        verbose_name="Finance Note",
     )
-    rejected_at = models.DateTimeField(null=True, blank=True)
+
+    clarification_note = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="Clarification Note",
+        help_text="Finance note asking user for more clarification. Status remains pending.",
+    )
 
     clarification_requested_by = models.ForeignKey(
         "User",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="clarification_withdrawals",
+        related_name="clarification_requested_withdrawals",
+        verbose_name="Clarification Requested By",
     )
-    clarification_requested_at = models.DateTimeField(null=True, blank=True)
-    clarification_note = models.TextField(null=True, blank=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    clarification_requested_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Clarification Requested At",
+    )
+
+    approved_by = models.ForeignKey(
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_withdrawal_requests",
+        verbose_name="Approved By",
+    )
+
+    approved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Approved At",
+    )
+
+    rejected_by = models.ForeignKey(
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="rejected_withdrawal_requests",
+        verbose_name="Rejected By",
+    )
+
+    rejected_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Rejected At",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Created At",
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Updated At",
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -3888,7 +3880,7 @@ class WithdrawalRequest(models.Model):
         verbose_name_plural = "Withdrawal Requests"
 
     def __str__(self):
-        return f"{self.user} - ${self.requested_amount} - {self.status}"
+        return f"{self.user} - ${self.amount} - {self.status}"
 
     @staticmethod
     def money(value):
@@ -3898,478 +3890,68 @@ class WithdrawalRequest(models.Model):
         )
 
     @staticmethod
-    def running_statuses():
-        return ["bought", "ready_to_sell", "rented"]
-
-    @classmethod
-    def get_user_running_invest(cls, user):
-        return cls.money(
-            PropertyContribution.objects.filter(
-                user=user,
-                property__status__in=cls.running_statuses(),
-                contribution__gt=0,
-            ).aggregate(total=Sum("contribution"))["total"] or Decimal("0.00")
-        )
-
-    @classmethod
-    def get_user_final_profit(cls, user):
-        return cls.money(
-            PropertyContribution.objects.filter(
-                user=user,
-                property__status="sold",
-                final_profit__gt=0,
-            ).aggregate(total=Sum("final_profit"))["total"] or Decimal("0.00")
-        )
-
-    @classmethod
-    def get_user_total_paid(cls, user):
-        return cls.money(
-            Payment.objects.filter(
-                user=user,
-                status="approved",
-            ).aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
+    def precise_money(value):
+        return Decimal(str(value or 0)).quantize(
+            Decimal("0.000001"),
+            rounding=ROUND_HALF_UP,
         )
 
     @staticmethod
-    def calculate_invest_days(contribution):
-        if not contribution:
-            return 0
+    def get_running_statuses():
+        return ["bought", "ready_to_sell", "rented"]
 
-        if contribution.property.status == "sold":
-            if contribution.total_days:
-                return contribution.total_days
+    @staticmethod
+    def get_user_running_invest(user):
+        total = PropertyContribution.objects.filter(
+            user=user,
+            property__status__in=WithdrawalRequest.get_running_statuses(),
+            property__is_contribution_locked=False,
+            contribution__gt=0,
+        ).aggregate(
+            total=models.Sum("contribution")
+        )["total"] or Decimal("0.00")
 
-            if contribution.investment_date and contribution.property.selling_date:
-                return max(
-                    (contribution.property.selling_date - contribution.investment_date).days,
-                    0,
-                )
+        return WithdrawalRequest.money(total)
 
-            return 0
-
-        if contribution.investment_date:
-            return max((timezone.localdate() - contribution.investment_date).days, 0)
-
-        return 0
-
-    @classmethod
-    def approved_profit_taken(cls, contribution):
-        return cls.money(
-            WithdrawalRequest.objects.filter(
-                property_contribution=contribution,
-                status="approved",
-            ).aggregate(total=Sum("profit_part_amount"))["total"] or Decimal("0.00")
-        )
-
-    @classmethod
-    def approved_investment_taken(cls, contribution):
-        return cls.money(
-            WithdrawalRequest.objects.filter(
-                property_contribution=contribution,
-                status="approved",
-            ).aggregate(total=Sum("investment_part_amount"))["total"] or Decimal("0.00")
-        )
-
-    @classmethod
-    def approved_balance_taken(cls, user):
-        return cls.money(
-            WithdrawalRequest.objects.filter(
-                user=user,
-                status="approved",
-                request_type="balance",
-            ).aggregate(total=Sum("balance_part_amount"))["total"] or Decimal("0.00")
-        )
-
-    # @classmethod
-    # def get_user_property_related_balance(cls, user):
-    #     """
-    #     Sold property investment/profit already sits inside user.balance.
-    #     This method finds how much of user.balance is still property-related,
-    #     so Free Balance withdraw cannot bypass profit/investment rules.
-    #     """
-    #     sold_rows = PropertyContribution.objects.filter(
-    #         user=user,
-    #         property__status="sold",
-    #     ).select_related("property")
-
-    #     total = Decimal("0.00")
-
-    #     for row in sold_rows:
-    #         contribution_amount = cls.money(row.contribution)
-    #         final_profit = cls.money(row.final_profit)
-
-    #         investment_taken = cls.approved_investment_taken(row)
-    #         profit_taken = cls.approved_profit_taken(row)
-
-    #         investment_left = cls.money(contribution_amount - investment_taken)
-    #         profit_left = cls.money(final_profit - profit_taken)
-
-    #         if investment_left < 0:
-    #             investment_left = Decimal("0.00")
-
-    #         if profit_left < 0:
-    #             profit_left = Decimal("0.00")
-
-    #         total += investment_left + profit_left
-
-    #     return cls.money(total)
-
-    @classmethod
-    def get_user_locked_profit_balance(cls, user):
-        """
-        Less than 730 days: remaining 55% profit stays locked.
-        45% can be withdrawn once.
-        After 730 days: remaining profit becomes eligible.
-        """
-        sold_rows = PropertyContribution.objects.filter(
+    @staticmethod
+    def get_user_final_profit(user):
+        total = PropertyContribution.objects.filter(
             user=user,
             property__status="sold",
-            final_profit__gt=0,
-        ).select_related("property")
+        ).aggregate(
+            total=models.Sum("final_profit")
+        )["total"] or Decimal("0.00")
 
-        locked_total = Decimal("0.00")
+        return WithdrawalRequest.money(total)
 
-        for row in sold_rows:
-            invest_days = cls.calculate_invest_days(row)
+    @staticmethod
+    def get_user_total_request_limit(user):
+        balance = WithdrawalRequest.money(user.balance)
+        running_invest = WithdrawalRequest.get_user_running_invest(user)
+        return WithdrawalRequest.money(balance + running_invest)
 
-            if invest_days >= 730:
-                continue
-
-            final_profit = cls.money(row.final_profit)
-            profit_taken = cls.approved_profit_taken(row)
-            profit_left = cls.money(final_profit - profit_taken)
-
-            locked_55 = cls.money(final_profit * Decimal("0.55"))
-
-            if profit_taken <= 0:
-                locked_total += locked_55
-            else:
-                locked_total += profit_left
-
-        return cls.money(locked_total)
-
-    @classmethod
-    def get_user_free_balance(cls, user):
-
-        current_balance = cls.money(user.balance)
-        locked_profit = cls.get_user_locked_profit_balance(user)
-
-        free_balance = current_balance - locked_profit
-
-        if free_balance < 0:
-            free_balance = Decimal("0.00")
-
-        return cls.money(free_balance)
-
-    @classmethod
-    def calculate_eligible_amounts(cls, contribution, request_type):
-        invest_days = cls.calculate_invest_days(contribution)
-
-        investment_amount = cls.money(contribution.contribution)
-        final_profit = cls.money(contribution.final_profit)
-
-        approved_profit_taken = cls.approved_profit_taken(contribution)
-        approved_investment_taken = cls.approved_investment_taken(contribution)
-
-        investment_left = cls.money(investment_amount - approved_investment_taken)
-        if investment_left < 0:
-            investment_left = Decimal("0.00")
-
-        # Profit rule
-        if invest_days >= 730:
-            eligible_profit = cls.money(final_profit - approved_profit_taken)
-
-            if eligible_profit < 0:
-                eligible_profit = Decimal("0.00")
-
-            if approved_profit_taken > 0:
-                payout_rule = "remaining_profit"
-            else:
-                payout_rule = "100_percent"
-
-        else:
-            # Before 2 years: 45% only once
-            if approved_profit_taken > 0:
-                eligible_profit = Decimal("0.00")
-            else:
-                eligible_profit = cls.money(final_profit * Decimal("0.45"))
-
-            payout_rule = "45_percent"
-
-        eligible_investment = Decimal("0.00")
-
-        if request_type == "profit":
-            eligible_investment = Decimal("0.00")
-            total = eligible_profit
-
-        elif request_type == "investment":
-            eligible_profit = Decimal("0.00")
-            eligible_investment = investment_left
-            total = eligible_investment
-            payout_rule = "investment_only"
-
-        elif request_type == "both":
-            eligible_investment = investment_left
-            total = eligible_investment + eligible_profit
-            payout_rule = "mixed"
-
-        else:
-            eligible_profit = Decimal("0.00")
-            eligible_investment = Decimal("0.00")
-            total = Decimal("0.00")
-
-        return {
-            "invest_days": invest_days,
-            "eligible_profit": cls.money(eligible_profit),
-            "eligible_investment": cls.money(eligible_investment),
-            "total": cls.money(total),
-            "payout_rule": payout_rule,
-        }
+    def calculate_snapshots(self):
+        self.balance_snapshot = self.money(self.user.balance)
+        self.running_invest_snapshot = self.get_user_running_invest(self.user)
+        self.final_profit_snapshot = self.get_user_final_profit(self.user)
+        self.total_available_snapshot = self.money(
+            self.balance_snapshot + self.running_invest_snapshot
+        )
 
     def clean(self):
-        if not self.user_id:
-            raise ValidationError("User not found.")
-
-        self.requested_amount = self.money(self.requested_amount)
-
-        if self.requested_amount <= 0:
+        if self.amount is None or self.amount <= 0:
             raise ValidationError("Withdraw amount must be greater than zero.")
 
-        if self.request_type == "balance":
-            free_balance = self.get_user_free_balance(self.user)
+        if self.status == "pending":
+            self.calculate_snapshots()
 
-            if self.requested_amount > free_balance:
+            if self.amount > self.total_available_snapshot:
                 raise ValidationError(
-                    f"You can withdraw maximum free balance ${free_balance}."
+                    "Withdraw amount cannot be greater than balance plus running investment."
                 )
-
-            already_pending = WithdrawalRequest.objects.filter(
-                user=self.user,
-                status="pending",
-                request_type="balance",
-            ).exclude(pk=self.pk).exists()
-
-            if already_pending:
-                raise ValidationError("You already have a pending free balance request.")
-
-            return
-
-        if not self.property_contribution:
-            raise ValidationError("Please select a property contribution.")
-
-        if self.property_contribution.user_id != self.user_id:
-            raise ValidationError("This investment row does not belong to this user.")
-
-        calc = self.calculate_eligible_amounts(
-            self.property_contribution,
-            self.request_type,
-        )
-
-        if self.requested_amount > calc["total"]:
-            raise ValidationError(
-                f"You can request maximum ${calc['total']} for this row."
-            )
-
-        already_pending = WithdrawalRequest.objects.filter(
-            user=self.user,
-            property_contribution=self.property_contribution,
-            request_type=self.request_type,
-            status="pending",
-        ).exclude(pk=self.pk).exists()
-
-        if already_pending:
-            raise ValidationError("You already have a pending request for this row.")
 
     def save(self, *args, **kwargs):
-        self.profit_part_amount = Decimal("0.00")
-        self.investment_part_amount = Decimal("0.00")
-        self.balance_part_amount = Decimal("0.00")
-
-        self.requested_amount = self.money(self.requested_amount)
-
-        if self.request_type == "balance":
-            self.balance_part_amount = self.requested_amount
-            self.eligible_profit_amount = Decimal("0.00")
-            self.eligible_investment_amount = Decimal("0.00")
-            self.total_eligible_amount = self.requested_amount
-            self.payout_rule = "balance"
-            self.invest_days = 0
-
-        elif self.property_contribution_id:
-            calc = self.calculate_eligible_amounts(
-                self.property_contribution,
-                self.request_type,
-            )
-
-            self.invest_days = calc["invest_days"]
-            self.eligible_profit_amount = calc["eligible_profit"]
-            self.eligible_investment_amount = calc["eligible_investment"]
-            self.total_eligible_amount = calc["total"]
-            self.payout_rule = calc["payout_rule"]
-
-            if not self.requested_amount or self.requested_amount <= 0:
-                self.requested_amount = self.total_eligible_amount
-
-            requested = self.money(self.requested_amount)
-
-            if self.request_type == "profit":
-                self.profit_part_amount = requested
-
-            elif self.request_type == "investment":
-                self.investment_part_amount = requested
-
-            elif self.request_type == "both":
-                investment_part = min(requested, self.eligible_investment_amount)
-                profit_part = requested - investment_part
-
-                self.investment_part_amount = self.money(investment_part)
-                self.profit_part_amount = self.money(profit_part)
-
-        if self.user_id:
-            self.balance_snapshot = self.money(self.user.balance)
+        if self.status == "pending":
+            self.calculate_snapshots()
 
         super().save(*args, **kwargs)
-
-    def approve(self, approved_by, finance_note=""):
-        if not (approved_by.is_superuser or approved_by.is_finnancial):
-            return False, "Only superuser or finance user can approve."
-
-        if self.status != "pending":
-            return False, "Only pending request can be approved."
-
-        with transaction.atomic():
-            request_obj = WithdrawalRequest.objects.select_for_update().get(pk=self.pk)
-            user = User.objects.select_for_update().get(pk=request_obj.user_id)
-
-            amount = self.money(request_obj.requested_amount)
-
-            if request_obj.request_type == "balance":
-                free_balance = self.get_user_free_balance(user)
-
-                if free_balance < amount:
-                    return False, f"User free balance is ${free_balance}. Requested ${amount}."
-
-                user.balance = Decimal(str(user.balance or 0)) - amount
-                user.balance = user.balance.quantize(
-                    Decimal("0.000001"),
-                    rounding=ROUND_HALF_UP,
-                )
-                user.save(update_fields=["balance"])
-
-            else:
-                contribution = PropertyContribution.objects.select_for_update().get(
-                    pk=request_obj.property_contribution_id
-                )
-
-                if contribution.property.status == "sold":
-                    # Sold property money is already returned to user balance
-                    current_balance = self.money(user.balance)
-
-                    if current_balance < amount:
-                        shortage = self.money(amount - current_balance)
-                        return False, (
-                            f"User balance is ${current_balance}. "
-                            f"Requested ${amount}. Shortage ${shortage}."
-                        )
-
-                    user.balance = Decimal(str(user.balance or 0)) - amount
-                    user.balance = user.balance.quantize(
-                        Decimal("0.000001"),
-                        rounding=ROUND_HALF_UP,
-                    )
-                    user.save(update_fields=["balance"])
-
-                else:
-                    # Running property investment withdraw
-                    investment_part = self.money(request_obj.investment_part_amount)
-
-                    if request_obj.profit_part_amount > 0:
-                        return False, "Profit can be withdrawn only after property is sold."
-
-                    if investment_part <= 0:
-                        return False, "No investment amount found for withdrawal."
-
-                    if investment_part > contribution.contribution:
-                        return False, "Requested investment amount is greater than active contribution."
-
-                    contribution.contribution = self.money(
-                        Decimal(str(contribution.contribution or 0)) - investment_part
-                    )
-
-                    contribution.invest_amount = self.money(
-                        Decimal(str(contribution.invest_amount or 0)) - investment_part
-                    )
-
-                    if contribution.invest_amount < 0:
-                        contribution.invest_amount = Decimal("0.00")
-
-                    contribution.remaining = self.money(
-                        Decimal(str(contribution.invest_amount or 0)) -
-                        Decimal(str(contribution.contribution or 0))
-                    )
-
-                    if contribution.remaining < 0:
-                        contribution.remaining = Decimal("0.00")
-
-                    total_cost = (
-                        Decimal(str(contribution.property.buying_price or 0)) +
-                        Decimal(str(contribution.property.service_cost or 0))
-                    )
-
-                    if total_cost > 0:
-                        contribution.ratio = (
-                            contribution.contribution / total_cost * Decimal("100")
-                        ).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
-                    else:
-                        contribution.ratio = Decimal("0.00")
-
-                    contribution.save(
-                        update_fields=[
-                            "contribution",
-                            "invest_amount",
-                            "remaining",
-                            "ratio",
-                        ]
-                    )
-
-                    if contribution.contribution <= 0:
-                        contribution.property.contributors.remove(user)
-
-            request_obj.status = "approved"
-            request_obj.approved_by = approved_by
-            request_obj.approved_at = timezone.now()
-            request_obj.finance_note = finance_note
-            request_obj.save(
-                update_fields=[
-                    "status",
-                    "approved_by",
-                    "approved_at",
-                    "finance_note",
-                    "updated_at",
-                ]
-            )
-
-        return True, "Withdrawal approved successfully."
-
-    def reject(self, rejected_by, finance_note=""):
-        if not (rejected_by.is_superuser or rejected_by.is_finnancial):
-            return False, "Only superuser or finance user can reject."
-
-        if self.status != "pending":
-            return False, "Only pending request can be rejected."
-
-        self.status = "rejected"
-        self.rejected_by = rejected_by
-        self.rejected_at = timezone.now()
-        self.finance_note = finance_note
-        self.save(
-            update_fields=[
-                "status",
-                "rejected_by",
-                "rejected_at",
-                "finance_note",
-                "updated_at",
-            ]
-        )
-
-        return True, "Withdrawal rejected successfully."

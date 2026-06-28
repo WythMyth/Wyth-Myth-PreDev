@@ -1,0 +1,285 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+
+{% block title %}Withdrawal Review{% endblock %}
+
+{% block content %}
+
+<div class="w-full min-h-screen bg-gray-50 px-4 md:px-6 py-6">
+
+        <div class="mb-6">
+                <a href="{% url 'accounts:finance_withdrawal_request_list' %}"
+                        class="text-sm text-blue-600 hover:underline">
+                        ← Back to withdrawal list
+                </a>
+
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mt-2">
+                        Withdrawal Review
+                </h1>
+        </div>
+
+        {% if messages %}
+        <div class="mb-5 space-y-2">
+                {% for message in messages %}
+                <div class="rounded-xl px-4 py-3 text-sm
+                    {% if message.tags == 'success' %}bg-green-100 text-green-800
+                    {% elif message.tags == 'error' %}bg-red-100 text-red-800
+                    {% else %}bg-blue-100 text-blue-800{% endif %}">
+                        {{ message }}
+                </div>
+                {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+                <div class="xl:col-span-2 space-y-6">
+
+                        <!-- Request Info -->
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                                <h2 class="text-xl font-bold text-gray-900 mb-4">Request Information</h2>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                                <p class="text-gray-500">User</p>
+                                                <p class="font-semibold text-gray-900">{{ withdrawal.user.get_full_name }}</p>
+                                                <p class="text-gray-500">{{ withdrawal.user.email }}</p>
+                                        </div>
+
+                                        <div>
+                                                <p class="text-gray-500">Property</p>
+                                                <p class="font-semibold text-gray-900">
+                                                        {{ withdrawal.property_contribution.property.property_name }}
+                                                </p>
+                                                <p class="text-gray-500">
+                                                        Seq #{{ withdrawal.property_contribution.investment_sequence }}
+                                                </p>
+                                        </div>
+
+                                        <div>
+                                                <p class="text-gray-500">Request Type</p>
+                                                <p class="font-semibold">{{ withdrawal.get_request_type_display }}</p>
+                                        </div>
+
+                                        <div>
+                                                <p class="text-gray-500">Requested Amount</p>
+                                                <p class="font-bold text-2xl text-blue-700">${{ withdrawal.requested_amount|floatformat:2 }}</p>
+                                        </div>
+
+                                        <div>
+                                                <p class="text-gray-500">Invest Days</p>
+                                                <p class="font-semibold">{{ withdrawal.invest_days }} days</p>
+                                        </div>
+
+                                        <div>
+                                                <p class="text-gray-500">Payout Rule</p>
+                                                <p class="font-semibold">{{ withdrawal.get_payout_rule_display }}</p>
+                                        </div>
+
+                                        <div>
+                                                <p class="text-gray-500">Eligible Profit</p>
+                                                <p class="font-semibold text-green-700">${{ withdrawal.eligible_profit_amount|floatformat:2 }}</p>
+                                        </div>
+
+                                        <div>
+                                                <p class="text-gray-500">Eligible Investment</p>
+                                                <p class="font-semibold text-purple-700">${{ withdrawal.eligible_investment_amount|floatformat:2 }}</p>
+                                        </div>
+
+                                        <div>
+                                                <p class="text-gray-500">Total Eligible</p>
+                                                <p class="font-semibold text-gray-900">${{ withdrawal.total_eligible_amount|floatformat:2 }}</p>
+                                        </div>
+
+                                        <div>
+                                                <p class="text-gray-500">User Current Balance</p>
+                                                <p class="font-semibold text-gray-900">${{ current_balance|floatformat:2 }}</p>
+                                        </div>
+                                </div>
+
+                                {% if not can_approve_now and withdrawal.status == "pending" %}
+                                <div class="mt-5 rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-800">
+                                        User balance is not enough to approve this request now.
+                                        Shortage: <strong>${{ shortage|floatformat:2 }}</strong>.
+                                </div>
+                                {% endif %}
+
+                                {% if withdrawal.user_note %}
+                                <div class="mt-5 rounded-xl bg-gray-50 p-4">
+                                        <p class="text-sm text-gray-500">User Note</p>
+                                        <p class="text-gray-800 mt-1">{{ withdrawal.user_note }}</p>
+                                </div>
+                                {% endif %}
+                        </div>
+
+                        <!-- User Payments -->
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div class="px-5 py-4 border-b border-gray-100">
+                                        <h2 class="text-xl font-bold text-gray-900">User Approved Payments</h2>
+                                </div>
+
+                                <div class="overflow-auto max-h-[360px]">
+                                        <table class="min-w-full text-sm">
+                                                <thead class="bg-gray-100 sticky top-0">
+                                                        <tr>
+                                                                <th class="px-4 py-3 text-left">Date</th>
+                                                                <th class="px-4 py-3 text-left">Bank</th>
+                                                                <th class="px-4 py-3 text-right">Amount</th>
+                                                        </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-gray-100">
+                                                        {% for payment in user_payments %}
+                                                        <tr>
+                                                                <td class="px-4 py-3">{{ payment.approved_at|date:"M d,
+                                                                        Y" }}</td>
+                                                                <td class="px-4 py-3">{{ payment.bank }}</td>
+                                                                <td class="px-4 py-3 text-right font-semibold">${{ payment.amount|floatformat:2 }}</td>
+                                                        </tr>
+                                                        {% empty %}
+                                                        <tr>
+                                                                <td colspan="3"
+                                                                        class="px-4 py-6 text-center text-gray-500">No
+                                                                        approved payment.</td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                </tbody>
+                                        </table>
+                                </div>
+                        </div>
+
+                        <!-- User Investments -->
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div class="px-5 py-4 border-b border-gray-100">
+                                        <h2 class="text-xl font-bold text-gray-900">User Investments</h2>
+                                </div>
+
+                                <div class="overflow-auto max-h-[420px]">
+                                        <table class="min-w-full text-sm">
+                                                <thead class="bg-gray-100 sticky top-0">
+                                                        <tr>
+                                                                <th class="px-4 py-3 text-left">Property</th>
+                                                                <th class="px-4 py-3 text-left">Date</th>
+                                                                <th class="px-4 py-3 text-right">Invested</th>
+                                                                <th class="px-4 py-3 text-right">Profit</th>
+                                                                <th class="px-4 py-3 text-center">Status</th>
+                                                        </tr>
+                                                </thead>
+
+                                                <tbody class="divide-y divide-gray-100">
+                                                        {% for row in user_investments %}
+                                                        <tr>
+                                                                <td class="px-4 py-3">
+                                                                        <div class="font-semibold">{{ row.property.property_name }}</div>
+                                                                        <div class="text-xs text-gray-500">Seq #{{ row.investment_sequence }}</div>
+                                                                </td>
+                                                                <td class="px-4 py-3">
+                                                                        {% if row.investment_date %}
+                                                                        {{ row.investment_date|date:"M d, Y" }}
+                                                                        {% else %}
+                                                                        -
+                                                                        {% endif %}
+                                                                </td>
+                                                                <td class="px-4 py-3 text-right font-semibold">${{ row.contribution|floatformat:2 }}</td>
+                                                                <td
+                                                                        class="px-4 py-3 text-right font-semibold text-purple-700">
+                                                                        ${{ row.final_profit|floatformat:2 }}</td>
+                                                                <td class="px-4 py-3 text-center">{{ row.property.get_status_display }}</td>
+                                                        </tr>
+                                                        {% empty %}
+                                                        <tr>
+                                                                <td colspan="5"
+                                                                        class="px-4 py-6 text-center text-gray-500">No investment.</td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                </tbody>
+                                        </table>
+                                </div>
+                        </div>
+
+                </div>
+
+                <!-- Approval Box -->
+                <div class="space-y-6">
+
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                                <h2 class="text-xl font-bold text-gray-900 mb-4">Finance Action</h2>
+
+                                {% if withdrawal.status == "pending" %}
+
+                                <form method="post"
+                                        action="{% url 'accounts:finance_withdrawal_approve' withdrawal.id %}"
+                                        class="space-y-3">
+                                        {% csrf_token %}
+                                        <textarea name="finance_note" rows="3" class="w-full rounded-xl border-gray-300"
+                                                placeholder="Finance note for approval"></textarea>
+
+                                        <button type="submit"
+                                                class="w-full px-4 py-3 rounded-xl text-white font-bold
+                                {% if can_approve_now %}bg-green-600 hover:bg-green-700{% else %}bg-gray-400 cursor-not-allowed{% endif %}"
+                                                {% if not can_approve_now %}disabled{% endif %}>
+                                                Approve & Deduct Balance
+                                        </button>
+                                </form>
+
+                                <form method="post"
+                                        action="{% url 'accounts:finance_withdrawal_reject' withdrawal.id %}"
+                                        class="space-y-3 mt-4">
+                                        {% csrf_token %}
+                                        <textarea name="finance_note" rows="3" class="w-full rounded-xl border-gray-300"
+                                                placeholder="Reason for rejection"></textarea>
+
+                                        <button type="submit"
+                                                class="w-full px-4 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700">
+                                                Reject Request
+                                        </button>
+                                </form>
+
+                                <form method="post"
+                                        action="{% url 'accounts:finance_withdrawal_more_clarification' withdrawal.id %}"
+                                        class="space-y-3 mt-4">
+                                        {% csrf_token %}
+                                        <textarea name="clarification_note" rows="3"
+                                                class="w-full rounded-xl border-gray-300"
+                                                placeholder="Ask user for clarification"></textarea>
+
+                                        <button type="submit"
+                                                class="w-full px-4 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700">
+                                                Ask Clarification
+                                        </button>
+                                </form>
+
+                                {% else %}
+                                <div class="rounded-xl bg-gray-100 p-4 text-sm text-gray-700">
+                                        This request is already processed.
+                                </div>
+                                {% endif %}
+                        </div>
+
+                        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                                <h2 class="text-lg font-bold text-gray-900 mb-3">Status</h2>
+
+                                <p class="text-sm text-gray-500">Current Status</p>
+                                <p class="font-bold text-gray-900">{{ withdrawal.get_status_display }}</p>
+
+                                {% if withdrawal.finance_note %}
+                                <div class="mt-4">
+                                        <p class="text-sm text-gray-500">Finance Note</p>
+                                        <p class="text-gray-800">{{ withdrawal.finance_note }}</p>
+                                </div>
+                                {% endif %}
+
+                                {% if withdrawal.clarification_note %}
+                                <div class="mt-4">
+                                        <p class="text-sm text-gray-500">Clarification Note</p>
+                                        <p class="text-gray-800">{{ withdrawal.clarification_note }}</p>
+                                </div>
+                                {% endif %}
+                        </div>
+
+                </div>
+
+        </div>
+
+</div>
+
+{% endblock %}

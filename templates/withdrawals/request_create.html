@@ -1,0 +1,185 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+
+                <div class="mb-8">
+                        <h1 class="text-3xl font-bold text-gray-900">Create Withdrawal Request</h1>
+                        <p class="mt-2 text-sm text-gray-600">
+                                You can request up to current balance plus running investment. Actual withdrawal will
+                                deduct from balance only after finance approval.
+                        </p>
+                </div>
+
+                {% if messages %}
+                <div class="mb-6 space-y-3">
+                        {% for message in messages %}
+                        <div class="rounded-xl px-4 py-3 text-sm
+            {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-200
+            {% elif message.tags == 'error' %}bg-red-50 text-red-800 border border-red-200
+            {% else %}bg-blue-50 text-blue-800 border border-blue-200{% endif %}">
+                                {{ message }}
+                        </div>
+                        {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if form.errors %}
+                <div class="mb-6 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+                        {% for field in form %}
+                        {% for error in field.errors %}
+                        <p>{{ error }}</p>
+                        {% endfor %}
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                        {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                                <p class="text-sm font-medium text-gray-500">Current Balance</p>
+                                <p class="mt-2 text-3xl font-bold text-green-700">${{ current_balance|floatformat:2 }}
+                                </p>
+                        </div>
+
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                                <p class="text-sm font-medium text-gray-500">Final Profit</p>
+                                <p class="mt-2 text-3xl font-bold text-purple-700">${{ final_profit|floatformat:2 }}</p>
+                        </div>
+
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                                <p class="text-sm font-medium text-gray-500">Current Invest</p>
+                                <p class="mt-2 text-3xl font-bold text-blue-700">${{ running_invest|floatformat:2 }}</p>
+                        </div>
+
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                                <p class="text-sm font-medium text-gray-500">Total Request Limit</p>
+                                <p class="mt-2 text-3xl font-bold text-gray-900">${{ total_request_limit|floatformat:2 }}</p>
+                        </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="px-6 py-5 border-b border-gray-200">
+                                <h2 class="text-xl font-semibold text-gray-900">Request Amount</h2>
+                        </div>
+
+                        <form method="post" class="p-6 space-y-6" id="withdrawForm">
+                                {% csrf_token %}
+
+                                <div>
+                                        <label for="{{ form.amount.id_for_label }}"
+                                                class="block text-sm font-medium text-gray-700 mb-2">
+                                                Withdraw Amount
+                                        </label>
+
+                                        <div class="relative">
+                                                <span
+                                                        class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500">$</span>
+                                                {{ form.amount }}
+                                        </div>
+
+                                        <p class="mt-2 text-sm text-gray-500">
+                                                Maximum request limit: <strong>${{ total_request_limit|floatformat:2 }}</strong>
+                                        </p>
+                                </div>
+
+                                <div class="rounded-2xl bg-gray-50 border border-gray-200 p-5">
+                                        <h3 class="text-sm font-semibold text-gray-900 mb-3">Live Preview</h3>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                                <div>
+                                                        <p class="text-gray-500">Requested Amount</p>
+                                                        <p class="text-lg font-bold text-gray-900" id="requestedAmount">
+                                                                $0.00</p>
+                                                </div>
+
+                                                <div>
+                                                        <p class="text-gray-500">Current Balance</p>
+                                                        <p class="text-lg font-bold text-green-700">${{ current_balance|floatformat:2 }}</p>
+                                                </div>
+
+                                                <div>
+                                                        <p class="text-gray-500">Balance Shortage</p>
+                                                        <p class="text-lg font-bold text-orange-700"
+                                                                id="balanceShortage">$0.00</p>
+                                                </div>
+                                        </div>
+
+                                        <p id="warningText" class="hidden mt-4 text-sm text-orange-700">
+                                                Requested amount is more than current balance. Finance must reduce
+                                                running investment first before approval.
+                                        </p>
+
+                                        <p id="errorText" class="hidden mt-4 text-sm text-red-700">
+                                                Requested amount is greater than your total request limit.
+                                        </p>
+                                </div>
+
+                                <div>
+                                        <label for="{{ form.note.id_for_label }}"
+                                                class="block text-sm font-medium text-gray-700 mb-2">
+                                                Note
+                                        </label>
+                                        {{ form.note }}
+                                </div>
+
+                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4">
+                                        <a href="{% url 'accounts:withdrawal_request_list' %}"
+                                                class="inline-flex items-center justify-center rounded-xl border border-gray-300 px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                View My Requests
+                                        </a>
+
+                                        <button type="submit"
+                                                class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
+                                                Submit Request
+                                        </button>
+                                </div>
+                        </form>
+                </div>
+
+        </div>
+</div>
+
+<script>
+        const amountInput = document.getElementById("{{ form.amount.id_for_label }}");
+        const requestedAmount = document.getElementById("requestedAmount");
+        const balanceShortage = document.getElementById("balanceShortage");
+        const warningText = document.getElementById("warningText");
+        const errorText = document.getElementById("errorText");
+
+        const currentBalance = parseFloat("{{ current_balance|floatformat:2 }}") || 0;
+        const totalLimit = parseFloat("{{ total_request_limit|floatformat:2 }}") || 0;
+
+        function formatMoney(value) {
+                return "$" + value.toFixed(2);
+        }
+
+        function updatePreview() {
+                const requested = parseFloat(amountInput.value) || 0;
+                const shortage = Math.max(requested - currentBalance, 0);
+
+                requestedAmount.textContent = formatMoney(requested);
+                balanceShortage.textContent = formatMoney(shortage);
+
+                if (requested > currentBalance && requested <= totalLimit) {
+                        warningText.classList.remove("hidden");
+                } else {
+                        warningText.classList.add("hidden");
+                }
+
+                if (requested > totalLimit) {
+                        errorText.classList.remove("hidden");
+                        amountInput.classList.add("border-red-500", "focus:border-red-500", "focus:ring-red-200");
+                } else {
+                        errorText.classList.add("hidden");
+                        amountInput.classList.remove("border-red-500", "focus:border-red-500", "focus:ring-red-200");
+                }
+        }
+
+        amountInput.addEventListener("input", updatePreview);
+</script>
+{% endblock %}

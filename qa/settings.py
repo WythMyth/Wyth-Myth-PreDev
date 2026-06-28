@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'django_celery_results',
     'poll',
     'committee',
+    "ai_assistant",
 ]
 
 MIDDLEWARE = [
@@ -215,3 +216,8 @@ SQUARE_APPLICATION_ID = os.getenv("SQUARE_APPLICATION_ID")
 SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN")
 SQUARE_LOCATION_ID = os.getenv("SQUARE_LOCATION_ID")
 SQUARE_ENVIRONMENT = os.getenv("SQUARE_ENVIRONMENT", "production")
+
+
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_AI_MODEL = os.getenv("OPENAI_AI_MODEL", "gpt-5.5")

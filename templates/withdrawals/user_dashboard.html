@@ -1,0 +1,600 @@
+{% extends "dashboard/layout/dashboardLayout.html" %}
+{% load static %}
+
+{% block title %}Withdraw Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="w-full min-h-screen bg-slate-50 px-4 md:px-6 py-6">
+
+        <!-- Header -->
+        <div class="mb-6 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+                <div>
+                        <div
+                                class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold mb-3">
+                                Investor Finance Center
+                        </div>
+                        <h1 class="text-2xl md:text-4xl font-extrabold text-slate-950">
+                                Payments, Investments & Withdraw
+                        </h1>
+                        <p class="text-slate-500 mt-2">
+                                Track paid amount, active investment, sold property profit, free balance, and withdraw
+                                requests.
+                        </p>
+                </div>
+        </div>
+
+        <!-- Messages -->
+        {% if messages %}
+        <div class="mb-5 space-y-2">
+                {% for message in messages %}
+                <div class="rounded-2xl px-4 py-3 text-sm font-medium
+            {% if message.tags == 'success' %}bg-green-100 text-green-800
+            {% elif message.tags == 'error' %}bg-red-100 text-red-800
+            {% else %}bg-blue-100 text-blue-800{% endif %}">
+                        {{ message }}
+                </div>
+                {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Rule Box -->
+        <div class="mb-6 rounded-3xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-5">
+                <h2 class="text-lg font-bold text-blue-950">Withdraw Rules</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 text-sm">
+                        <div class="rounded-2xl bg-white/80 p-4 border border-blue-100">
+                                <p class="font-bold text-slate-900">Profit before 2 years</p>
+                                <p class="text-slate-600 mt-1">User can withdraw 45% profit once.</p>
+                        </div>
+                        <div class="rounded-2xl bg-white/80 p-4 border border-blue-100">
+                                <p class="font-bold text-slate-900">After 2 years</p>
+                                <p class="text-slate-600 mt-1">Remaining 55% or full remaining profit becomes eligible.
+                                </p>
+                        </div>
+                        <div class="rounded-2xl bg-white/80 p-4 border border-blue-100">
+                                <p class="font-bold text-slate-900">Free balance & investment</p>
+                                <p class="text-slate-600 mt-1">Free balance and active investment can be requested
+                                        anytime.</p>
+                        </div>
+                </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
+                <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+                        <p class="text-sm text-slate-500">Current Balance</p>
+                        <h2 class="text-2xl font-black text-slate-950 mt-2">${{ current_balance|floatformat:2 }}</h2>
+                </div>
+
+                <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+                        <p class="text-sm text-slate-500">Free Withdrawable</p>
+                        <h2 class="text-2xl font-black text-green-600 mt-2">${{ free_balance|floatformat:2 }}</h2>
+                </div>
+
+                <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+                        <p class="text-sm text-slate-500">Running Investment</p>
+                        <h2 class="text-2xl font-black text-blue-600 mt-2">${{ running_investment_total|floatformat:2 }}
+                        </h2>
+                </div>
+
+                <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+                        <p class="text-sm text-slate-500">Final Profit</p>
+                        <h2 class="text-2xl font-black text-purple-600 mt-2">${{ total_final_profit|floatformat:2 }}
+                        </h2>
+                </div>
+
+                <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+                        <p class="text-sm text-slate-500">Locked Profit</p>
+                        <h2 class="text-2xl font-black text-orange-600 mt-2">${{ locked_profit_balance|floatformat:2 }}
+                        </h2>
+                </div>
+        </div>
+
+        <!-- Withdraw Center -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+
+                <div class="xl:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+                        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+                                <div>
+                                        <h2 class="text-2xl font-black text-slate-950">Create Withdraw Request</h2>
+                                        <p class="text-sm text-slate-500 mt-1">
+                                                Choose Free Balance, Profit, Investment, or Investment + Profit.
+                                        </p>
+                                </div>
+                                <span class="px-3 py-1 rounded-full bg-green-50 text-green-700 text-xs font-bold">
+                                        Finance Approval Required
+                                </span>
+                        </div>
+
+                        <form method="post" action="{% url 'accounts:withdrawal_request_create' %}" class="space-y-4">
+                                {% csrf_token %}
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                                <label class="block text-sm font-bold text-slate-700 mb-1">Withdraw
+                                                        Type</label>
+                                                {{ form.request_type }}
+                                                <p class="text-xs text-slate-400 mt-1">
+                                                        Free Balance does not need property row.
+                                                </p>
+                                        </div>
+
+                                        <div>
+                                                <label class="block text-sm font-bold text-slate-700 mb-1">Investment /
+                                                        Profit Row</label>
+                                                {{ form.property_contribution }}
+                                                <p class="text-xs text-slate-400 mt-1">
+                                                        Required for profit or investment withdraw.
+                                                </p>
+                                        </div>
+
+                                        <div>
+                                                <label class="block text-sm font-bold text-slate-700 mb-1">Request
+                                                        Amount</label>
+                                                {{ form.requested_amount }}
+                                        </div>
+
+                                        <div>
+                                                <label class="block text-sm font-bold text-slate-700 mb-1">Note</label>
+                                                {{ form.user_note }}
+                                        </div>
+                                </div>
+
+                                <div class="pt-2">
+                                        <button type="submit"
+                                                class="inline-flex items-center justify-center px-7 py-3 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition shadow-sm">
+                                                Submit Withdraw Request
+                                        </button>
+                                </div>
+                        </form>
+                </div>
+
+                <div class="bg-gradient-to-br from-slate-950 to-blue-950 rounded-3xl shadow-sm p-6 text-white">
+                        <h3 class="text-xl font-black">Withdraw Summary</h3>
+                        <p class="text-blue-100 text-sm mt-1">Quick overview of available amounts.</p>
+
+                        <div class="mt-6 space-y-4">
+                                <div class="flex justify-between items-center border-b border-white/10 pb-3">
+                                        <span class="text-sm text-blue-100">Current Balance</span>
+                                        <span class="font-black">${{ current_balance|floatformat:2 }}</span>
+                                </div>
+
+                                <div class="flex justify-between items-center border-b border-white/10 pb-3">
+                                        <span class="text-sm text-blue-100">Free Withdrawable</span>
+                                        <span class="font-black text-green-300">${{ free_balance|floatformat:2 }}</span>
+                                </div>
+
+                                <div class="flex justify-between items-center border-b border-white/10 pb-3">
+                                        <span class="text-sm text-blue-100">Running Investment</span>
+                                        <span class="font-black">${{ running_investment_total|floatformat:2 }}</span>
+                                </div>
+
+                                <div class="flex justify-between items-center border-b border-white/10 pb-3">
+                                        <span class="text-sm text-blue-100">Locked Profit</span>
+                                        <span class="font-black text-orange-300">${{ locked_profit_balance|floatformat:2 }}</span>
+                                </div>
+
+                                <div class="flex justify-between items-center">
+                                        <span class="text-sm text-blue-100">Approved Payments</span>
+                                        <span class="font-black">${{ total_paid|floatformat:2 }}</span>
+                                </div>
+                        </div>
+                </div>
+        </div>
+
+        <!-- Quick Free Balance Withdraw -->
+        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 mb-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                                <h2 class="text-xl font-black text-slate-950">Free Balance Withdraw</h2>
+                                <p class="text-sm text-slate-500 mt-1">
+                                        Available free balance: <span class="font-bold text-green-600">${{ free_balance|floatformat:2 }}</span>
+                                </p>
+                        </div>
+
+                        {% if free_balance > 0 %}
+                        <form method="post" action="{% url 'accounts:withdrawal_request_create' %}"
+                                class="flex flex-col sm:flex-row gap-3">
+                                {% csrf_token %}
+                                <input type="hidden" name="request_type" value="balance">
+                                <input type="hidden" name="requested_amount" value="{{ free_balance }}">
+                                <button type="submit"
+                                        class="px-5 py-3 rounded-2xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition">
+                                        Withdraw Full Free Balance
+                                </button>
+                        </form>
+                        {% else %}
+                        <span class="px-4 py-2 rounded-full bg-slate-100 text-slate-500 text-sm font-bold">
+                                No Free Balance
+                        </span>
+                        {% endif %}
+                </div>
+        </div>
+
+        <!-- Active Investment Withdraw Table -->
+        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mb-6">
+                <div class="px-5 py-4 border-b border-slate-100">
+                        <h2 class="text-xl font-black text-slate-950">Active Investment Withdraw</h2>
+                        <p class="text-sm text-slate-500">
+                                User can request active investment withdraw anytime before property is sold.
+                        </p>
+                </div>
+
+                <div class="overflow-auto max-h-[520px]">
+                        <table class="min-w-full text-sm">
+                                <thead class="bg-slate-100 sticky top-0">
+                                        <tr>
+                                                <th class="px-4 py-3 text-left">Property</th>
+                                                <th class="px-4 py-3 text-left">Status</th>
+                                                <th class="px-4 py-3 text-left">Invest Date</th>
+                                                <th class="px-4 py-3 text-right">Active Invest</th>
+                                                <th class="px-4 py-3 text-center">Action</th>
+                                        </tr>
+                                </thead>
+
+                                <tbody class="divide-y divide-slate-100">
+                                        {% for item in investment_withdraw_rows %}
+                                        <tr class="hover:bg-slate-50">
+                                                <td class="px-4 py-3">
+                                                        <div class="font-bold text-slate-950">{{ item.row.property.property_name }}</div>
+                                                        <div class="text-xs text-slate-500">Seq #{{ item.row.investment_sequence }}</div>
+                                                </td>
+
+                                                <td class="px-4 py-3">
+                                                        <span
+                                                                class="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700">
+                                                                {{ item.row.property.get_status_display }}
+                                                        </span>
+                                                </td>
+
+                                                <td class="px-4 py-3 whitespace-nowrap">
+                                                        {% if item.row.investment_date %}
+                                                        {{ item.row.investment_date|date:"M d, Y" }}
+                                                        {% else %}
+                                                        -
+                                                        {% endif %}
+                                                </td>
+
+                                                <td class="px-4 py-3 text-right font-bold">
+                                                        ${{ item.withdrawable_investment|floatformat:2 }}
+                                                </td>
+
+                                                <td class="px-4 py-3 text-center">
+                                                        {% if item.pending_exists %}
+                                                        <span
+                                                                class="px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700">
+                                                                Pending
+                                                        </span>
+                                                        {% else %}
+                                                        <form method="post"
+                                                                action="{% url 'accounts:withdrawal_request_create' %}">
+                                                                {% csrf_token %}
+                                                                <input type="hidden" name="property_contribution"
+                                                                        value="{{ item.row.id }}">
+                                                                <input type="hidden" name="request_type"
+                                                                        value="investment">
+                                                                <input type="hidden" name="requested_amount"
+                                                                        value="{{ item.withdrawable_investment }}">
+                                                                <button type="submit"
+                                                                        class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition">
+                                                                        Withdraw Investment
+                                                                </button>
+                                                        </form>
+                                                        {% endif %}
+                                                </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                                <td colspan="5" class="px-4 py-8 text-center text-slate-500">
+                                                        No active investment found.
+                                                </td>
+                                        </tr>
+                                        {% endfor %}
+                                </tbody>
+                        </table>
+                </div>
+        </div>
+
+        <!-- Payment + Investment tables -->
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+
+                <!-- Payment Table -->
+                <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="px-5 py-4 border-b border-slate-100">
+                                <h2 class="text-xl font-black text-slate-950">Payment History</h2>
+                                <p class="text-sm text-slate-500">How much money you paid.</p>
+                        </div>
+
+                        <div class="overflow-auto max-h-[520px]">
+                                <table class="min-w-full text-sm">
+                                        <thead class="bg-slate-100 sticky top-0">
+                                                <tr>
+                                                        <th class="px-4 py-3 text-left">Date</th>
+                                                        <th class="px-4 py-3 text-left">Bank</th>
+                                                        <th class="px-4 py-3 text-right">Amount</th>
+                                                        <th class="px-4 py-3 text-center">Status</th>
+                                                </tr>
+                                        </thead>
+
+                                        <tbody class="divide-y divide-slate-100">
+                                                {% for payment in payments %}
+                                                <tr class="hover:bg-slate-50">
+                                                        <td class="px-4 py-3 whitespace-nowrap">{{
+                                                                payment.created_at|date:"M d, Y" }}</td>
+                                                        <td class="px-4 py-3 whitespace-nowrap">{{ payment.bank }}</td>
+                                                        <td class="px-4 py-3 text-right font-bold">${{
+                                                                payment.amount|floatformat:2 }}</td>
+                                                        <td class="px-4 py-3 text-center">
+                                                                {% if payment.status == "approved" %}
+                                                                <span
+                                                                        class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">Approved</span>
+                                                                {% elif payment.status == "pending" %}
+                                                                <span
+                                                                        class="px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700">Pending</span>
+                                                                {% else %}
+                                                                <span
+                                                                        class="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">Rejected</span>
+                                                                {% endif %}
+                                                        </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                        <td colspan="4" class="px-4 py-8 text-center text-slate-500">No
+                                                                payment found.</td>
+                                                </tr>
+                                                {% endfor %}
+                                        </tbody>
+                                </table>
+                        </div>
+                </div>
+
+                <!-- Investment Table -->
+                <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="px-5 py-4 border-b border-slate-100">
+                                <h2 class="text-xl font-black text-slate-950">Property Investments</h2>
+                                <p class="text-sm text-slate-500">Where your money is invested.</p>
+                        </div>
+
+                        <div class="overflow-auto max-h-[520px]">
+                                <table class="min-w-full text-sm">
+                                        <thead class="bg-slate-100 sticky top-0">
+                                                <tr>
+                                                        <th class="px-4 py-3 text-left">Property</th>
+                                                        <th class="px-4 py-3 text-left">Invest Date</th>
+                                                        <th class="px-4 py-3 text-right">Invested</th>
+                                                        <th class="px-4 py-3 text-center">Status</th>
+                                                </tr>
+                                        </thead>
+
+                                        <tbody class="divide-y divide-slate-100">
+                                                {% for row in investment_rows %}
+                                                <tr class="hover:bg-slate-50">
+                                                        <td class="px-4 py-3">
+                                                                <div class="font-bold text-slate-950">{{ row.property.property_name }}</div>
+                                                                <div class="text-xs text-slate-500">Seq #{{ row.investment_sequence }}</div>
+                                                        </td>
+
+                                                        <td class="px-4 py-3 whitespace-nowrap">
+                                                                {% if row.investment_date %}
+                                                                {{ row.investment_date|date:"M d, Y" }}
+                                                                {% else %}
+                                                                -
+                                                                {% endif %}
+                                                        </td>
+
+                                                        <td class="px-4 py-3 text-right font-bold">${{ row.contribution|floatformat:2 }}</td>
+
+                                                        <td class="px-4 py-3 text-center">
+                                                                <span
+                                                                        class="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700">
+                                                                        {{ row.property.get_status_display }}
+                                                                </span>
+                                                        </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                        <td colspan="4" class="px-4 py-8 text-center text-slate-500">
+                                                                No investment found.
+                                                        </td>
+                                                </tr>
+                                                {% endfor %}
+                                        </tbody>
+                                </table>
+                        </div>
+                </div>
+        </div>
+
+        <!-- Profit Table -->
+        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mb-6">
+                <div class="px-5 py-4 border-b border-slate-100">
+                        <h2 class="text-xl font-black text-slate-950">Profit & Withdraw Eligibility</h2>
+                        <p class="text-sm text-slate-500">
+                                730 days or more = remaining profit eligible. Less than 730 days = 45% once.
+                        </p>
+                </div>
+
+                <div class="overflow-auto max-h-[620px]">
+                        <table class="min-w-full text-sm">
+                                <thead class="bg-slate-100 sticky top-0">
+                                        <tr>
+                                                <th class="px-4 py-3 text-left">Property</th>
+                                                <th class="px-4 py-3 text-left">Invest Date</th>
+                                                <th class="px-4 py-3 text-left">Sold Date</th>
+                                                <th class="px-4 py-3 text-right">Invested</th>
+                                                <th class="px-4 py-3 text-right">Final Profit</th>
+                                                <th class="px-4 py-3 text-right">Taken</th>
+                                                <th class="px-4 py-3 text-center">Days</th>
+                                                <th class="px-4 py-3 text-center">Eligible</th>
+                                                <th class="px-4 py-3 text-right">Can Withdraw</th>
+                                                <th class="px-4 py-3 text-center">Action</th>
+                                        </tr>
+                                </thead>
+
+                                <tbody class="divide-y divide-slate-100">
+                                        {% for item in profit_table_rows %}
+                                        <tr class="hover:bg-slate-50">
+                                                <td class="px-4 py-3">
+                                                        <div class="font-bold text-slate-950">{{ item.row.property.property_name }}</div>
+                                                        <div class="text-xs text-slate-500">Seq #{{ item.row.investment_sequence }}</div>
+                                                </td>
+
+                                                <td class="px-4 py-3 whitespace-nowrap">
+                                                        {% if item.row.investment_date %}
+                                                        {{ item.row.investment_date|date:"M d, Y" }}
+                                                        {% else %}
+                                                        -
+                                                        {% endif %}
+                                                </td>
+
+                                                <td class="px-4 py-3 whitespace-nowrap">
+                                                        {% if item.row.property.selling_date %}
+                                                        {{ item.row.property.selling_date|date:"M d, Y" }}
+                                                        {% else %}
+                                                        -
+                                                        {% endif %}
+                                                </td>
+
+                                                <td class="px-4 py-3 text-right font-bold">${{ item.row.contribution|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-right font-bold text-purple-700">${{ item.row.final_profit|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-right font-bold text-slate-600">${{ item.approved_profit_taken|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-center">{{ item.invest_days }}</td>
+
+                                                <td class="px-4 py-3 text-center">
+                                                        {% if item.eligible_percent == 100 %}
+                                                        <span
+                                                                class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">100%</span>
+                                                        {% elif item.eligible_percent == 45 %}
+                                                        <span
+                                                                class="px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700">45%</span>
+                                                        {% else %}
+                                                        <span
+                                                                class="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600">Locked</span>
+                                                        {% endif %}
+                                                </td>
+
+                                                <td class="px-4 py-3 text-right font-bold text-green-700">
+                                                        ${{ item.eligible_profit|floatformat:2 }}
+                                                </td>
+
+                                                <td class="px-4 py-3 text-center">
+                                                        {% if item.pending_exists %}
+                                                        <span
+                                                                class="px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700">
+                                                                Pending
+                                                        </span>
+                                                        {% elif item.eligible_profit <= 0 %} <span
+                                                                class="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600">
+                                                                Not Eligible
+                                                                </span>
+                                                                {% else %}
+                                                                <form method="post"
+                                                                        action="{% url 'accounts:withdrawal_request_create' %}">
+                                                                        {% csrf_token %}
+                                                                        <input type="hidden"
+                                                                                name="property_contribution"
+                                                                                value="{{ item.row.id }}">
+                                                                        <input type="hidden" name="request_type"
+                                                                                value="profit">
+                                                                        <input type="hidden" name="requested_amount"
+                                                                                value="{{ item.eligible_profit }}">
+                                                                        <button type="submit"
+                                                                                class="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition">
+                                                                                Withdraw Profit
+                                                                        </button>
+                                                                </form>
+                                                                {% endif %}
+                                                </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                                <td colspan="10" class="px-4 py-8 text-center text-slate-500">
+                                                        No profit found yet.
+                                                </td>
+                                        </tr>
+                                        {% endfor %}
+                                </tbody>
+                        </table>
+                </div>
+        </div>
+
+        <!-- Withdraw Requests -->
+        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-slate-100">
+                        <h2 class="text-xl font-black text-slate-950">My Withdraw Requests</h2>
+                </div>
+
+                <div class="overflow-auto max-h-[500px]">
+                        <table class="min-w-full text-sm">
+                                <thead class="bg-slate-100 sticky top-0">
+                                        <tr>
+                                                <th class="px-4 py-3 text-left">Date</th>
+                                                <th class="px-4 py-3 text-left">Property</th>
+                                                <th class="px-4 py-3 text-left">Type</th>
+                                                <th class="px-4 py-3 text-right">Amount</th>
+                                                <th class="px-4 py-3 text-right">Profit Part</th>
+                                                <th class="px-4 py-3 text-right">Invest Part</th>
+                                                <th class="px-4 py-3 text-right">Balance Part</th>
+                                                <th class="px-4 py-3 text-center">Days</th>
+                                                <th class="px-4 py-3 text-center">Rule</th>
+                                                <th class="px-4 py-3 text-center">Status</th>
+                                        </tr>
+                                </thead>
+
+                                <tbody class="divide-y divide-slate-100">
+                                        {% for request_row in withdraw_requests %}
+                                        <tr class="hover:bg-slate-50">
+                                                <td class="px-4 py-3 whitespace-nowrap">
+                                                        {{ request_row.created_at|date:"M d, Y" }}
+                                                </td>
+
+                                                <td class="px-4 py-3">
+                                                        {% if request_row.property_contribution %}
+                                                        {{ request_row.property_contribution.property.property_name }}
+                                                        <div class="text-xs text-slate-500">Seq #{{ request_row.property_contribution.investment_sequence }}
+                                                        </div>
+                                                        {% else %}
+                                                        Free Balance
+                                                        {% endif %}
+                                                </td>
+
+                                                <td class="px-4 py-3">{{ request_row.get_request_type_display }}</td>
+                                                <td class="px-4 py-3 text-right font-bold">${{ request_row.requested_amount|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-right">${{ request_row.profit_part_amount|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-right">${{ request_row.investment_part_amount|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-right">${{ request_row.balance_part_amount|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-center">{{ request_row.invest_days }}</td>
+                                                <td class="px-4 py-3 text-center">{{ request_row.get_payout_rule_display }}</td>
+
+                                                <td class="px-4 py-3 text-center">
+                                                        {% if request_row.status == "approved" %}
+                                                        <span
+                                                                class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">Approved</span>
+                                                        {% elif request_row.status == "pending" %}
+                                                        <span
+                                                                class="px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700">Pending</span>
+                                                        {% elif request_row.status == "clarification" %}
+                                                        <span
+                                                                class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">Clarification</span>
+                                                        {% else %}
+                                                        <span
+                                                                class="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">
+                                                                {{ request_row.get_status_display }}
+                                                        </span>
+                                                        {% endif %}
+                                                </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                                <td colspan="10" class="px-4 py-8 text-center text-slate-500">
+                                                        No withdraw request found.
+                                                </td>
+                                        </tr>
+                                        {% endfor %}
+                                </tbody>
+                        </table>
+                </div>
+        </div>
+
+</div>
+
+{% endblock %}
