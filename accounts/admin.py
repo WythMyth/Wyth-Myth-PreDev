@@ -1,10 +1,11 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.db.models.functions import Lower
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
-from django.utils.html import format_html
+from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 
 from .models import (
@@ -21,10 +22,11 @@ from .models import (
     Property,
     PropertyContribution,
     PropertyProfitDistribution,
+    RentalBill,
     SharePrice,
     User,
     UserAgreement,
-    RentalBill
+    WithdrawalRequest,
 )
 
 
@@ -51,6 +53,7 @@ class ShortNameDropdownFilter(admin.SimpleListFilter):
 
 class UserAdmin(BaseUserAdmin):
     model = User
+
     list_display = (
         "email",
         "get_full_name",
@@ -65,12 +68,14 @@ class UserAdmin(BaseUserAdmin):
         "is_property",
         "office_management",
     )
+
     list_filter = (
         "is_active",
         "investor",
         "investment_type",
         ShortNameDropdownFilter,
     )
+
     search_fields = ("email", "first_name", "last_name", "short_name", "member_id")
     ordering = ("email",)
 
@@ -233,7 +238,6 @@ class UserAdmin(BaseUserAdmin):
     filter_horizontal = ("tags",)
 
     def get_queryset(self, request):
-        """Optimize queries by selecting related group"""
         qs = super().get_queryset(request)
         return qs.select_related("user_group")
 
@@ -243,10 +247,6 @@ class BankAdmin(admin.ModelAdmin):
     list_display = ("name", "is_active")
     search_fields = ("name",)
     list_filter = ("is_active",)
-
-
-
-from django.db.models.functions import Lower
 
 
 class UserShortNameFilter(admin.SimpleListFilter):
@@ -285,16 +285,14 @@ class PaymentAdmin(admin.ModelAdmin):
         "copy_button",
     )
     list_filter = (UserShortNameFilter, "bank", "status")
-    search_fields = ("user__username", "user__email", "bank__name")
+    search_fields = ("user__email", "user__first_name", "user__last_name", "bank__name")
     ordering = ("-created_at",)
 
-    # 🔘 Copy Button
     def copy_button(self, obj):
         return format_html('<a class="button" href="{}">Copy</a>', f"copy/{obj.id}/")
 
     copy_button.short_description = "Copy"
 
-    # 🔗 Custom admin URL
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
@@ -306,7 +304,6 @@ class PaymentAdmin(admin.ModelAdmin):
         ]
         return custom_urls + urls
 
-    # 🧠 Copy logic
     def copy_payment(self, request, payment_id):
         payment = get_object_or_404(Payment, pk=payment_id)
 
@@ -317,7 +314,6 @@ class PaymentAdmin(admin.ModelAdmin):
             paid_amount=payment.paid_amount,
             receipt=payment.receipt,
             notes=payment.notes,
-            # 🔴 Important rules
             status="pending",
             approved_by=None,
             approved_at=None,
@@ -331,7 +327,6 @@ class PaymentAdmin(admin.ModelAdmin):
         )
 
         return redirect(request.META.get("HTTP_REFERER"))
-
 
 
 @admin.register(Property)
@@ -422,7 +417,6 @@ class PropertyAdmin(admin.ModelAdmin):
     actions = ["recalculate_profit_distribution"]
 
     def recalculate_profit_distribution(self, request, queryset):
-        """Admin action to recalculate profit distribution for selected properties"""
         count = 0
         for property_obj in queryset:
             if property_obj.status == "sold" and property_obj.selling_price:
@@ -432,18 +426,12 @@ class PropertyAdmin(admin.ModelAdmin):
         self.message_user(
             request,
             f'Successfully recalculated profit distribution for {count} propert{"y" if count == 1 else "ies"}.',
+            messages.SUCCESS,
         )
 
     recalculate_profit_distribution.short_description = (
         "Recalculate profit distribution for sold properties"
     )
-
-
-from decimal import Decimal
-
-from django.contrib import admin
-
-from .models import Property, PropertyContribution
 
 
 class PropertyNameFilter(admin.SimpleListFilter):
@@ -474,13 +462,15 @@ class PropertyContributionAdmin(admin.ModelAdmin):
         "investment_date",
         "tdi_display",
         "dp_display",
-        "pp_display",
+        "profit_proportion",
         "ns_display",
         "profit_weight_display",
         "profit_display",
         "deduction_display",
         "final_profit_display",
     ]
+
+    list_editable = ["profit_proportion"]
 
     list_filter = [
         PropertyNameFilter,
@@ -498,7 +488,11 @@ class PropertyContributionAdmin(admin.ModelAdmin):
         "property__property_name",
     ]
 
-    ordering = ["property__property_name", "user__first_name", "investment_sequence"]
+    ordering = [
+        "property__property_name",
+        "user__first_name",
+        "investment_sequence",
+    ]
 
     readonly_fields = [
         "shares",
@@ -543,6 +537,7 @@ class PropertyContributionAdmin(admin.ModelAdmin):
                     "shares",
                     "total_days",
                     "days_proportion",
+                    "profit_proportion",
                     "investment_ratio",
                     "profit_weight",
                 )
@@ -640,43 +635,6 @@ class PropertyContributionAdmin(admin.ModelAdmin):
 
     dp_display.short_description = "Days of Proportion (DP)"
 
-    def profit_propotion_display(self, obj):
-        """
-        Current model stores buyer level per user/property, not per contribution row.
-        So if same user exists in both first and second buyer lists, we infer:
-        - sequence 1 => first_level_share
-        - sequence > 1 => second_level_share
-        """
-        try:
-            distribution = obj.property.profit_distribution
-        except Exception:
-            return "-"
-
-        user_id = obj.user_id
-
-        is_first = distribution.first_level_buyers.filter(id=user_id).exists()
-        is_second = distribution.second_level_buyers.filter(id=user_id).exists()
-
-        if is_first and not is_second:
-            return distribution.first_level_share
-
-        if is_second and not is_first:
-            return distribution.second_level_share
-
-        if is_first and is_second:
-            if (obj.investment_sequence or 1) == 1:
-                return distribution.first_level_share
-            return distribution.second_level_share
-
-        return "-"
-
-    profit_propotion_display.short_description = "Profit Proportion (PP)"
-
-    def pp_display(self, obj):
-        return self.profit_propotion_display(obj)
-
-    pp_display.short_description = "Profit Proportion (PP)"
-
     def ns_display(self, obj):
         return f"{Decimal(str(obj.shares or 0)):,.6f}"
 
@@ -716,6 +674,7 @@ class PropertyContributionAdmin(admin.ModelAdmin):
             "contribution": "Amount Invested (AI) [$]",
             "remaining": "Amount Remaining ($)",
             "investment_sequence": "Order of Investment",
+            "profit_proportion": "Profit Proportion (PP)",
             "profit": "100% Profit ($)",
             "deduction": "Deduction from Profit",
             "final_profit": "Profit Received ($)",
@@ -757,8 +716,6 @@ class GroupAdmin(admin.ModelAdmin):
 
 
 class BuyerLevelHistoryInline(admin.TabularInline):
-    """Inline display for Buyer Level History under PropertyProfitDistribution"""
-
     model = BuyerLevelHistory
     extra = 0
     readonly_fields = [
@@ -776,16 +733,6 @@ class BuyerLevelHistoryInline(admin.TabularInline):
 
 @admin.register(PropertyProfitDistribution)
 class PropertyProfitDistributionAdmin(admin.ModelAdmin):
-    """
-    Admin interface for Property Profit Distribution
-
-    Features:
-    - Show property name with clickable link
-    - Display all first & second level buyers
-    - Editable share values
-    - Buyer level history inline
-    """
-
     list_display = [
         "property_name_with_icon",
         "first_level_count_display",
@@ -838,6 +785,13 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
             },
         ),
         (
+            "Sequence Wise Share",
+            {
+                "fields": ("sequence_wise_share_display",),
+                "classes": ("wide",),
+            },
+        ),
+        (
             "Timestamps",
             {
                 "fields": ("created_at", "updated_at"),
@@ -848,6 +802,7 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
 
     readonly_fields = [
         "property_details_display",
+        "sequence_wise_share_display",
         "first_level_buyer_count",
         "second_level_buyer_count",
         "first_level_buyers_display",
@@ -857,23 +812,72 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
     ]
 
     filter_horizontal = ["first_level_buyers", "second_level_buyers"]
-
     inlines = [BuyerLevelHistoryInline]
     ordering = ["-created_at"]
+
+    actions = [
+        "sync_default_profit_proportion_action",
+        "update_profit_weights_action",
+        "reset_shares_action",
+    ]
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         obj.update_buyer_counts()
+        self.save_sequence_profit_proportions(request, obj)
+
+    def save_sequence_profit_proportions(self, request, obj):
+        if not obj or not obj.property:
+            return
+
+        updated_count = 0
+        skipped_count = 0
+
+        for key, value in request.POST.items():
+            if not key.startswith("sequence_pp_"):
+                continue
+
+            contribution_id = key.replace("sequence_pp_", "").strip()
+
+            try:
+                contribution_id = int(contribution_id)
+                pp_value = Decimal(str(value or "0").strip())
+
+                if pp_value < Decimal("0.01"):
+                    skipped_count += 1
+                    continue
+
+                updated = PropertyContribution.objects.filter(
+                    id=contribution_id,
+                    property=obj.property,
+                ).update(profit_proportion=pp_value)
+
+                if updated:
+                    updated_count += 1
+
+            except (ValueError, InvalidOperation):
+                skipped_count += 1
+                continue
+
+        if updated_count:
+            self.message_user(
+                request,
+                f"✅ {updated_count} sequence PP value updated successfully.",
+                messages.SUCCESS,
+            )
+
+        if skipped_count:
+            self.message_user(
+                request,
+                f"⚠️ {skipped_count} PP value skipped because value was invalid.",
+                messages.WARNING,
+            )
 
     def property_name_with_icon(self, obj):
-        """
-        Property name with icon and clickable link
-        Clicking opens the PropertyProfitDistribution detail page
-        """
         try:
-
             url = reverse(
-                "admin:accounts_propertyprofitdistribution_change", args=[obj.id]
+                "admin:accounts_propertyprofitdistribution_change",
+                args=[obj.id],
             )
             return format_html(
                 """
@@ -887,16 +891,21 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
                 url,
                 obj.property.property_name,
             )
-        except Exception as e:
+        except Exception:
+            property_name = obj.property.property_name if obj.property else "—"
             return format_html(
-                '<div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 20px;">🏠</span><span>{}</span></div>',
-                obj.property.property_name,
+                """
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 20px;">🏠</span>
+                    <span>{}</span>
+                </div>
+                """,
+                property_name,
             )
 
     property_name_with_icon.short_description = "Property Name"
 
     def property_details_display(self, obj):
-        """Display property details with link to Property admin page"""
         if not obj.property:
             return "—"
 
@@ -904,21 +913,41 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
 
         try:
             property_url = reverse("admin:accounts_property_change", args=[p.id])
-            property_link = f'<a href="{property_url}" style="color: #0066cc; font-weight: bold;">{p.property_name}</a>'
-        except:
-            property_link = p.property_name
+            property_link = (
+                f'<a href="{property_url}" style="color: #0066cc; font-weight: bold;">'
+                f"{escape(p.property_name)}</a>"
+            )
+        except Exception:
+            property_link = escape(p.property_name)
 
         html = f"""
         <div style="background:#f5f5f5;padding:15px;border-radius:5px;border-left:4px solid #0066cc;">
             <h3 style="margin-top:0;color:#0066cc;">📋 Property Details</h3>
             <table style="width:100%;border-collapse:collapse;">
-                <tr><td style="padding:5px;"><b>Property Name:</b></td><td style="padding:5px;">{property_link}</td></tr>
-                <tr><td style="padding:5px;"><b>Address:</b></td><td style="padding:5px;">{p.address}, {p.city}</td></tr>
-                <tr><td style="padding:5px;"><b>Status:</b></td>
-                    <td style="padding:5px;"><span style="background:#4CAF50;color:#fff;padding:3px 8px;border-radius:3px;">{p.get_status_display()}</span></td>
+                <tr>
+                    <td style="padding:5px;"><b>Property Name:</b></td>
+                    <td style="padding:5px;">{property_link}</td>
                 </tr>
-                <tr><td style="padding:5px;"><b>Buying Price:</b></td><td style="padding:5px;">${p.buying_price or 0:,.2f}</td></tr>
-                <tr><td style="padding:5px;"><b>Selling Price:</b></td><td style="padding:5px;">${p.selling_price or 0:,.2f}</td></tr>
+                <tr>
+                    <td style="padding:5px;"><b>Address:</b></td>
+                    <td style="padding:5px;">{escape(p.address or "")}</td>
+                </tr>
+                <tr>
+                    <td style="padding:5px;"><b>Status:</b></td>
+                    <td style="padding:5px;">
+                        <span style="background:#4CAF50;color:#fff;padding:3px 8px;border-radius:3px;">
+                            {escape(p.get_status_display())}
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:5px;"><b>Buying Price:</b></td>
+                    <td style="padding:5px;">${Decimal(str(p.buying_price or 0)):,.2f}</td>
+                </tr>
+                <tr>
+                    <td style="padding:5px;"><b>Selling Price:</b></td>
+                    <td style="padding:5px;">${Decimal(str(p.selling_price or 0)):,.2f}</td>
+                </tr>
             </table>
         </div>
         """
@@ -978,6 +1007,7 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
 
     def first_level_buyers_display(self, obj):
         buyers = obj.first_level_buyers.all()
+
         if not buyers:
             return mark_safe(
                 '<p style="color:#999;">No first-level buyers available.</p>'
@@ -985,19 +1015,20 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
 
         html = """
         <div style="background:#e8f5e9;padding:10px;border-radius:5px;border-left:4px solid #4CAF50;">
-        <h4 style="margin-top:0;color:#4CAF50;">👥 First Level Buyer List</h4>
-        <table style="width:100%;border-collapse:collapse;">
-        <tr style="background:#c8e6c9;">
-            <th style="padding:8px;text-align:left;">Name</th>
-            <th style="padding:8px;text-align:left;">Email</th>
-            <th style="padding:8px;text-align:left;">Share</th>
-        </tr>
+            <h4 style="margin-top:0;color:#4CAF50;">👥 First Level Buyer List</h4>
+            <table style="width:100%;border-collapse:collapse;">
+                <tr style="background:#c8e6c9;">
+                    <th style="padding:8px;text-align:left;">Name</th>
+                    <th style="padding:8px;text-align:left;">Email</th>
+                    <th style="padding:8px;text-align:left;">Default Share</th>
+                </tr>
         """
+
         for b in buyers:
             html += f"""
                 <tr style="border-bottom:1px solid #ddd;">
-                    <td style="padding:8px;">{b.get_full_name()}</td>
-                    <td style="padding:8px;">{b.email}</td>
+                    <td style="padding:8px;">{escape(b.get_full_name())}</td>
+                    <td style="padding:8px;">{escape(b.email or "")}</td>
                     <td style="padding:8px;"><b>× {obj.first_level_share}</b></td>
                 </tr>
             """
@@ -1009,6 +1040,7 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
 
     def second_level_buyers_display(self, obj):
         buyers = obj.second_level_buyers.all()
+
         if not buyers:
             return mark_safe(
                 '<p style="color:#999;">No second-level buyers available.</p>'
@@ -1016,20 +1048,20 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
 
         html = """
         <div style="background:#fff3e0;padding:10px;border-radius:5px;border-left:4px solid #FF9800;">
-        <h4 style="margin-top:0;color:#FF9800;">👥 Second Level Buyer List</h4>
-        <table style="width:100%;border-collapse:collapse;">
-        <tr style="background:#ffe0b2;">
-            <th style="padding:8px;text-align:left;">Name</th>
-            <th style="padding:8px;text-align:left;">Email</th>
-            <th style="padding:8px;text-align:left;">Share</th>
-        </tr>
+            <h4 style="margin-top:0;color:#FF9800;">👥 Second Level Buyer List</h4>
+            <table style="width:100%;border-collapse:collapse;">
+                <tr style="background:#ffe0b2;">
+                    <th style="padding:8px;text-align:left;">Name</th>
+                    <th style="padding:8px;text-align:left;">Email</th>
+                    <th style="padding:8px;text-align:left;">Default Share</th>
+                </tr>
         """
 
         for b in buyers:
             html += f"""
                 <tr style="border-bottom:1px solid #ddd;">
-                    <td style="padding:8px;">{b.get_full_name()}</td>
-                    <td style="padding:8px;">{b.email}</td>
+                    <td style="padding:8px;">{escape(b.get_full_name())}</td>
+                    <td style="padding:8px;">{escape(b.email or "")}</td>
                     <td style="padding:8px;"><b>× {obj.second_level_share}</b></td>
                 </tr>
             """
@@ -1039,15 +1071,200 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
 
     second_level_buyers_display.short_description = "👥 Second Level Buyers"
 
+    def sequence_wise_share_display(self, obj):
+        if not obj or not obj.property:
+            return "Save first to see sequence wise shares."
+
+        contributions = PropertyContribution.objects.filter(
+            property=obj.property
+        ).select_related(
+            "user",
+            "property",
+        ).order_by(
+            "user__first_name",
+            "user__last_name",
+            "investment_sequence",
+            "id",
+        )
+
+        if not contributions.exists():
+            return mark_safe(
+                '<p style="color:#999;">No property contribution rows found.</p>'
+            )
+
+        html = """
+        <div style="background:#f8fafc;padding:14px;border-radius:6px;border-left:4px solid #2563eb;max-width:100%;">
+            <h3 style="margin-top:0;color:#1d4ed8;font-size:22px;">
+                📊 Sequence Wise Share / Profit Proportion
+            </h3>
+
+            <p style="margin-top:0;color:#555;line-height:1.6;">
+                Rule: only create-time buyer sequence #1 is First Level.
+                Later sequence/user rows are Second Level.
+                Change PP here and click <b>Save PP</b> or the main admin <b>Save</b> button.
+            </p>
+
+            <div style="margin:10px 0;padding:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;color:#1e40af;">
+                💡 Example: First Level Share = 1.80, Second Level Share = 1.50.
+                User sequence #1 can be First × 1.80, but that same user's later sequence #2 will be Second × 1.50.
+            </div>
+
+            <table style="width:100%;border-collapse:collapse;background:white;">
+                <tr style="background:#dbeafe;">
+                    <th style="padding:8px;text-align:left;border:1px solid #ddd;">User</th>
+                    <th style="padding:8px;text-align:center;border:1px solid #ddd;">Buyer Level</th>
+                    <th style="padding:8px;text-align:center;border:1px solid #ddd;">Sequence</th>
+                    <th style="padding:8px;text-align:center;border:1px solid #ddd;">Default Share</th>
+                    <th style="padding:8px;text-align:center;border:1px solid #ddd;">Current PP</th>
+                    <th style="padding:8px;text-align:right;border:1px solid #ddd;">Contribution</th>
+                    <th style="padding:8px;text-align:right;border:1px solid #ddd;">Shares</th>
+                    <th style="padding:8px;text-align:right;border:1px solid #ddd;">DP</th>
+                    <th style="padding:8px;text-align:right;border:1px solid #ddd;">Profit Weight</th>
+                    <th style="padding:8px;text-align:center;border:1px solid #ddd;">Save</th>
+                </tr>
+        """
+
+        for c in contributions:
+            is_first_buyer = obj.first_level_buyers.filter(id=c.user_id).exists()
+            sequence = c.investment_sequence or 1
+
+            if is_first_buyer and sequence == 1:
+                default_share = Decimal(str(obj.first_level_share or 1))
+                level_badge = (
+                    '<span style="background:#16a34a;color:white;padding:4px 9px;'
+                    'border-radius:12px;font-weight:bold;display:inline-block;">First</span>'
+                )
+            else:
+                default_share = Decimal(str(obj.second_level_share or 1))
+                level_badge = (
+                    '<span style="background:#f97316;color:white;padding:4px 9px;'
+                    'border-radius:12px;font-weight:bold;display:inline-block;">Second</span>'
+                )
+
+            current_pp = Decimal(str(getattr(c, "profit_proportion", 0) or 0))
+
+            if current_pp <= 0:
+                current_pp = default_share
+
+            if current_pp != default_share:
+                row_bg = "#fff7ed"
+                pp_label = """
+                    <div style="font-size:11px;color:#ea580c;font-weight:bold;margin-top:3px;">
+                        Custom
+                    </div>
+                """
+            else:
+                row_bg = "#ffffff"
+                pp_label = """
+                    <div style="font-size:11px;color:#64748b;margin-top:3px;">
+                        Default
+                    </div>
+                """
+
+            user_name = escape(c.user.get_full_name() or c.user.email or "-")
+
+            html += f"""
+                <tr style="background:{row_bg};">
+                    <td style="padding:8px;border:1px solid #ddd;font-weight:600;">
+                        {user_name}
+                    </td>
+
+                    <td style="padding:8px;text-align:center;border:1px solid #ddd;">
+                        {level_badge}
+                    </td>
+
+                    <td style="padding:8px;text-align:center;border:1px solid #ddd;font-weight:bold;">
+                        #{sequence}
+                    </td>
+
+                    <td style="padding:8px;text-align:center;border:1px solid #ddd;">
+                        × {default_share}
+                    </td>
+
+                    <td style="padding:8px;text-align:center;border:1px solid #ddd;">
+                        <div style="display:flex;align-items:center;justify-content:center;gap:4px;">
+                            <span style="font-weight:bold;color:#1d4ed8;">×</span>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                name="sequence_pp_{c.id}"
+                                value="{current_pp}"
+                                style="
+                                    width:85px;
+                                    padding:6px 8px;
+                                    border:1px solid #93c5fd;
+                                    border-radius:5px;
+                                    text-align:center;
+                                    font-weight:bold;
+                                    color:#1d4ed8;
+                                    background:#ffffff;
+                                "
+                            >
+                        </div>
+                        {pp_label}
+                    </td>
+
+                    <td style="padding:8px;text-align:right;border:1px solid #ddd;">
+                        ${Decimal(str(c.contribution or 0)):,.2f}
+                    </td>
+
+                    <td style="padding:8px;text-align:right;border:1px solid #ddd;">
+                        {Decimal(str(c.shares or 0)):,.6f}
+                    </td>
+
+                    <td style="padding:8px;text-align:right;border:1px solid #ddd;">
+                        {Decimal(str(c.days_proportion or 0)):,.6f}
+                    </td>
+
+                    <td style="padding:8px;text-align:right;border:1px solid #ddd;">
+                        {Decimal(str(c.profit_weight or 0)):,.6f}
+                    </td>
+
+                    <td style="padding:8px;text-align:center;border:1px solid #ddd;">
+                        <button
+                            type="submit"
+                            name="_save"
+                            value="Save"
+                            style="
+                                background:#2563eb;
+                                color:white;
+                                border:0;
+                                padding:6px 10px;
+                                border-radius:5px;
+                                font-weight:bold;
+                                cursor:pointer;
+                            "
+                        >
+                            Save PP
+                        </button>
+                    </td>
+                </tr>
+            """
+
+        html += """
+            </table>
+
+            <div style="margin-top:12px;padding:10px;background:#fefce8;border:1px solid #fde68a;border-radius:5px;color:#854d0e;">
+                ⚠️ After changing PP, run <b>Update Profit Weights</b> action or trigger recalculation,
+                so Profit Weight reflects the new PP value.
+            </div>
+        </div>
+        """
+
+        return mark_safe(html)
+
+    sequence_wise_share_display.short_description = "Sequence Wise Share"
+
     def actions_display(self, obj):
-        """Quick action buttons"""
         try:
             contributions_url = (
                 reverse("admin:accounts_propertycontribution_changelist")
                 + f"?property__id__exact={obj.property.id}"
             )
             property_url = reverse(
-                "admin:accounts_property_change", args=[obj.property.id]
+                "admin:accounts_property_change",
+                args=[obj.property.id],
             )
 
             html = f"""
@@ -1062,18 +1279,46 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
                 </a>
             </div>
             """
-        except:
+        except Exception:
             html = '<span style="color:#999;">—</span>'
 
         return mark_safe(html)
 
     actions_display.short_description = "Quick Actions"
 
-    actions = ["update_profit_weights_action", "reset_shares_action"]
+    def sync_default_profit_proportion_action(self, request, queryset):
+        updated = 0
+
+        for obj in queryset:
+            contributions = PropertyContribution.objects.filter(
+                property=obj.property
+            ).select_related("user")
+
+            for c in contributions:
+                is_first_buyer = obj.first_level_buyers.filter(id=c.user_id).exists()
+                sequence = c.investment_sequence or 1
+
+                if is_first_buyer and sequence == 1:
+                    c.profit_proportion = obj.first_level_share
+                else:
+                    c.profit_proportion = obj.second_level_share
+
+                c.save(update_fields=["profit_proportion"])
+                updated += 1
+
+        self.message_user(
+            request,
+            f"✅ Row-wise default PP synced for {updated} contribution rows.",
+            messages.SUCCESS,
+        )
+
+    sync_default_profit_proportion_action.short_description = (
+        "Sync row-wise default PP from buyer level share"
+    )
 
     def update_profit_weights_action(self, request, queryset):
-        """Bulk update profit weights for selected properties"""
         updated_count = 0
+
         for dist in queryset:
             result = dist.update_all_profit_weights()
             if result["success"]:
@@ -1082,24 +1327,28 @@ class PropertyProfitDistributionAdmin(admin.ModelAdmin):
         self.message_user(
             request,
             f"✅ Successfully updated profit weights for {updated_count} contributions!",
+            messages.SUCCESS,
         )
 
     update_profit_weights_action.short_description = "🔄 Update Profit Weights"
 
     def reset_shares_action(self, request, queryset):
-        """Reset all shares to default (1.0)"""
-        queryset.update(first_level_share=1.0, second_level_share=1.0)
-        self.message_user(
-            request, f"✅ Reset share values to 1.0 for {queryset.count()} properties."
+        queryset.update(
+            first_level_share=Decimal("1.00"),
+            second_level_share=Decimal("1.00"),
         )
 
-    reset_shares_action.short_description = "↺ Reset Share Values (1.0)"
+        self.message_user(
+            request,
+            f"✅ Reset share values to 1.0 for {queryset.count()} properties.",
+            messages.SUCCESS,
+        )
+
+    reset_shares_action.short_description = "Reset Share Values (1.0)"
 
 
 @admin.register(BuyerLevelHistory)
 class BuyerLevelHistoryAdmin(admin.ModelAdmin):
-    """Admin interface for Buyer Level History"""
-
     list_display = [
         "user_name",
         "property_name",
@@ -1109,6 +1358,7 @@ class BuyerLevelHistoryAdmin(admin.ModelAdmin):
     ]
 
     list_filter = ["current_level", "previous_level", "changed_at"]
+
     search_fields = [
         "user__email",
         "user__first_name",
@@ -1175,9 +1425,6 @@ class BuyerLevelHistoryAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-from django.contrib import admin
-
-from .models import WithdrawalRequest
 
 @admin.register(WithdrawalRequest)
 class WithdrawalRequestAdmin(admin.ModelAdmin):
@@ -1341,15 +1588,1329 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
         )
 
     investment_type_display.short_description = "Investment Type"
+
+
+admin.site.register(OfficeCost)
+admin.site.register(SharePrice)
+admin.site.register(User, UserAdmin)
+admin.site.register(Agreement)
+admin.site.register(Expense)
+admin.site.register(UserAgreement)
+admin.site.register(Help)
+admin.site.register(ExpenseBalance)
+admin.site.register(ExpensePayment)
+admin.site.register(RentalBill)
+
+
+
+
+
+# from decimal import Decimal
+
+# from django.contrib import admin, messages
+# from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+# from django.shortcuts import get_object_or_404, redirect
+# from django.urls import path, reverse
+# from django.utils.html import format_html
+# from django.utils.safestring import mark_safe
+
+# from .models import (
+#     Agreement,
+#     Bank,
+#     BuyerLevelHistory,
+#     Expense,
+#     ExpenseBalance,
+#     ExpensePayment,
+#     Group,
+#     Help,
+#     OfficeCost,
+#     Payment,
+#     Property,
+#     PropertyContribution,
+#     PropertyProfitDistribution,
+#     SharePrice,
+#     User,
+#     UserAgreement,
+#     RentalBill
+# )
+
+
+# class ShortNameDropdownFilter(admin.SimpleListFilter):
+#     title = "Short Name"
+#     parameter_name = "short_name"
+
+#     def lookups(self, request, model_admin):
+#         qs = (
+#             model_admin.get_queryset(request)
+#             .exclude(short_name__isnull=True)
+#             .exclude(short_name="")
+#             .order_by("short_name")
+#             .values_list("short_name", flat=True)
+#             .distinct()
+#         )
+#         return [(name, name) for name in qs]
+
+#     def queryset(self, request, queryset):
+#         if self.value():
+#             return queryset.filter(short_name=self.value())
+#         return queryset
+
+
+# class UserAdmin(BaseUserAdmin):
+#     model = User
+#     list_display = (
+#         "email",
+#         "get_full_name",
+#         "member_id",
+#         "user_group",
+#         "investment_type",
+#         "balance",
+#         "investor",
+#         "is_superuser",
+#         "is_finnancial",
+#         "is_expense",
+#         "is_property",
+#         "office_management",
+#     )
+#     list_filter = (
+#         "is_active",
+#         "investor",
+#         "investment_type",
+#         ShortNameDropdownFilter,
+#     )
+#     search_fields = ("email", "first_name", "last_name", "short_name", "member_id")
+#     ordering = ("email",)
+
+#     fieldsets = (
+#         (None, {"fields": ("email", "password", "member_id")}),
+#         (
+#             "Personal Info",
+#             {
+#                 "fields": (
+#                     "first_name",
+#                     "middle_name",
+#                     "last_name",
+#                     "short_name",
+#                     "phone_number",
+#                     "balance",
+#                     "total_invest_balance",
+#                     "birth_year",
+#                     "birth_month",
+#                     "birth_date",
+#                     "personal_image",
+#                     "photo_id",
+#                 )
+#             },
+#         ),
+#         (
+#             "Group, Deduction & Investment Type",
+#             {
+#                 "fields": (
+#                     "user_group",
+#                     "investment_type",
+#                 ),
+#                 "description": "Select user group for profit deductions and select default investment type for new property contributions.",
+#             },
+#         ),
+#         (
+#             "Address",
+#             {
+#                 "fields": (
+#                     "home_address_line_1",
+#                     "home_address_line_2",
+#                     "city",
+#                     "state",
+#                     "zip_code",
+#                 )
+#             },
+#         ),
+#         (
+#             "Additional Information",
+#             {
+#                 "fields": (
+#                     "emergency_contact",
+#                     "emergency_contact_number",
+#                     "beneficiaries",
+#                     "how_did_you_know",
+#                     "sign_by_name",
+#                 )
+#             },
+#         ),
+#         ("Tags & Labels", {"fields": ("tags",)}),
+#         (
+#             "Permissions",
+#             {
+#                 "fields": (
+#                     "is_active",
+#                     "staff",
+#                     "investor",
+#                     "owner",
+#                     "semi_superuser",
+#                     "is_superuser",
+#                     "is_finnancial",
+#                     "is_expense",
+#                     "is_property",
+#                     "office_management",
+#                 )
+#             },
+#         ),
+#         (
+#             "Status",
+#             {
+#                 "fields": (
+#                     "is_agree",
+#                     "is_continue",
+#                     "freeze_date",
+#                 )
+#             },
+#         ),
+#         ("Important dates", {"fields": ("last_login", "member_since")}),
+#     )
+
+#     add_fieldsets = (
+#         (None, {"classes": ("wide",), "fields": ("email", "password1", "password2")}),
+#         (
+#             "Personal Info",
+#             {
+#                 "fields": (
+#                     "first_name",
+#                     "middle_name",
+#                     "last_name",
+#                     "phone_number",
+#                     "birth_year",
+#                     "birth_month",
+#                     "birth_date",
+#                 )
+#             },
+#         ),
+#         (
+#             "Group Assignment & Investment Type",
+#             {
+#                 "fields": (
+#                     "user_group",
+#                     "investment_type",
+#                 ),
+#                 "description": "Assign user to a group and select default investment type.",
+#             },
+#         ),
+#         (
+#             "Address",
+#             {
+#                 "fields": (
+#                     "home_address_line_1",
+#                     "home_address_line_2",
+#                     "city",
+#                     "state",
+#                     "zip_code",
+#                 )
+#             },
+#         ),
+#         (
+#             "Additional Information",
+#             {
+#                 "fields": (
+#                     "emergency_contact",
+#                     "emergency_contact_number",
+#                     "how_did_you_know",
+#                     "sign_by_name",
+#                     "personal_image",
+#                     "photo_id",
+#                     "tags",
+#                 )
+#             },
+#         ),
+#         (
+#             "Permissions",
+#             {
+#                 "fields": (
+#                     "is_active",
+#                     "staff",
+#                     "investor",
+#                     "owner",
+#                     "semi_superuser",
+#                     "is_superuser",
+#                     "office_management",
+#                 )
+#             },
+#         ),
+#         ("Status", {"fields": ("is_agree", "is_continue")}),
+#     )
+
+#     readonly_fields = ("member_id", "member_since", "freeze_date")
+#     filter_horizontal = ("tags",)
+
+#     def get_queryset(self, request):
+#         """Optimize queries by selecting related group"""
+#         qs = super().get_queryset(request)
+#         return qs.select_related("user_group")
+
+
+# @admin.register(Bank)
+# class BankAdmin(admin.ModelAdmin):
+#     list_display = ("name", "is_active")
+#     search_fields = ("name",)
+#     list_filter = ("is_active",)
+
+
+
+# from django.db.models.functions import Lower
+
+
+# class UserShortNameFilter(admin.SimpleListFilter):
+#     title = "User"
+#     parameter_name = "user"
+
+#     def lookups(self, request, model_admin):
+#         qs = (
+#             model_admin.get_queryset(request)
+#             .select_related("user")
+#             .exclude(user__short_name__isnull=True)
+#             .exclude(user__short_name="")
+#             .annotate(sn=Lower("user__short_name"))
+#             .order_by("sn")
+#             .values_list("user__id", "user__short_name")
+#             .distinct()
+#         )
+#         return [(user_id, short_name) for user_id, short_name in qs]
+
+#     def queryset(self, request, queryset):
+#         if self.value():
+#             return queryset.filter(user__id=self.value())
+#         return queryset
+
+
+# @admin.register(Payment)
+# class PaymentAdmin(admin.ModelAdmin):
+#     list_display = (
+#         "user",
+#         "bank",
+#         "amount",
+#         "status",
+#         "created_at",
+#         "approved_by",
+#         "approved_at",
+#         "copy_button",
+#     )
+#     list_filter = (UserShortNameFilter, "bank", "status")
+#     search_fields = ("user__username", "user__email", "bank__name")
+#     ordering = ("-created_at",)
+
+#     # 🔘 Copy Button
+#     def copy_button(self, obj):
+#         return format_html('<a class="button" href="{}">Copy</a>', f"copy/{obj.id}/")
+
+#     copy_button.short_description = "Copy"
+
+#     # 🔗 Custom admin URL
+#     def get_urls(self):
+#         urls = super().get_urls()
+#         custom_urls = [
+#             path(
+#                 "copy/<int:payment_id>/",
+#                 self.admin_site.admin_view(self.copy_payment),
+#                 name="payment-copy",
+#             ),
+#         ]
+#         return custom_urls + urls
+
+#     # 🧠 Copy logic
+#     def copy_payment(self, request, payment_id):
+#         payment = get_object_or_404(Payment, pk=payment_id)
+
+#         Payment.objects.create(
+#             user=payment.user,
+#             bank=payment.bank,
+#             amount=payment.amount,
+#             paid_amount=payment.paid_amount,
+#             receipt=payment.receipt,
+#             notes=payment.notes,
+#             # 🔴 Important rules
+#             status="pending",
+#             approved_by=None,
+#             approved_at=None,
+#             is_office_management=False,
+#         )
+
+#         self.message_user(
+#             request,
+#             "Payment copied successfully with status set to Pending.",
+#             messages.SUCCESS,
+#         )
+
+#         return redirect(request.META.get("HTTP_REFERER"))
+
+
+
+# @admin.register(Property)
+# class PropertyAdmin(admin.ModelAdmin):
+#     list_display = (
+#         "property_name",
+#         "address",
+#         "auction_price",
+#         "selling_price",
+#         "profit",
+#         "status",
+#         "is_contribution_locked",
+#         "listed_by",
+#         "created_at",
+#     )
+#     list_filter = (
+#         "status",
+#         "is_contribution_locked",
+#         "property_type",
+#         "exterior_feature",
+#     )
+#     search_fields = ("property_name", "address", "description")
+#     readonly_fields = ("created_at", "updated_at", "listed_by", "listed_date", "profit")
+
+#     fieldsets = (
+#         (
+#             None,
+#             {
+#                 "fields": (
+#                     "property_name",
+#                     "description",
+#                     "status",
+#                     "is_contribution_locked",
+#                 )
+#             },
+#         ),
+#         (
+#             "Price Info",
+#             {
+#                 "fields": (
+#                     "estimated_price",
+#                     "booking_fee",
+#                     "auction_price",
+#                     "buying_price",
+#                     "service_cost",
+#                     "acquisition_cost",
+#                     "asking_price",
+#                     "selling_price",
+#                     "profit",
+#                 ),
+#                 "description": "Profit is automatically calculated: Selling Price - Acquisition Cost",
+#             },
+#         ),
+#         (
+#             "Property Info",
+#             {
+#                 "fields": (
+#                     "bedrooms",
+#                     "bathrooms",
+#                     "living_area",
+#                     "lot_area",
+#                     "parking",
+#                     "year_build",
+#                     "property_type",
+#                     "exterior_feature",
+#                     "neighborhood_Demographic_Profile",
+#                     "neighborhood_percentage",
+#                 )
+#             },
+#         ),
+#         ("Location", {"fields": ("address", "url")}),
+#         (
+#             "Dates",
+#             {
+#                 "fields": (
+#                     "auction_date",
+#                     "buying_date",
+#                     "selling_date",
+#                     "listed_date",
+#                     "created_at",
+#                     "updated_at",
+#                 )
+#             },
+#         ),
+#         ("Listed By", {"fields": ("listed_by",)}),
+#     )
+
+#     actions = ["recalculate_profit_distribution"]
+
+#     def recalculate_profit_distribution(self, request, queryset):
+#         """Admin action to recalculate profit distribution for selected properties"""
+#         count = 0
+#         for property_obj in queryset:
+#             if property_obj.status == "sold" and property_obj.selling_price:
+#                 if property_obj.distribute_sale_proceeds():
+#                     count += 1
+
+#         self.message_user(
+#             request,
+#             f'Successfully recalculated profit distribution for {count} propert{"y" if count == 1 else "ies"}.',
+#         )
+
+#     recalculate_profit_distribution.short_description = (
+#         "Recalculate profit distribution for sold properties"
+#     )
+
+
+# from decimal import Decimal
+
+# from django.contrib import admin
+
+# from .models import Property, PropertyContribution
+
+
+# class PropertyNameFilter(admin.SimpleListFilter):
+#     title = "Property"
+#     parameter_name = "property"
+
+#     def lookups(self, request, model_admin):
+#         properties = Property.objects.all().order_by("property_name")
+#         return [(p.id, p.property_name) for p in properties]
+
+#     def queryset(self, request, queryset):
+#         if self.value():
+#             return queryset.filter(property_id=self.value())
+#         return queryset
+
+
+# @admin.register(PropertyContribution)
+# class PropertyContributionAdmin(admin.ModelAdmin):
+#     list_display = [
+#         "user_display",
+#         "user_group_display",
+#         "property_display",
+#         "level_of_investment_display",
+#         "investment_type_display",
+#         "amount_invested_display",
+#         "ratio",
+#         "fixed_or_proportion_display",
+#         "investment_date",
+#         "tdi_display",
+#         "dp_display",
+
+#         # ✅ NEW: sequence-wise editable profit proportion
+#         "profit_proportion",
+
+#         "ns_display",
+#         "profit_weight_display",
+#         "profit_display",
+#         "deduction_display",
+#         "final_profit_display",
+#     ]
+
+#     # ✅ NEW: direct edit from list page
+#     list_editable = [
+#         "profit_proportion",
+#     ]
+
+#     list_filter = [
+#         PropertyNameFilter,
+#         "investment_type",
+#         "is_fixed_amount",
+#         "investment_date",
+#         "user__user_group",
+#     ]
+
+#     search_fields = [
+#         "user__first_name",
+#         "user__middle_name",
+#         "user__last_name",
+#         "user__email",
+#         "property__property_name",
+#     ]
+
+#     ordering = [
+#         "property__property_name",
+#         "user__first_name",
+#         "investment_sequence",
+#     ]
+
+#     readonly_fields = [
+#         "shares",
+#         "total_days",
+#         "days_proportion",
+#         "investment_ratio",
+#         "profit_weight",
+#         "profit",
+#         "deduction",
+#         "final_profit",
+#     ]
+
+#     fieldsets = (
+#         (
+#             "Basic Information",
+#             {
+#                 "fields": (
+#                     "user",
+#                     "property",
+#                     "investment_sequence",
+#                     "investment_type",
+#                     "investment_date",
+#                     "is_fixed_amount",
+#                 )
+#             },
+#         ),
+#         (
+#             "Contribution Information",
+#             {
+#                 "fields": (
+#                     "contribution",
+#                     "invest_amount",
+#                     "remaining",
+#                     "ratio",
+#                 )
+#             },
+#         ),
+#         (
+#             "Calculated Values",
+#             {
+#                 "fields": (
+#                     "shares",
+#                     "total_days",
+#                     "days_proportion",
+
+#                     # ✅ NEW: editable PP field in detail page
+#                     "profit_proportion",
+
+#                     "investment_ratio",
+#                     "profit_weight",
+#                 )
+#             },
+#         ),
+#         (
+#             "Profit Information",
+#             {
+#                 "fields": (
+#                     "profit",
+#                     "deduction",
+#                     "final_profit",
+#                 )
+#             },
+#         ),
+#     )
+
+#     list_per_page = 50
+
+#     def get_queryset(self, request):
+#         qs = super().get_queryset(request)
+#         return qs.select_related(
+#             "user",
+#             "user__user_group",
+#             "property",
+#         ).prefetch_related(
+#             "property__profit_distribution__first_level_buyers",
+#             "property__profit_distribution__second_level_buyers",
+#         )
+
+#     def user_display(self, obj):
+#         full_name = obj.user.get_full_name()
+#         return full_name if full_name else obj.user.email
+
+#     user_display.short_description = "User"
+
+#     def user_group_display(self, obj):
+#         if getattr(obj.user, "user_group", None):
+#             return f"{obj.user.user_group.name} ({obj.user.user_group.percentage}%)"
+#         return "No Group (0%)"
+
+#     user_group_display.short_description = "User Group"
+
+#     def property_display(self, obj):
+#         return obj.property.property_name if obj.property else "-"
+
+#     property_display.short_description = "Property"
+
+#     def investment_type_display(self, obj):
+#         if obj.investment_type == "short_term":
+#             return format_html(
+#                 '<span style="background:#f3e8ff;color:#7e22ce;padding:3px 8px;border-radius:12px;font-weight:bold;">Short Term</span>'
+#             )
+
+#         return format_html(
+#             '<span style="background:#dbeafe;color:#1d4ed8;padding:3px 8px;border-radius:12px;font-weight:bold;">Long Term</span>'
+#         )
+
+#     investment_type_display.short_description = "Investment Type"
+
+#     def level_of_investment_display(self, obj):
+#         return obj.investment_sequence
+
+#     level_of_investment_display.short_description = "Order of Investment"
+
+#     def amount_available_to_invest_display(self, obj):
+#         return f"${Decimal(str(obj.invest_amount or 0)):,.2f}"
+
+#     amount_available_to_invest_display.short_description = (
+#         "Amount Available to Invest ($)"
+#     )
+
+#     def amount_invested_display(self, obj):
+#         return f"${Decimal(str(obj.contribution or 0)):,.2f}"
+
+#     amount_invested_display.short_description = "Amount Invested (AI) [$]"
+
+#     def amount_remaining_display(self, obj):
+#         return f"${Decimal(str(obj.remaining or 0)):,.2f}"
+
+#     amount_remaining_display.short_description = "Amount Remaining ($)"
+
+#     def fixed_or_proportion_display(self, obj):
+#         return "F" if obj.is_fixed_amount else "P"
+
+#     fixed_or_proportion_display.short_description = "Amount Fixed/Propotion"
+
+#     def tdi_display(self, obj):
+#         return obj.total_days or 0
+
+#     tdi_display.short_description = "Total Days Invested (TDI)"
+
+#     def dp_display(self, obj):
+#         return f"{Decimal(str(obj.days_proportion or 0)):,.6f}"
+
+#     dp_display.short_description = "Days of Proportion (DP)"
+
+#     def ns_display(self, obj):
+#         return f"{Decimal(str(obj.shares or 0)):,.6f}"
+
+#     ns_display.short_description = "Number of Shares (NS)"
+
+#     def profit_weight_display(self, obj):
+#         return f"{Decimal(str(obj.profit_weight or 0)):,.6f}"
+
+#     profit_weight_display.short_description = "Profit Weight (DP × PP × NS)"
+
+#     def profit_display(self, obj):
+#         return f"${Decimal(str(obj.profit or 0)):,.2f}"
+
+#     profit_display.short_description = "Profit in dollar"
+
+#     def deduction_display(self, obj):
+#         deduction_amount = Decimal(str(obj.deduction or 0))
+#         deduction_percentage = Decimal("0.00")
+
+#         if getattr(obj.user, "user_group", None):
+#             deduction_percentage = Decimal(str(obj.user.user_group.percentage or 0))
+
+#         return f"${deduction_amount:,.2f} ({deduction_percentage}%)"
+
+#     deduction_display.short_description = "Deduction from Profit"
+
+#     def final_profit_display(self, obj):
+#         return f"${Decimal(str(obj.final_profit or 0)):,.2f}"
+
+#     final_profit_display.short_description = "Total Profit Received ($)"
+
+#     def formfield_for_dbfield(self, db_field, request, **kwargs):
+#         formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
+
+#         custom_labels = {
+#             "invest_amount": "Amount Available to Invest ($)",
+#             "contribution": "Amount Invested (AI) [$]",
+#             "remaining": "Amount Remaining ($)",
+#             "investment_sequence": "Order of Investment",
+
+#             # ✅ NEW label
+#             "profit_proportion": "Profit Proportion (PP)",
+
+#             "profit": "100% Profit ($)",
+#             "deduction": "Deduction from Profit",
+#             "final_profit": "Profit Received ($)",
+#             "is_fixed_amount": "Amount Fixed/Propotion",
+#             "investment_type": "Investment Type Snapshot",
+#             "total_days": "Total Days Invested (TDI)",
+#             "days_proportion": "Days Proportion(Divided by highest TDI) (DP)",
+#             "shares": "Number of Shares(AI/5000) (NS)",
+#             "profit_weight": "Profit Weight (DP × PP × NS)",
+#         }
+
+#         if db_field.name in custom_labels:
+#             formfield.label = custom_labels[db_field.name]
+
+#         return formfield
+
+
+# @admin.register(Group)
+# class GroupAdmin(admin.ModelAdmin):
+#     list_display = ("name", "percentage", "user_count", "created_at")
+#     search_fields = ("name",)
+#     list_filter = ("created_at",)
+#     ordering = ("name",)
+
+#     fieldsets = (
+#         ("Group Information", {"fields": ("name", "percentage")}),
+#         (
+#             "Timestamps",
+#             {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+#         ),
+#     )
+
+#     readonly_fields = ("created_at", "updated_at")
+
+#     def user_count(self, obj):
+#         return obj.users.count()
+
+#     user_count.short_description = "Number of Users"
+
+
+# class BuyerLevelHistoryInline(admin.TabularInline):
+#     """Inline display for Buyer Level History under PropertyProfitDistribution"""
+
+#     model = BuyerLevelHistory
+#     extra = 0
+#     readonly_fields = [
+#         "user",
+#         "previous_level",
+#         "current_level",
+#         "changed_at",
+#         "changed_by",
+#     ]
+#     can_delete = False
+
+#     def has_add_permission(self, request, obj=None):
+#         return False
+
+
+# @admin.register(PropertyProfitDistribution)
+# class PropertyProfitDistributionAdmin(admin.ModelAdmin):
+#     """
+#     Admin interface for Property Profit Distribution
+
+#     Features:
+#     - Show property name with clickable link
+#     - Display all first & second level buyers
+#     - Editable share values
+#     - Sequence wise share / PP display
+#     - Buyer level history inline
+#     """
+
+#     list_display = [
+#         "property_name_with_icon",
+#         "first_level_count_display",
+#         "first_level_share_display",
+#         "second_level_count_display",
+#         "second_level_share_display",
+#         "total_buyers_display",
+#         "created_date",
+#         "actions_display",
+#     ]
+
+#     list_filter = ["created_at", "updated_at"]
+
+#     search_fields = [
+#         "property__property_name",
+#         "property__address",
+#         "first_level_buyers__email",
+#         "second_level_buyers__email",
+#     ]
+
+#     fieldsets = (
+#         (
+#             "Property Information",
+#             {
+#                 "fields": ("property", "property_details_display"),
+#             },
+#         ),
+#         (
+#             "First Level Buyers",
+#             {
+#                 "fields": (
+#                     "first_level_buyers",
+#                     "first_level_buyer_count",
+#                     "first_level_share",
+#                     "first_level_buyers_display",
+#                 ),
+#                 "classes": ("wide",),
+#             },
+#         ),
+#         (
+#             "Second Level Buyers",
+#             {
+#                 "fields": (
+#                     "second_level_buyers",
+#                     "second_level_buyer_count",
+#                     "second_level_share",
+#                     "second_level_buyers_display",
+#                 ),
+#                 "classes": ("wide",),
+#             },
+#         ),
+
+#         # ✅ NEW TAB / SECTION
+#         (
+#             "Sequence Wise Share",
+#             {
+#                 "fields": (
+#                     "sequence_wise_share_display",
+#                 ),
+#                 "classes": ("wide",),
+#             },
+#         ),
+
+#         (
+#             "Timestamps",
+#             {
+#                 "fields": ("created_at", "updated_at"),
+#                 "classes": ("collapse",),
+#             },
+#         ),
+#     )
+
+#     readonly_fields = [
+#         "property_details_display",
+
+#         # ✅ NEW readonly display
+#         "sequence_wise_share_display",
+
+#         "first_level_buyer_count",
+#         "second_level_buyer_count",
+#         "first_level_buyers_display",
+#         "second_level_buyers_display",
+#         "created_at",
+#         "updated_at",
+#     ]
+
+#     filter_horizontal = ["first_level_buyers", "second_level_buyers"]
+
+#     inlines = [BuyerLevelHistoryInline]
+#     ordering = ["-created_at"]
+
+#     actions = [
+#         "sync_default_profit_proportion_action",
+#         "update_profit_weights_action",
+#         "reset_shares_action",
+#     ]
+
+#     def save_model(self, request, obj, form, change):
+#         super().save_model(request, obj, form, change)
+#         obj.update_buyer_counts()
+
+#     def property_name_with_icon(self, obj):
+#         """
+#         Property name with icon and clickable link
+#         Clicking opens the PropertyProfitDistribution detail page
+#         """
+#         try:
+#             url = reverse(
+#                 "admin:accounts_propertyprofitdistribution_change",
+#                 args=[obj.id],
+#             )
+#             return format_html(
+#                 """
+#                 <div style="display: flex; align-items: center; gap: 8px;">
+#                     <span style="font-size: 20px;">🏠</span>
+#                     <a href="{}" style="font-weight: bold; color: #0066cc; font-size: 15px; text-decoration: none;">
+#                         {}
+#                     </a>
+#                 </div>
+#                 """,
+#                 url,
+#                 obj.property.property_name,
+#             )
+#         except Exception:
+#             return format_html(
+#                 '<div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 20px;">🏠</span><span>{}</span></div>',
+#                 obj.property.property_name,
+#             )
+
+#     property_name_with_icon.short_description = "Property Name"
+
+#     def property_details_display(self, obj):
+#         """Display property details with link to Property admin page"""
+#         if not obj.property:
+#             return "—"
+
+#         p = obj.property
+
+#         try:
+#             property_url = reverse("admin:accounts_property_change", args=[p.id])
+#             property_link = (
+#                 f'<a href="{property_url}" style="color: #0066cc; font-weight: bold;">'
+#                 f"{p.property_name}</a>"
+#             )
+#         except Exception:
+#             property_link = p.property_name
+
+#         html = f"""
+#         <div style="background:#f5f5f5;padding:15px;border-radius:5px;border-left:4px solid #0066cc;">
+#             <h3 style="margin-top:0;color:#0066cc;">📋 Property Details</h3>
+#             <table style="width:100%;border-collapse:collapse;">
+#                 <tr>
+#                     <td style="padding:5px;"><b>Property Name:</b></td>
+#                     <td style="padding:5px;">{property_link}</td>
+#                 </tr>
+#                 <tr>
+#                     <td style="padding:5px;"><b>Address:</b></td>
+#                     <td style="padding:5px;">{p.address}</td>
+#                 </tr>
+#                 <tr>
+#                     <td style="padding:5px;"><b>Status:</b></td>
+#                     <td style="padding:5px;">
+#                         <span style="background:#4CAF50;color:#fff;padding:3px 8px;border-radius:3px;">
+#                             {p.get_status_display()}
+#                         </span>
+#                     </td>
+#                 </tr>
+#                 <tr>
+#                     <td style="padding:5px;"><b>Buying Price:</b></td>
+#                     <td style="padding:5px;">${p.buying_price or 0:,.2f}</td>
+#                 </tr>
+#                 <tr>
+#                     <td style="padding:5px;"><b>Selling Price:</b></td>
+#                     <td style="padding:5px;">${p.selling_price or 0:,.2f}</td>
+#                 </tr>
+#             </table>
+#         </div>
+#         """
+#         return mark_safe(html)
+
+#     property_details_display.short_description = "Property Details"
+
+#     def first_level_count_display(self, obj):
+#         color = "#4CAF50" if obj.first_level_buyer_count > 0 else "#999"
+#         return format_html(
+#             '<span style="background:{};color:#fff;padding:3px 10px;border-radius:12px;font-weight:bold;">👤 {}</span>',
+#             color,
+#             obj.first_level_buyer_count,
+#         )
+
+#     first_level_count_display.short_description = "1st Level Buyers"
+
+#     def first_level_share_display(self, obj):
+#         return format_html(
+#             '<span style="background:#2196F3;color:white;padding:3px 10px;border-radius:5px;font-weight:bold;">× {}</span>',
+#             obj.first_level_share,
+#         )
+
+#     first_level_share_display.short_description = "1st Level Share"
+
+#     def second_level_count_display(self, obj):
+#         color = "#FF9800" if obj.second_level_buyer_count > 0 else "#999"
+#         return format_html(
+#             '<span style="background:{};color:#fff;padding:3px 10px;border-radius:12px;font-weight:bold;">👥 {}</span>',
+#             color,
+#             obj.second_level_buyer_count,
+#         )
+
+#     second_level_count_display.short_description = "2nd Level Buyers"
+
+#     def second_level_share_display(self, obj):
+#         return format_html(
+#             '<span style="background:#9C27B0;color:white;padding:3px 10px;border-radius:5px;font-weight:bold;">× {}</span>',
+#             obj.second_level_share,
+#         )
+
+#     second_level_share_display.short_description = "2nd Level Share"
+
+#     def total_buyers_display(self, obj):
+#         total = obj.first_level_buyer_count + obj.second_level_buyer_count
+#         return format_html(
+#             '<span style="background:#607D8B;color:white;padding:3px 10px;border-radius:5px;font-weight:bold;">Σ {}</span>',
+#             total,
+#         )
+
+#     total_buyers_display.short_description = "Total Buyers"
+
+#     def created_date(self, obj):
+#         return obj.created_at.strftime("%d %b %Y, %I:%M %p")
+
+#     created_date.short_description = "Created"
+
+#     def first_level_buyers_display(self, obj):
+#         buyers = obj.first_level_buyers.all()
+#         if not buyers:
+#             return mark_safe(
+#                 '<p style="color:#999;">No first-level buyers available.</p>'
+#             )
+
+#         html = """
+#         <div style="background:#e8f5e9;padding:10px;border-radius:5px;border-left:4px solid #4CAF50;">
+#         <h4 style="margin-top:0;color:#4CAF50;">👥 First Level Buyer List</h4>
+#         <table style="width:100%;border-collapse:collapse;">
+#         <tr style="background:#c8e6c9;">
+#             <th style="padding:8px;text-align:left;">Name</th>
+#             <th style="padding:8px;text-align:left;">Email</th>
+#             <th style="padding:8px;text-align:left;">Default Share</th>
+#         </tr>
+#         """
+
+#         for b in buyers:
+#             html += f"""
+#                 <tr style="border-bottom:1px solid #ddd;">
+#                     <td style="padding:8px;">{b.get_full_name()}</td>
+#                     <td style="padding:8px;">{b.email}</td>
+#                     <td style="padding:8px;"><b>× {obj.first_level_share}</b></td>
+#                 </tr>
+#             """
+
+#         html += "</table></div>"
+#         return mark_safe(html)
+
+#     first_level_buyers_display.short_description = "👥 First Level Buyers"
+
+#     def second_level_buyers_display(self, obj):
+#         buyers = obj.second_level_buyers.all()
+#         if not buyers:
+#             return mark_safe(
+#                 '<p style="color:#999;">No second-level buyers available.</p>'
+#             )
+
+#         html = """
+#         <div style="background:#fff3e0;padding:10px;border-radius:5px;border-left:4px solid #FF9800;">
+#         <h4 style="margin-top:0;color:#FF9800;">👥 Second Level Buyer List</h4>
+#         <table style="width:100%;border-collapse:collapse;">
+#         <tr style="background:#ffe0b2;">
+#             <th style="padding:8px;text-align:left;">Name</th>
+#             <th style="padding:8px;text-align:left;">Email</th>
+#             <th style="padding:8px;text-align:left;">Default Share</th>
+#         </tr>
+#         """
+
+#         for b in buyers:
+#             html += f"""
+#                 <tr style="border-bottom:1px solid #ddd;">
+#                     <td style="padding:8px;">{b.get_full_name()}</td>
+#                     <td style="padding:8px;">{b.email}</td>
+#                     <td style="padding:8px;"><b>× {obj.second_level_share}</b></td>
+#                 </tr>
+#             """
+
+#         html += "</table></div>"
+#         return mark_safe(html)
+
+#     second_level_buyers_display.short_description = "👥 Second Level Buyers"
+
+#     # ✅ NEW METHOD
+#     def sequence_wise_share_display(self, obj):
+#         """
+#         Display all PropertyContribution sequence rows for this property.
+
+#         Default Share:
+#         - first_level_buyers => obj.first_level_share
+#         - second_level_buyers => obj.second_level_share
+
+#         Current PP:
+#         - PropertyContribution.profit_proportion
+#         - Admin can edit from PropertyContribution change page.
+#         """
+
+#         if not obj or not obj.property:
+#             return "Save first to see sequence wise shares."
+
+#         contributions = PropertyContribution.objects.filter(
+#             property=obj.property
+#         ).select_related(
+#             "user",
+#             "property",
+#         ).order_by(
+#             "user__first_name",
+#             "user__last_name",
+#             "investment_sequence",
+#             "id",
+#         )
+
+#         if not contributions.exists():
+#             return mark_safe(
+#                 '<p style="color:#999;">No property contribution rows found.</p>'
+#             )
+
+#         html = """
+#         <div style="background:#f8fafc;padding:14px;border-radius:6px;border-left:4px solid #2563eb;">
+#             <h3 style="margin-top:0;color:#1d4ed8;">📊 Sequence Wise Share / Profit Proportion</h3>
+#             <p style="margin-top:0;color:#555;">
+#                 Default share comes from First Level Share or Second Level Share.
+#                 Current PP is saved in each Property Contribution row.
+#                 Use <b>Edit PP</b> to change only one specific sequence.
+#             </p>
+
+#             <table style="width:100%;border-collapse:collapse;background:white;">
+#                 <tr style="background:#dbeafe;">
+#                     <th style="padding:8px;text-align:left;border:1px solid #ddd;">User</th>
+#                     <th style="padding:8px;text-align:center;border:1px solid #ddd;">Buyer Level</th>
+#                     <th style="padding:8px;text-align:center;border:1px solid #ddd;">Sequence</th>
+#                     <th style="padding:8px;text-align:center;border:1px solid #ddd;">Default Share</th>
+#                     <th style="padding:8px;text-align:center;border:1px solid #ddd;">Current PP</th>
+#                     <th style="padding:8px;text-align:right;border:1px solid #ddd;">Contribution</th>
+#                     <th style="padding:8px;text-align:right;border:1px solid #ddd;">Shares</th>
+#                     <th style="padding:8px;text-align:right;border:1px solid #ddd;">DP</th>
+#                     <th style="padding:8px;text-align:right;border:1px solid #ddd;">Profit Weight</th>
+#                     <th style="padding:8px;text-align:center;border:1px solid #ddd;">Edit</th>
+#                 </tr>
+#         """
+
+#         for c in contributions:
+#             is_first = obj.first_level_buyers.filter(id=c.user_id).exists()
+#             is_second = obj.second_level_buyers.filter(id=c.user_id).exists()
+
+#             if is_first:
+#                 default_share = Decimal(str(obj.first_level_share or 1))
+#                 level_badge = (
+#                     '<span style="background:#16a34a;color:white;padding:3px 8px;'
+#                     'border-radius:12px;font-weight:bold;">First</span>'
+#                 )
+#             elif is_second:
+#                 default_share = Decimal(str(obj.second_level_share or 1))
+#                 level_badge = (
+#                     '<span style="background:#f97316;color:white;padding:3px 8px;'
+#                     'border-radius:12px;font-weight:bold;">Second</span>'
+#                 )
+#             else:
+#                 default_share = Decimal("1.00")
+#                 level_badge = (
+#                     '<span style="background:#64748b;color:white;padding:3px 8px;'
+#                     'border-radius:12px;font-weight:bold;">Not Set</span>'
+#                 )
+
+#             current_pp = Decimal(str(getattr(c, "profit_proportion", 0) or 0))
+#             if current_pp <= 0:
+#                 current_pp = default_share
+
+#             edit_url = reverse(
+#                 "admin:accounts_propertycontribution_change",
+#                 args=[c.id],
+#             )
+
+#             row_bg = "#ffffff"
+#             if current_pp != default_share:
+#                 row_bg = "#fff7ed"
+
+#             html += f"""
+#                 <tr style="background:{row_bg};">
+#                     <td style="padding:8px;border:1px solid #ddd;">{c.user.get_full_name()}</td>
+#                     <td style="padding:8px;text-align:center;border:1px solid #ddd;">{level_badge}</td>
+#                     <td style="padding:8px;text-align:center;border:1px solid #ddd;">#{c.investment_sequence}</td>
+#                     <td style="padding:8px;text-align:center;border:1px solid #ddd;">× {default_share}</td>
+#                     <td style="padding:8px;text-align:center;border:1px solid #ddd;font-weight:bold;color:#1d4ed8;">× {current_pp}</td>
+#                     <td style="padding:8px;text-align:right;border:1px solid #ddd;">${Decimal(str(c.contribution or 0)):,.2f}</td>
+#                     <td style="padding:8px;text-align:right;border:1px solid #ddd;">{Decimal(str(c.shares or 0)):,.6f}</td>
+#                     <td style="padding:8px;text-align:right;border:1px solid #ddd;">{Decimal(str(c.days_proportion or 0)):,.6f}</td>
+#                     <td style="padding:8px;text-align:right;border:1px solid #ddd;">{Decimal(str(c.profit_weight or 0)):,.6f}</td>
+#                     <td style="padding:8px;text-align:center;border:1px solid #ddd;">
+#                         <a href="{edit_url}"
+#                            style="background:#2563eb;color:white;padding:5px 10px;border-radius:4px;text-decoration:none;">
+#                            Edit PP
+#                         </a>
+#                     </td>
+#                 </tr>
+#             """
+
+#         html += """
+#             </table>
+#         </div>
+#         """
+
+#         return mark_safe(html)
+
+#     sequence_wise_share_display.short_description = "Sequence Wise Share"
+
+#     def actions_display(self, obj):
+#         """Quick action buttons"""
+#         try:
+#             contributions_url = (
+#                 reverse("admin:accounts_propertycontribution_changelist")
+#                 + f"?property__id__exact={obj.property.id}"
+#             )
+#             property_url = reverse(
+#                 "admin:accounts_property_change",
+#                 args=[obj.property.id],
+#             )
+
+#             html = f"""
+#             <div style="white-space:nowrap;">
+#                 <a href="{contributions_url}"
+#                    style="background:#2196F3;color:white;padding:5px 10px;border-radius:3px;text-decoration:none;display:inline-block;margin:2px;">
+#                     📊 Contributions
+#                 </a>
+#                 <a href="{property_url}"
+#                    style="background:#4CAF50;color:white;padding:5px 10px;border-radius:3px;text-decoration:none;display:inline-block;margin:2px;">
+#                     🏠 Property
+#                 </a>
+#             </div>
+#             """
+#         except Exception:
+#             html = '<span style="color:#999;">—</span>'
+
+#         return mark_safe(html)
+
+#     actions_display.short_description = "Quick Actions"
+
+#     # ✅ NEW ACTION
+#     def sync_default_profit_proportion_action(self, request, queryset):
+#         """
+#         Sync default PP from First/Second Level Share to PropertyContribution rows.
+
+#         Use this only when you want to reset all sequence PP to default.
+#         """
+#         updated = 0
+
+#         for obj in queryset:
+#             contributions = PropertyContribution.objects.filter(
+#                 property=obj.property
+#             ).select_related("user")
+
+#             for c in contributions:
+#                 if obj.first_level_buyers.filter(id=c.user_id).exists():
+#                     c.profit_proportion = obj.first_level_share
+#                 elif obj.second_level_buyers.filter(id=c.user_id).exists():
+#                     c.profit_proportion = obj.second_level_share
+#                 else:
+#                     c.profit_proportion = Decimal("1.00")
+
+#                 c.save(update_fields=["profit_proportion"])
+#                 updated += 1
+
+#         self.message_user(
+#             request,
+#             f"✅ Default profit proportion synced for {updated} contribution rows.",
+#             messages.SUCCESS,
+#         )
+
+#     sync_default_profit_proportion_action.short_description = (
+#         "Sync default PP from first/second level share"
+#     )
+
+#     def update_profit_weights_action(self, request, queryset):
+#         """Bulk update profit weights for selected properties"""
+#         updated_count = 0
+
+#         for dist in queryset:
+#             result = dist.update_all_profit_weights()
+#             if result["success"]:
+#                 updated_count += result["updated_count"]
+
+#         self.message_user(
+#             request,
+#             f"✅ Successfully updated profit weights for {updated_count} contributions!",
+#             messages.SUCCESS,
+#         )
+
+#     update_profit_weights_action.short_description = "🔄 Update Profit Weights"
+
+#     def reset_shares_action(self, request, queryset):
+#         """Reset all first/second level shares to default 1.0"""
+#         queryset.update(
+#             first_level_share=Decimal("1.00"),
+#             second_level_share=Decimal("1.00"),
+#         )
+
+#         self.message_user(
+#             request,
+#             f"✅ Reset share values to 1.0 for {queryset.count()} properties.",
+#             messages.SUCCESS,
+#         )
+
+#     reset_shares_action.short_description = " Reset Share Values (1.0)"
+
+# from django.contrib import admin
+
+# from .models import WithdrawalRequest
+
 # @admin.register(WithdrawalRequest)
 # class WithdrawalRequestAdmin(admin.ModelAdmin):
 #     list_display = (
-#         "user",
-#         "amount",
-#         "balance_snapshot",
-#         "running_invest_snapshot",
-#         "final_profit_snapshot",
-#         "total_available_snapshot",
+#         "user_display",
+#         "property_display",
+#         "investment_type_display",
+#         "request_type",
+#         "requested_amount",
+#         "profit_part_amount",
+#         "investment_part_amount",
+#         "balance_part_amount",
+#         "invest_days",
+#         "payout_rule",
 #         "status",
 #         "approved_by",
 #         "approved_at",
@@ -1358,6 +2919,9 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
 
 #     list_filter = (
 #         "status",
+#         "request_type",
+#         "payout_rule",
+#         "property_contribution__investment_type",
 #         "created_at",
 #         "approved_at",
 #         "rejected_at",
@@ -1367,13 +2931,19 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
 #         "user__email",
 #         "user__first_name",
 #         "user__last_name",
+#         "property_contribution__property__property_name",
 #     )
 
 #     readonly_fields = (
+#         "profit_part_amount",
+#         "investment_part_amount",
+#         "balance_part_amount",
+#         "eligible_profit_amount",
+#         "eligible_investment_amount",
+#         "total_eligible_amount",
+#         "invest_days",
+#         "payout_rule",
 #         "balance_snapshot",
-#         "running_invest_snapshot",
-#         "final_profit_snapshot",
-#         "total_available_snapshot",
 #         "approved_by",
 #         "approved_at",
 #         "rejected_by",
@@ -1384,15 +2954,164 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
 #         "updated_at",
 #     )
 
+#     fieldsets = (
+#         (
+#             "Request Information",
+#             {
+#                 "fields": (
+#                     "user",
+#                     "property_contribution",
+#                     "request_type",
+#                     "requested_amount",
+#                     "status",
+#                 )
+#             },
+#         ),
+#         (
+#             "Calculated Amounts",
+#             {
+#                 "fields": (
+#                     "profit_part_amount",
+#                     "investment_part_amount",
+#                     "balance_part_amount",
+#                     "eligible_profit_amount",
+#                     "eligible_investment_amount",
+#                     "total_eligible_amount",
+#                     "invest_days",
+#                     "payout_rule",
+#                     "balance_snapshot",
+#                 )
+#             },
+#         ),
+#         (
+#             "Notes",
+#             {
+#                 "fields": (
+#                     "user_note",
+#                     "finance_note",
+#                     "clarification_note",
+#                 )
+#             },
+#         ),
+#         (
+#             "Approval / Rejection",
+#             {
+#                 "fields": (
+#                     "approved_by",
+#                     "approved_at",
+#                     "rejected_by",
+#                     "rejected_at",
+#                     "clarification_requested_by",
+#                     "clarification_requested_at",
+#                 )
+#             },
+#         ),
+#         (
+#             "Timestamps",
+#             {
+#                 "fields": (
+#                     "created_at",
+#                     "updated_at",
+#                 )
+#             },
+#         ),
+#     )
 
-admin.site.register(OfficeCost)
-admin.site.register(SharePrice)
-admin.site.register(User, UserAdmin)
-admin.site.register(Agreement)
-admin.site.register(Expense)
-admin.site.register(UserAgreement)
+#     ordering = ("-created_at",)
+#     list_per_page = 50
 
-admin.site.register(Help)
-admin.site.register(ExpenseBalance)
-admin.site.register(ExpensePayment)
-admin.site.register(RentalBill)
+#     def get_queryset(self, request):
+#         qs = super().get_queryset(request)
+#         return qs.select_related(
+#             "user",
+#             "property_contribution",
+#             "property_contribution__property",
+#             "approved_by",
+#             "rejected_by",
+#         )
+
+#     def user_display(self, obj):
+#         return obj.user.get_full_name() if obj.user else "-"
+
+#     user_display.short_description = "User"
+
+#     def property_display(self, obj):
+#         if obj.property_contribution and obj.property_contribution.property:
+#             return obj.property_contribution.property.property_name
+
+#         if obj.request_type == "balance":
+#             return "Free Balance"
+
+#         return "-"
+
+#     property_display.short_description = "Property"
+
+#     def investment_type_display(self, obj):
+#         if not obj.property_contribution:
+#             return "-"
+
+#         if obj.property_contribution.investment_type == "short_term":
+#             return format_html(
+#                 '<span style="background:#f3e8ff;color:#7e22ce;padding:3px 8px;border-radius:12px;font-weight:bold;">Short Term</span>'
+#             )
+
+#         return format_html(
+#             '<span style="background:#dbeafe;color:#1d4ed8;padding:3px 8px;border-radius:12px;font-weight:bold;">Long Term</span>'
+#         )
+
+#     investment_type_display.short_description = "Investment Type"
+# # @admin.register(WithdrawalRequest)
+# # class WithdrawalRequestAdmin(admin.ModelAdmin):
+# #     list_display = (
+# #         "user",
+# #         "amount",
+# #         "balance_snapshot",
+# #         "running_invest_snapshot",
+# #         "final_profit_snapshot",
+# #         "total_available_snapshot",
+# #         "status",
+# #         "approved_by",
+# #         "approved_at",
+# #         "created_at",
+# #     )
+
+# #     list_filter = (
+# #         "status",
+# #         "created_at",
+# #         "approved_at",
+# #         "rejected_at",
+# #     )
+
+# #     search_fields = (
+# #         "user__email",
+# #         "user__first_name",
+# #         "user__last_name",
+# #     )
+
+# #     readonly_fields = (
+# #         "balance_snapshot",
+# #         "running_invest_snapshot",
+# #         "final_profit_snapshot",
+# #         "total_available_snapshot",
+# #         "approved_by",
+# #         "approved_at",
+# #         "rejected_by",
+# #         "rejected_at",
+# #         "clarification_requested_by",
+# #         "clarification_requested_at",
+# #         "created_at",
+# #         "updated_at",
+# #     )
+
+
+# admin.site.register(OfficeCost)
+# admin.site.register(SharePrice)
+# admin.site.register(User, UserAdmin)
+# admin.site.register(Agreement)
+# admin.site.register(Expense)
+# admin.site.register(UserAgreement)
+
+# admin.site.register(Help)
+# admin.site.register(ExpenseBalance)
+# admin.site.register(ExpensePayment)
+# admin.site.register(RentalBill)

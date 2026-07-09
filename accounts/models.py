@@ -429,6 +429,14 @@ class PropertyContribution(models.Model):
     )
     investment_ratio = models.DecimalField(max_digits=20, decimal_places=6, default=Decimal('0.00'), verbose_name='Investment Ratio')
     profit_weight = models.DecimalField(max_digits=20, decimal_places=6, default=Decimal('0.00'), verbose_name='Profit Weight')
+    profit_proportion = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal("1.00"),
+        validators=[MinValueValidator(Decimal("0.01"))],
+        verbose_name="Profit Proportion (PP)",
+        help_text="Sequence-wise profit proportion. Default comes from first/second level share. Admin can edit per sequence.",
+    )
     invest_amount = models.DecimalField(max_digits=50, null=True, blank=True, decimal_places=2, default=0)
     remaining = models.DecimalField(max_digits=50, null=True, blank=True, decimal_places=2, default=0)
     investment_sequence = models.PositiveIntegerField(default=1, verbose_name='Investment Sequence')
@@ -506,7 +514,40 @@ class PropertyContribution(models.Model):
             return Decimal('0')
         return (self.contribution / total_contribution * 100).quantize(Decimal('0.01'))
 
-      
+    def get_default_profit_proportion(self):
+        """
+        Default PP:
+        - If user is in first_level_buyers => first_level_share
+        - If user is in second_level_buyers => second_level_share
+        - Otherwise => 1.00
+        """
+        try:
+            distribution = self.property.profit_distribution
+
+            if distribution.first_level_buyers.filter(id=self.user_id).exists():
+                return Decimal(str(distribution.first_level_share or Decimal("1.00")))
+
+            if distribution.second_level_buyers.filter(id=self.user_id).exists():
+                return Decimal(str(distribution.second_level_share or Decimal("1.00")))
+
+        except Exception:
+            pass
+
+        return Decimal("1.00")
+
+    def sync_default_profit_proportion(self, force=False):
+        """
+        Set default PP from PropertyProfitDistribution.
+        force=True dile admin manually changed value overwrite hobe.
+        force=False dile only empty/zero PP update hobe.
+        """
+        current_pp = Decimal(str(self.profit_proportion or 0))
+
+        if force or current_pp <= 0:
+            self.profit_proportion = self.get_default_profit_proportion()
+            self.save(update_fields=["profit_proportion"])
+
+        return self.profit_proportion
 class Property(models.Model):
     STATUS_CHOICES = [
         ('wishlist', 'Wish List'),
@@ -1115,7 +1156,8 @@ class Property(models.Model):
                         total_days=0,
                         days_proportion=Decimal('0'),
                         investment_ratio=Decimal('0'),
-                        profit_weight=Decimal('0')
+                        profit_weight=Decimal('0'),
+                        profit_proportion=Decimal(str(inv.get("profit_proportion", "1.00"))),
                     )
                     
                 except User.DoesNotExist:
@@ -1259,14 +1301,158 @@ class Property(models.Model):
         
         return (max_seq or 0) + 1
 
+    # def calculate_profit_weights(self):
+    #     """
+    #     Share-based profit weight calculation:
+    #     Base Weight = Days Proportion × Number of Shares
+
+    #     If PropertyProfitDistribution exists:
+    #         Final Weight = Base Weight × Buyer Level Share
+    #     """
+    #     from decimal import Decimal, ROUND_HALF_UP
+    #     from django.db import transaction, models
+
+    #     if not self.selling_date:
+    #         print("❌ No selling date found!")
+    #         return Decimal("0")
+
+    #     contributions = self.property_contributions.select_related("user").all().order_by(
+    #         "investment_date", "investment_sequence", "id"
+    #     )
+    #     if not contributions.exists():
+    #         print("❌ No contributions found!")
+    #         return Decimal("0")
+
+    #     print("\n" + "=" * 80)
+    #     print(f"🏠 CALCULATING SHARE-BASED PROFIT WEIGHTS FOR: {self.property_name}")
+    #     print("=" * 80)
+
+    #     share_price = SharePrice.get_current_price()
+    #     print(f"\n💰 Current Share Price: ${share_price}")
+
+    #     with transaction.atomic():
+    #         # STEP 1: Calculate shares
+    #         print("\n📊 STEP 1: Calculating Shares")
+    #         print("-" * 80)
+    #         for contrib in contributions:
+    #             contrib.calculate_shares()
+    #             print(
+    #                 f"  {contrib.user.get_full_name():20} | "
+    #                 f"Contribution: ${contrib.contribution:8.2f} | "
+    #                 f"Shares: {float(contrib.shares):.6f}"
+    #             )
+    #             contrib.save(update_fields=["shares"])
+
+    #         # STEP 2: Calculate total days
+    #         print("\n📅 STEP 2: Calculating Total Days")
+    #         print("-" * 80)
+    #         for contrib in contributions:
+    #             if contrib.investment_date:
+    #                 delta = self.selling_date - contrib.investment_date
+    #                 contrib.total_days = max(1, delta.days)
+    #                 print(
+    #                     f"  {contrib.user.get_full_name():20} | "
+    #                     f"Investment: {contrib.investment_date} | "
+    #                     f"Selling: {self.selling_date} | "
+    #                     f"Days: {contrib.total_days}"
+    #                 )
+    #             else:
+    #                 contrib.total_days = 0
+    #                 print(
+    #                     f"  {contrib.user.get_full_name():20} | "
+    #                     f"No investment date | Days: 0"
+    #                 )
+    #             contrib.save(update_fields=["total_days"])
+
+    #         # STEP 3: Calculate days proportion
+    #         max_days = contributions.aggregate(models.Max("total_days"))["total_days__max"] or 1
+    #         print(f"\n📊 STEP 3: Calculating Days Proportion (Max Days: {max_days})")
+    #         print("-" * 80)
+
+    #         for contrib in contributions:
+    #             contrib.days_proportion = (
+    #                 Decimal(str(contrib.total_days)) / Decimal(str(max_days))
+    #             ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+
+    #             print(
+    #                 f"  {contrib.user.get_full_name():20} | "
+    #                 f"Days: {contrib.total_days:3} / {max_days:3} = "
+    #                 f"{float(contrib.days_proportion):.4f}"
+    #             )
+    #             contrib.save(update_fields=["days_proportion"])
+
+    #         # STEP 4: Base profit weight
+    #         print("\n⚖️  STEP 4: Calculating Profit Weight (Days Proportion × Shares)")
+    #         print("-" * 80)
+
+    #         for contrib in contributions:
+    #             contrib.profit_weight = (
+    #                 Decimal(str(contrib.days_proportion)) * Decimal(str(contrib.shares))
+    #             ).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+
+    #             print(
+    #                 f"  {contrib.user.get_full_name():20} | "
+    #                 f"{float(contrib.days_proportion):.4f} × "
+    #                 f"{float(contrib.shares):.6f} shares = "
+    #                 f"{float(contrib.profit_weight):.6f}"
+    #             )
+    #             contrib.save(update_fields=["profit_weight"])
+
+    #         # STEP 5: Apply buyer-level multiplier
+    #         print("\n🎯 STEP 5: Applying Buyer Level Share Multiplier")
+    #         print("-" * 80)
+
+    #         try:
+    #             result = self.profit_distribution.update_all_profit_weights()
+
+    #             if result.get("success"):
+    #                 print("✅ Buyer level multipliers applied successfully")
+    #                 for detail in result.get("details", []):
+    #                     print(
+    #                         f"  {detail['user']:20} | "
+    #                         f"Level: {detail['buyer_level']} | "
+    #                         f"Multiplier: {detail['share_multiplier']} | "
+    #                         f"Base: {detail['base_weight']:.6f} | "
+    #                         f"Adjusted: {detail['adjusted_weight']:.6f}"
+    #                     )
+    #             else:
+    #                 print(f"⚠️ Buyer level multiplier skipped: {result.get('message')}")
+    #         except Exception as e:
+    #             print(f"ℹ️ No profit distribution multiplier applied: {str(e)}")
+
+    #         # Refresh queryset after update_all_profit_weights()
+    #         contributions = self.property_contributions.select_related("user").all().order_by(
+    #             "investment_date", "investment_sequence", "id"
+    #         )
+
+    #         total_weight = contributions.aggregate(
+    #             total=models.Sum("profit_weight")
+    #         )["total"] or Decimal("0")
+
+    #         total_weight = Decimal(str(total_weight)).quantize(
+    #             Decimal("0.000001"),
+    #             rounding=ROUND_HALF_UP
+    #         )
+
+    #         print(f"\n  TOTAL WEIGHT         | {float(total_weight):.6f}")
+    #         print("=" * 80)
+
+    #         return total_weight
+
     def calculate_profit_weights(self):
         """
-        Share-based profit weight calculation:
-        Base Weight = Days Proportion × Number of Shares
+        Share-based profit weight calculation.
 
-        If PropertyProfitDistribution exists:
-            Final Weight = Base Weight × Buyer Level Share
+        Final Formula:
+            Profit Weight = Days Proportion × Number of Shares × Profit Proportion
+
+        Important:
+        - profit_proportion comes from PropertyContribution row.
+        - Same user can have multiple sequences.
+        - Each sequence can have different profit_proportion.
+        - First/Second level share is only used as default if row PP is empty/zero.
         """
+
         from decimal import Decimal, ROUND_HALF_UP
         from django.db import transaction, models
 
@@ -1275,14 +1461,17 @@ class Property(models.Model):
             return Decimal("0")
 
         contributions = self.property_contributions.select_related("user").all().order_by(
-            "investment_date", "investment_sequence", "id"
+            "investment_date",
+            "investment_sequence",
+            "id",
         )
+
         if not contributions.exists():
             print("❌ No contributions found!")
             return Decimal("0")
 
         print("\n" + "=" * 80)
-        print(f"🏠 CALCULATING SHARE-BASED PROFIT WEIGHTS FOR: {self.property_name}")
+        print(f"🏠 CALCULATING ROW-LEVEL PROFIT WEIGHTS FOR: {self.property_name}")
         print("=" * 80)
 
         share_price = SharePrice.get_current_price()
@@ -1292,95 +1481,123 @@ class Property(models.Model):
             # STEP 1: Calculate shares
             print("\n📊 STEP 1: Calculating Shares")
             print("-" * 80)
+
             for contrib in contributions:
                 contrib.calculate_shares()
+
                 print(
                     f"  {contrib.user.get_full_name():20} | "
-                    f"Contribution: ${contrib.contribution:8.2f} | "
-                    f"Shares: {float(contrib.shares):.6f}"
+                    f"Seq #{contrib.investment_sequence:<3} | "
+                    f"Contribution: ${Decimal(str(contrib.contribution or 0)):10.2f} | "
+                    f"Shares: {Decimal(str(contrib.shares or 0)):,.6f}"
                 )
+
                 contrib.save(update_fields=["shares"])
 
             # STEP 2: Calculate total days
             print("\n📅 STEP 2: Calculating Total Days")
             print("-" * 80)
+
             for contrib in contributions:
                 if contrib.investment_date:
                     delta = self.selling_date - contrib.investment_date
                     contrib.total_days = max(1, delta.days)
+
                     print(
                         f"  {contrib.user.get_full_name():20} | "
+                        f"Seq #{contrib.investment_sequence:<3} | "
                         f"Investment: {contrib.investment_date} | "
                         f"Selling: {self.selling_date} | "
                         f"Days: {contrib.total_days}"
                     )
                 else:
                     contrib.total_days = 0
+
                     print(
                         f"  {contrib.user.get_full_name():20} | "
+                        f"Seq #{contrib.investment_sequence:<3} | "
                         f"No investment date | Days: 0"
                     )
+
                 contrib.save(update_fields=["total_days"])
 
             # STEP 3: Calculate days proportion
-            max_days = contributions.aggregate(models.Max("total_days"))["total_days__max"] or 1
+            max_days = contributions.aggregate(
+                models.Max("total_days")
+            )["total_days__max"] or 1
+
             print(f"\n📊 STEP 3: Calculating Days Proportion (Max Days: {max_days})")
             print("-" * 80)
 
             for contrib in contributions:
                 contrib.days_proportion = (
-                    Decimal(str(contrib.total_days)) / Decimal(str(max_days))
-                ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+                    Decimal(str(contrib.total_days or 0)) / Decimal(str(max_days))
+                ).quantize(
+                    Decimal("0.000001"),
+                    rounding=ROUND_HALF_UP,
+                )
 
                 print(
                     f"  {contrib.user.get_full_name():20} | "
-                    f"Days: {contrib.total_days:3} / {max_days:3} = "
-                    f"{float(contrib.days_proportion):.4f}"
+                    f"Seq #{contrib.investment_sequence:<3} | "
+                    f"Days: {contrib.total_days:4} / {max_days:4} = "
+                    f"{Decimal(str(contrib.days_proportion or 0)):,.6f}"
                 )
+
                 contrib.save(update_fields=["days_proportion"])
 
-            # STEP 4: Base profit weight
-            print("\n⚖️  STEP 4: Calculating Profit Weight (Days Proportion × Shares)")
+            # STEP 4: Calculate profit weight using row-level PP
+            print("\n⚖️  STEP 4: Calculating Profit Weight (DP × NS × PP)")
             print("-" * 80)
 
             for contrib in contributions:
+                current_pp = Decimal(str(contrib.profit_proportion or 0))
+
+                # If PP is missing/zero, set default from first/second level share
+                if current_pp <= 0:
+                    try:
+                        distribution = self.profit_distribution
+
+                        if distribution.first_level_buyers.filter(id=contrib.user_id).exists():
+                            current_pp = Decimal(str(distribution.first_level_share or 1))
+                        elif distribution.second_level_buyers.filter(id=contrib.user_id).exists():
+                            current_pp = Decimal(str(distribution.second_level_share or 1))
+                        else:
+                            current_pp = Decimal("1.00")
+
+                    except Exception:
+                        current_pp = Decimal("1.00")
+
+                    contrib.profit_proportion = current_pp
+
                 contrib.profit_weight = (
-                    Decimal(str(contrib.days_proportion)) * Decimal(str(contrib.shares))
-                ).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+                    Decimal(str(contrib.days_proportion or 0))
+                    * Decimal(str(contrib.shares or 0))
+                    * Decimal(str(contrib.profit_proportion or 1))
+                ).quantize(
+                    Decimal("0.000001"),
+                    rounding=ROUND_HALF_UP,
+                )
 
                 print(
                     f"  {contrib.user.get_full_name():20} | "
-                    f"{float(contrib.days_proportion):.4f} × "
-                    f"{float(contrib.shares):.6f} shares = "
-                    f"{float(contrib.profit_weight):.6f}"
+                    f"Seq #{contrib.investment_sequence:<3} | "
+                    f"DP {Decimal(str(contrib.days_proportion or 0)):,.6f} × "
+                    f"NS {Decimal(str(contrib.shares or 0)):,.6f} × "
+                    f"PP {Decimal(str(contrib.profit_proportion or 1)):,.2f} = "
+                    f"{Decimal(str(contrib.profit_weight or 0)):,.6f}"
                 )
-                contrib.save(update_fields=["profit_weight"])
 
-            # STEP 5: Apply buyer-level multiplier
-            print("\n🎯 STEP 5: Applying Buyer Level Share Multiplier")
-            print("-" * 80)
+                contrib.save(update_fields=[
+                    "profit_proportion",
+                    "profit_weight",
+                ])
 
-            try:
-                result = self.profit_distribution.update_all_profit_weights()
-
-                if result.get("success"):
-                    print("✅ Buyer level multipliers applied successfully")
-                    for detail in result.get("details", []):
-                        print(
-                            f"  {detail['user']:20} | "
-                            f"Level: {detail['buyer_level']} | "
-                            f"Multiplier: {detail['share_multiplier']} | "
-                            f"Base: {detail['base_weight']:.6f} | "
-                            f"Adjusted: {detail['adjusted_weight']:.6f}"
-                        )
-                else:
-                    print(f"⚠️ Buyer level multiplier skipped: {result.get('message')}")
-            except Exception as e:
-                print(f"ℹ️ No profit distribution multiplier applied: {str(e)}")
-
-            # Refresh queryset after update_all_profit_weights()
+            # STEP 5: Total weight
             contributions = self.property_contributions.select_related("user").all().order_by(
-                "investment_date", "investment_sequence", "id"
+                "investment_date",
+                "investment_sequence",
+                "id",
             )
 
             total_weight = contributions.aggregate(
@@ -1389,10 +1606,11 @@ class Property(models.Model):
 
             total_weight = Decimal(str(total_weight)).quantize(
                 Decimal("0.000001"),
-                rounding=ROUND_HALF_UP
+                rounding=ROUND_HALF_UP,
             )
 
-            print(f"\n  TOTAL WEIGHT         | {float(total_weight):.6f}")
+            print("\n" + "-" * 80)
+            print(f"  TOTAL WEIGHT         | {total_weight:,.6f}")
             print("=" * 80)
 
             return total_weight
@@ -2845,81 +3063,73 @@ class PropertyProfitDistribution(models.Model):
 
     def update_all_profit_weights(self):
         """
-        Update all PropertyContribution profit_weight based on buyer level.
+        Update all PropertyContribution profit_weight using row-level profit_proportion.
 
-        When executed:
-        1. Checks buyer level for each contributor
-        2. Calculates new weight = base weight × buyer share
-        3. Updates PropertyContribution model
-
-        Returns:
-            dict: Update summary details
+        Formula:
+        Profit Weight = Days Proportion × Number of Shares × Profit Proportion
         """
 
         from django.db import transaction
         from accounts.models import PropertyContribution
 
-        contributions = PropertyContribution.objects.filter(property=self.property)
+        contributions = PropertyContribution.objects.filter(
+            property=self.property
+        ).select_related("user", "property")
 
         if not contributions.exists():
             return {
-                'success': False,
-                'message': 'No contributions found',
-                'updated_count': 0
+                "success": False,
+                "message": "No contributions found",
+                "updated_count": 0,
             }
 
         updated_count = 0
         update_details = []
 
-        print("\n" + "="*80)
-        print("🔄 UPDATING PROFIT WEIGHTS WITH BUYER LEVELS")
+        print("\n" + "=" * 80)
+        print("🔄 UPDATING PROFIT WEIGHTS WITH ROW-LEVEL PP")
         print(f"Property: {self.property.property_name}")
-        print("="*80)
+        print("=" * 80)
 
         with transaction.atomic():
             for contrib in contributions:
-                user = contrib.user
+                if not contrib.shares or contrib.shares <= 0:
+                    contrib.calculate_shares()
 
-                base_profit_weight = contrib.profit_weight
-                buyer_level = self.get_user_buyer_level(user)
-                share_multiplier = self.get_user_share_multiplier(user)
+                if not contrib.profit_proportion or Decimal(str(contrib.profit_proportion)) <= 0:
+                    contrib.profit_proportion = contrib.get_default_profit_proportion()
 
-                adjusted_profit_weight = self.calculate_adjusted_profit_weight(
-                    user,
-                    base_profit_weight
+                old_weight = Decimal(str(contrib.profit_weight or 0))
+
+                new_weight = (
+                    Decimal(str(contrib.days_proportion or 0))
+                    * Decimal(str(contrib.shares or 0))
+                    * Decimal(str(contrib.profit_proportion or 1))
+                ).quantize(
+                    Decimal("0.000001"),
+                    rounding=ROUND_HALF_UP,
                 )
 
-                contrib.profit_weight = adjusted_profit_weight
-                contrib.save(update_fields=['profit_weight'])
+                contrib.profit_weight = new_weight
+                contrib.save(update_fields=["shares", "profit_proportion", "profit_weight"])
 
                 updated_count += 1
 
                 detail = {
-                    'user': user.get_full_name(),
-                    'buyer_level': buyer_level or 'Not Found',
-                    'share_multiplier': float(share_multiplier),
-                    'base_weight': float(base_profit_weight),
-                    'adjusted_weight': float(adjusted_profit_weight)
+                    "user": contrib.user.get_full_name(),
+                    "sequence": contrib.investment_sequence,
+                    "profit_proportion": float(contrib.profit_proportion),
+                    "old_weight": float(old_weight),
+                    "new_weight": float(new_weight),
                 }
                 update_details.append(detail)
 
-                print(f"\n👤 {user.get_full_name()}")
-                print(f"   Buyer Level: {buyer_level or 'Not Found'}")
-                print(f"   Share Multiplier: {float(share_multiplier)}")
-                print(f"   Base Profit Weight: {float(base_profit_weight):.6f}")
-                print(f"   Adjusted Profit Weight: {float(adjusted_profit_weight):.6f}")
-
-        print("\n" + "="*80)
-        print(f"✅ {updated_count} contributions updated")
-        print("="*80 + "\n")
-
         return {
-            'success': True,
-            'message': f'{updated_count} contributions updated successfully',
-            'updated_count': updated_count,
-            'details': update_details
+            "success": True,
+            "message": f"{updated_count} contributions updated successfully",
+            "updated_count": updated_count,
+            "details": update_details,
         }
-
 
 class BuyerLevelHistory(models.Model):
     """

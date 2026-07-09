@@ -1763,6 +1763,179 @@ class PropertyUserRequiredMixin(UserPassesTestMixin):
         )
 
 
+# class PropertyCreateView(PropertyUserRequiredMixin, CreateView):
+#     model = Property
+#     form_class = PropertyForm
+#     template_name = "property_form.html"
+#     success_url = reverse_lazy("accounts:property_list")
+
+#     def get_context_data(self, **kwargs):
+#         context = super().get_context_data(**kwargs)
+#         context["image_formset"] = PropertyImageFormSet(
+#             self.request.POST or None, self.request.FILES or None
+#         )
+#         all_users = User.objects.filter(is_active=True, investor=True)
+#         context["all_users"] = all_users
+#         context["user_contributions"] = (
+#             {}
+#         )  # Empty for create - template expects this key
+#         context["total_balance"] = (
+#             User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+#             if self.request.user.is_superuser
+#             else self.request.user.balance
+#         )
+#         # Default investment date
+#         context["default_investment_date"] = date.today().strftime("%Y-%m-%d")
+
+#         return context
+
+#     def form_valid(self, form):
+#         context = self.get_context_data()
+#         image_formset = context["image_formset"]
+
+#         print("\n" + "=" * 80)
+#         print("🆕 CREATING NEW PROPERTY WITH MULTI-INVESTMENT SUPPORT")
+#         print("=" * 80)
+
+#         with transaction.atomic():
+#             form.instance.listed_by = self.request.user
+#             buying_price = form.cleaned_data.get("buying_price") or 0
+#             service_cost = form.cleaned_data.get("service_cost") or 0
+#             form.instance.acquisition_cost = (
+#                 buying_price + service_cost if (buying_price or service_cost) else None
+#             )
+
+#             # Save property first
+#             self.object = form.save(commit=False)
+#             self.object.save()
+
+#             print(f"✅ Property saved: {self.object.property_name}")
+#             print(f"   Status: {self.object.status}")
+#             print(f"   Buying Price: ${self.object.buying_price}")
+#             print(f"   Service Cost: ${self.object.service_cost}")
+
+#             if self.object.status == "bought":
+#                 # Parse multi-investment data from POST
+#                 investments_list = []
+#                 investment_dates_list = []
+#                 selected_contributors = set()
+
+#                 print("\n📊 Parsing Investment Data...")
+
+#                 # Parse all invest_ fields with sequence numbers
+#                 for key in self.request.POST:
+#                     if key.startswith("invest_"):
+#                         # Format: invest_{user_id}_{sequence}
+#                         parts = key.replace("invest_", "").split("_")
+
+#                         if len(parts) >= 2:
+#                             user_id = int(parts[0])
+#                             sequence = int(parts[1])
+#                         else:
+#                             # Old format fallback: invest_{user_id}
+#                             user_id = int(parts[0])
+#                             sequence = 1
+
+#                         amount_str = self.request.POST.get(key, "").strip()
+
+#                         try:
+#                             amount = Decimal(amount_str)
+
+#                             # Check if checkbox is selected
+#                             checkbox_key = f"select_user_{user_id}_{sequence}"
+#                             is_selected = (
+#                                 self.request.POST.get(checkbox_key) is not None
+#                             )
+
+#                             if amount > 0 and is_selected:
+#                                 # Check if fixed
+#                                 fixed_key = f"fixed_{user_id}_{sequence}"
+#                                 is_fixed = self.request.POST.get(fixed_key) is not None
+
+#                                 investments_list.append(
+#                                     {
+#                                         "user_id": user_id,
+#                                         "invest_amount": amount,
+#                                         "is_fixed": is_fixed,
+#                                         "sequence": sequence,
+#                                     }
+#                                 )
+
+#                                 selected_contributors.add(user_id)
+
+#                                 # Get investment date
+#                                 date_key = f"date_{user_id}_{sequence}"
+#                                 date_str = self.request.POST.get(date_key, "").strip()
+
+#                                 if date_str:
+#                                     try:
+#                                         inv_date = datetime.strptime(
+#                                             date_str, "%Y-%m-%d"
+#                                         ).date()
+#                                     except ValueError:
+#                                         inv_date = (
+#                                             self.object.buying_date or date.today()
+#                                         )
+#                                 else:
+#                                     inv_date = self.object.buying_date or date.today()
+
+#                                 investment_dates_list.append(
+#                                     {
+#                                         "user_id": user_id,
+#                                         "sequence": sequence,
+#                                         "date": inv_date,
+#                                     }
+#                                 )
+
+#                                 print(
+#                                     f"   ✓ User {user_id} Investment #{sequence}: ${amount} (Fixed: {is_fixed}, Date: {inv_date})"
+#                                 )
+
+#                         except (ValueError, InvalidOperation, AttributeError) as e:
+#                             print(f"   ✗ Error parsing {key}: {e}")
+#                             continue
+
+#                 print(f"\n📝 Total Investments Collected: {len(investments_list)}")
+#                 print(f"   Unique Contributors: {len(selected_contributors)}")
+
+#                 if investments_list:
+#                     # Set contributors
+#                     self.object.contributors.set(
+#                         User.objects.filter(id__in=selected_contributors)
+#                     )
+
+#                     print("\n💰 Processing Investments...")
+
+#                     # Use the new multi-investment method
+#                     success = (
+#                         self.object.deduct_property_costs_with_multiple_investments(
+#                             investments_list, investment_dates_list
+#                         )
+#                     )
+
+#                     if not success:
+#                         print("❌ Investment processing failed!")
+#                         form.add_error(
+#                             None, "Invalid investment data or insufficient balance."
+#                         )
+#                         return self.form_invalid(form)
+
+#                     print("✅ All investments processed successfully!")
+#                 else:
+#                     print("⚠️  No valid investments found")
+
+#             # Save images
+#             if image_formset.is_valid():
+#                 image_formset.instance = self.object
+#                 image_formset.save()
+#                 print("✅ Images saved")
+
+#         print("=" * 80)
+#         print("✅ PROPERTY CREATION COMPLETED SUCCESSFULLY")
+#         print("=" * 80 + "\n")
+
+#         return HttpResponseRedirect(self.get_success_url())
+
 class PropertyCreateView(PropertyUserRequiredMixin, CreateView):
     model = Property
     form_class = PropertyForm
@@ -1772,40 +1945,64 @@ class PropertyCreateView(PropertyUserRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["image_formset"] = PropertyImageFormSet(
-            self.request.POST or None, self.request.FILES or None
+            self.request.POST or None,
+            self.request.FILES or None,
         )
-        all_users = User.objects.filter(is_active=True, investor=True)
-        context["all_users"] = all_users
-        context["user_contributions"] = (
-            {}
-        )  # Empty for create - template expects this key
+
+        context["all_users"] = User.objects.filter(
+            is_active=True,
+            investor=True,
+        ).order_by("first_name", "last_name", "short_name", "email")
+
+        # Empty for create; template expects this key.
+        context["user_contributions"] = {}
+
         context["total_balance"] = (
-            User.objects.aggregate(Sum("balance"))["balance__sum"] or 0
+            User.objects.aggregate(total=Sum("balance"))["total"] or Decimal("0")
             if self.request.user.is_superuser
             else self.request.user.balance
         )
-        # Default investment date
-        context["default_investment_date"] = date.today().strftime("%Y-%m-%d")
 
+        context["default_investment_date"] = date.today().strftime("%Y-%m-%d")
         return context
+
+    def _parse_decimal(self, value, default="0"):
+        try:
+            return Decimal(str(value or default).strip())
+        except (InvalidOperation, ValueError, TypeError, AttributeError):
+            return Decimal(default)
+
+    def _parse_investment_date(self, user_id, sequence, fallback_date):
+        date_key = f"date_{user_id}_{sequence}"
+        date_str = self.request.POST.get(date_key, "").strip()
+
+        if not date_str:
+            return fallback_date
+
+        try:
+            return datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return fallback_date
 
     def form_valid(self, form):
         context = self.get_context_data()
         image_formset = context["image_formset"]
 
         print("\n" + "=" * 80)
-        print("🆕 CREATING NEW PROPERTY WITH MULTI-INVESTMENT SUPPORT")
+        print("🆕 CREATING NEW PROPERTY WITH MULTI-INVESTMENT + FULL BALANCE SUPPORT")
         print("=" * 80)
 
         with transaction.atomic():
             form.instance.listed_by = self.request.user
-            buying_price = form.cleaned_data.get("buying_price") or 0
-            service_cost = form.cleaned_data.get("service_cost") or 0
+
+            buying_price = form.cleaned_data.get("buying_price") or Decimal("0")
+            service_cost = form.cleaned_data.get("service_cost") or Decimal("0")
             form.instance.acquisition_cost = (
-                buying_price + service_cost if (buying_price or service_cost) else None
+                buying_price + service_cost
+                if (buying_price or service_cost)
+                else None
             )
 
-            # Save property first
             self.object = form.save(commit=False)
             self.object.save()
 
@@ -1815,126 +2012,128 @@ class PropertyCreateView(PropertyUserRequiredMixin, CreateView):
             print(f"   Service Cost: ${self.object.service_cost}")
 
             if self.object.status == "bought":
-                # Parse multi-investment data from POST
                 investments_list = []
                 investment_dates_list = []
                 selected_contributors = set()
+                seen_rows = set()
+                default_date = self.object.buying_date or date.today()
 
                 print("\n📊 Parsing Investment Data...")
 
-                # Parse all invest_ fields with sequence numbers
                 for key in self.request.POST:
-                    if key.startswith("invest_"):
-                        # Format: invest_{user_id}_{sequence}
-                        parts = key.replace("invest_", "").split("_")
+                    if not key.startswith("invest_"):
+                        continue
 
-                        if len(parts) >= 2:
-                            user_id = int(parts[0])
-                            sequence = int(parts[1])
-                        else:
-                            # Old format fallback: invest_{user_id}
-                            user_id = int(parts[0])
-                            sequence = 1
+                    # Format: invest_{user_id}_{sequence}
+                    parts = key.replace("invest_", "").split("_")
 
-                        amount_str = self.request.POST.get(key, "").strip()
+                    try:
+                        user_id = int(parts[0])
+                        sequence = int(parts[1]) if len(parts) >= 2 else 1
+                    except (ValueError, IndexError):
+                        print(f"   ✗ Invalid investment field name: {key}")
+                        continue
 
+                    row_key = (user_id, sequence)
+                    if row_key in seen_rows:
+                        continue
+                    seen_rows.add(row_key)
+
+                    checkbox_key = f"select_user_{user_id}_{sequence}"
+                    full_key = f"full_{user_id}_{sequence}"
+                    fixed_key = f"fixed_{user_id}_{sequence}"
+
+                    is_selected = self.request.POST.get(checkbox_key) is not None
+                    is_full_balance = self.request.POST.get(full_key) is not None
+                    is_fixed = (
+                        self.request.POST.get(fixed_key) is not None
+                    ) or is_full_balance
+
+                    amount = self._parse_decimal(self.request.POST.get(key), "0")
+
+                    # Full checkbox means: use this user's full current balance,
+                    # and save this row as fixed/upper-layer investment.
+                    if is_full_balance:
                         try:
-                            amount = Decimal(amount_str)
+                            user_obj = User.objects.only("balance").get(id=user_id)
+                            amount = Decimal(str(user_obj.balance or 0))
+                        except User.DoesNotExist:
+                            amount = Decimal("0")
 
-                            # Check if checkbox is selected
-                            checkbox_key = f"select_user_{user_id}_{sequence}"
-                            is_selected = (
-                                self.request.POST.get(checkbox_key) is not None
-                            )
+                    if amount <= 0 or not is_selected:
+                        continue
 
-                            if amount > 0 and is_selected:
-                                # Check if fixed
-                                fixed_key = f"fixed_{user_id}_{sequence}"
-                                is_fixed = self.request.POST.get(fixed_key) is not None
+                    investments_list.append(
+                        {
+                            "user_id": user_id,
+                            "invest_amount": amount,
+                            "is_fixed": is_fixed,
+                            "sequence": sequence,
+                        }
+                    )
+                    selected_contributors.add(user_id)
 
-                                investments_list.append(
-                                    {
-                                        "user_id": user_id,
-                                        "invest_amount": amount,
-                                        "is_fixed": is_fixed,
-                                        "sequence": sequence,
-                                    }
-                                )
+                    inv_date = self._parse_investment_date(
+                        user_id=user_id,
+                        sequence=sequence,
+                        fallback_date=default_date,
+                    )
+                    investment_dates_list.append(
+                        {
+                            "user_id": user_id,
+                            "sequence": sequence,
+                            "date": inv_date,
+                        }
+                    )
 
-                                selected_contributors.add(user_id)
-
-                                # Get investment date
-                                date_key = f"date_{user_id}_{sequence}"
-                                date_str = self.request.POST.get(date_key, "").strip()
-
-                                if date_str:
-                                    try:
-                                        inv_date = datetime.strptime(
-                                            date_str, "%Y-%m-%d"
-                                        ).date()
-                                    except ValueError:
-                                        inv_date = (
-                                            self.object.buying_date or date.today()
-                                        )
-                                else:
-                                    inv_date = self.object.buying_date or date.today()
-
-                                investment_dates_list.append(
-                                    {
-                                        "user_id": user_id,
-                                        "sequence": sequence,
-                                        "date": inv_date,
-                                    }
-                                )
-
-                                print(
-                                    f"   ✓ User {user_id} Investment #{sequence}: ${amount} (Fixed: {is_fixed}, Date: {inv_date})"
-                                )
-
-                        except (ValueError, InvalidOperation, AttributeError) as e:
-                            print(f"   ✗ Error parsing {key}: {e}")
-                            continue
+                    print(
+                        f"   ✓ User {user_id} Investment #{sequence}: ${amount} "
+                        f"(Fixed: {is_fixed}, Full: {is_full_balance}, Date: {inv_date})"
+                    )
 
                 print(f"\n📝 Total Investments Collected: {len(investments_list)}")
                 print(f"   Unique Contributors: {len(selected_contributors)}")
 
                 if investments_list:
-                    # Set contributors
                     self.object.contributors.set(
                         User.objects.filter(id__in=selected_contributors)
                     )
 
                     print("\n💰 Processing Investments...")
 
-                    # Use the new multi-investment method
-                    success = (
-                        self.object.deduct_property_costs_with_multiple_investments(
-                            investments_list, investment_dates_list
-                        )
+                    success = self.object.deduct_property_costs_with_multiple_investments(
+                        investments_list,
+                        investment_dates_list,
                     )
 
                     if not success:
                         print("❌ Investment processing failed!")
                         form.add_error(
-                            None, "Invalid investment data or insufficient balance."
+                            None,
+                            "Invalid investment data or insufficient balance.",
                         )
+                        transaction.set_rollback(True)
                         return self.form_invalid(form)
 
                     print("✅ All investments processed successfully!")
                 else:
-                    print("⚠️  No valid investments found")
+                    print("⚠️ No valid investments found")
 
-            # Save images
             if image_formset.is_valid():
                 image_formset.instance = self.object
                 image_formset.save()
                 print("✅ Images saved")
+            else:
+                form.add_error(None, "Please fix image upload errors.")
+                transaction.set_rollback(True)
+                return self.form_invalid(form)
 
         print("=" * 80)
         print("✅ PROPERTY CREATION COMPLETED SUCCESSFULLY")
         print("=" * 80 + "\n")
 
         return HttpResponseRedirect(self.get_success_url())
+
 
 
 # class PropertyUpdateView(PropertyUserRequiredMixin, UpdateView):
